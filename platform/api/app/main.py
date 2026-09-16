@@ -6,6 +6,8 @@ Run locally (after `docker compose up -d` for infra):
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -36,7 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
 
     @app.get("/", include_in_schema=False)
-    def root() -> dict:
+    def root() -> dict[str, Any]:
         return {"service": "bloom-api", "version": __version__, "health": "/api/health"}
 
     return app

@@ -7,6 +7,8 @@ healthcheck rely on.
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -32,7 +34,7 @@ def _check_pgvector(db: Session) -> bool:
 
 
 @router.get("/health", status_code=status.HTTP_200_OK)
-def health(db: Session = Depends(get_db)) -> dict:
+def health(db: Session = Depends(get_db)) -> dict[str, Any]:
     # Postgres through PgBouncer
     db_ok = False
     db_error: str | None = None

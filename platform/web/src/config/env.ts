@@ -4,15 +4,9 @@
  * Vite exposes variables prefixed with `VITE_` via `import.meta.env`. We
  * centralize access here so the rest of the app imports a single, validated
  * config object instead of reading `import.meta.env` directly.
+ *
+ * The `ImportMetaEnv` type is declared globally in `src/vite-env.d.ts`.
  */
-
-interface ImportMetaEnv {
-  readonly VITE_API_BASE_URL: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
 
 function required(value: string | undefined, name: string): string {
   if (!value) {

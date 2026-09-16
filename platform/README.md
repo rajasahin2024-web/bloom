@@ -142,6 +142,23 @@ Alembic migrations ──▶ Postgres (:5432) directly   [session mode, safe for
 - App runtime uses `DATABASE_URL` → PgBouncer (transaction pooling).
 - Migrations use `DATABASE_URL_DIRECT` → Postgres directly.
 
+### Host port mappings
+
+Inside the Docker network, services use their canonical ports. The host ports
+are remapped because some are already in use on this machine:
+
+| Service | Container port | Host port |
+| --- | --- | --- |
+| Postgres | 5432 | **5433** |
+| PgBouncer | 6432 | 6432 |
+| Redis | 6379 | **6380** |
+| API | 8000 | 8000 |
+| Web | 5173 | 5173 |
+
+For local dev (running `uvicorn` / `vite` on the host), `.env.example` already
+points at these host ports. When the API runs inside Docker, `docker-compose.yml`
+overrides the URLs with the docker-internal hostnames.
+
 ## Health contract
 
 `GET /api/health` returns `200` with a JSON body:
