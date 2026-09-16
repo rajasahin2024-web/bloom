@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site Admin has moved — Bloom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="bloom-core.css" rel="stylesheet">
+<style>
+body{display:grid;place-items:center;min-height:100vh;padding:24px;background:var(--paper)}
+.mv{max-width:520px;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);padding:40px 38px;box-shadow:var(--sh-2)}
+.mv img{width:54px;height:54px;margin-bottom:20px}
+.mv h1{font-family:var(--display);font-size:26px;font-weight:800;letter-spacing:-.8px;line-height:1.18;margin-bottom:12px}
+.mv p{font-size:14px;color:var(--ink-3);line-height:1.72;margin-bottom:10px}
+.mv .row{display:grid;gap:9px;margin:24px 0;text-align:left}
+.mv .row div{display:flex;gap:11px;align-items:flex-start;font-size:13px;color:var(--ink-2);line-height:1.55}
+.mv .row i{color:var(--leaf-600);margin-top:3px;width:15px}
+</style>
+</head>
+<body>
+<div class="mv">
+  <img src="assets/bloom-mark.png" alt="Bloom">
+  <h1>Site admin now lives in the <span style="color:var(--leaf-600)">main panel</span></h1>
+  <p>There is one admin panel for everything — the student platform, the faculty, and the public website.</p>
+  <div class="row">
+    <div><i class="fa-solid fa-globe"></i><span><b>Website Content</b> — blog, universities, staff, testimonials, courses and photography</span></div>
+    <div><i class="fa-solid fa-inbox"></i><span><b>Enquiries</b> — the inbox, with a WhatsApp reply drafted for every request</span></div>
+    <div><i class="fa-brands fa-whatsapp" style="color:#25D366"></i><span><b>WhatsApp Alerts</b> — routing, templates and the delivery log</span></div>
+  </div>
+  <a class="btn btn-p btn-lg" href="Bloom.html" style="width:100%;justify-content:center"><i class="fa-solid fa-arrow-right"></i> Open the admin panel</a>
+  <p style="font-size:12px;margin-top:14px">Sign in as an administrator, then look under <b>Public website</b> in the sidebar.</p>
+</div>
+<script>setTimeout(function(){ location.replace('Bloom.html'); }, 4200);</script>
+</body>
+</html>

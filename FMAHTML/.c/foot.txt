@@ -1,0 +1,22 @@
+<footer class="foot">
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <a class="brand" href="index.html" style="margin-bottom:16px"><img src="assets/bloom-mark.png" alt="Bloom IELTS Academy"><div><b>Bloom</b><span>IELTS Academy</span></div></a>
+        <div style="line-height:1.7;max-width:300px"><b style="color:var(--leaf-300);display:block;margin-bottom:7px">The school for English, accepted all over the globe.</b>English exam preparation for students across Asia, the Gulf and Europe. Founded in 2025 across Oman, Italy and China; headquartered in India.</div>
+        <div class="socials"><a href="contact.html" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a><a href="contact.html" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a><a href="contact.html" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a><a href="contact.html" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a></div>
+      </div>
+      <div><h4>Courses</h4><a href="courses.html">IELTS Academic</a><a href="courses.html">IELTS General Training</a><a href="courses.html">TOEFL iBT</a><a href="courses.html">PTE Academic</a><a href="medical.html">OET · Medical English</a><a href="courses.html">General English</a></div>
+      <div><h4>Academy</h4><a href="about.html">About Bloom</a><a href="ielts.html#how">How we teach</a><a href="about.html#staff">Academic staff</a><a href="results.html">Results</a><a href="about.html#reach">Our reach</a><a href="blog.html">Blog</a></div>
+      <div><h4>Platform</h4><a href="login.html?mode=signup">Free placement test</a><a href="platform.html">The School</a><a href="platform.html">Writing Lab</a><a href="abroad.html">Study abroad</a><a href="login.html">Student sign in</a><a href="site-admin.html">Site admin</a></div>
+    </div>
+    <div class="bot">
+      <span>© 2026 Bloom IELTS Academy Pvt Ltd · Registered in India · CIN U85499KA2025PTC198420 · GSTIN 29ABMCB4821K1ZP</span>
+      <span style="margin-left:auto"><a href="contact.html" style="display:inline">Privacy</a> · <a href="contact.html" style="display:inline">Terms</a> · <a href="contact.html" style="display:inline">Contact</a></span>
+    </div>
+    <div style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.34);line-height:1.6">IELTS is a registered trademark of the British Council, IDP: IELTS Australia and Cambridge Assessment English. TOEFL is a registered trademark of ETS. Bloom IELTS Academy is an independent preparation provider and is not affiliated with, endorsed by or a test centre for any of these organisations.</div>
+  </div>
+</footer>
+<script src="bloom-site-cms.js"></script>
+</body>
+</html>

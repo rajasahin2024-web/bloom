@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /Bloom.html
+Disallow: /login.html
+Disallow: /site-admin.html
+
+Sitemap: https://bloomielts.com/sitemap.xml

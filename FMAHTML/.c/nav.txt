@@ -1,0 +1,17 @@
+<nav class="nav" id="siteNav">
+  <div class="in">
+    <a class="brand" href="index.html"><img src="assets/bloom-mark.png" alt="Bloom IELTS Academy"><div><b>Bloom</b><span>IELTS Academy</span></div></a>
+    <div class="links"><a href="ielts.html">The exam</a><a href="platform.html">Platform</a><a href="courses.html">Courses</a><a href="results.html">Results</a><a href="abroad.html">Study abroad</a><a href="medical.html">Medical</a><a href="blog.html">Blog</a><a href="about.html">About</a></div>
+    <div class="nav-cta">
+      <a class="btn btn-ghost btn-sm" href="login.html">Sign in</a>
+      <a class="btn btn-p btn-sm" href="login.html?mode=signup">Start free</a>
+      <button class="burger" onclick="document.getElementById('mob').classList.toggle('on')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+    </div>
+  </div>
+</nav>
+<div class="mob" id="mob">
+  <a href="index.html">Home</a><a href="ielts.html">The exam</a><a href="platform.html">Platform</a><a href="courses.html">Courses</a><a href="results.html">Results</a><a href="abroad.html">Study abroad</a><a href="medical.html">Medical</a><a href="blog.html">Blog</a><a href="about.html">About</a><a href="contact.html" class="on">Contact</a>
+  <div style="display:flex;gap:9px;margin-top:16px">
+    <a class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" href="login.html">Sign in</a>
+    <a class="btn btn-p btn-sm" style="flex:1;justify-content:center" href="login.html?mode=signup">Start free</a></div>
+</div>

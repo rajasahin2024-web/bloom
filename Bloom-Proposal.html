@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposal — Bloom Academy IELTS Learning Platform</title>
+<style>
+  :root{ --navy:#0b2a4a; --teal:#0f8a8a; --ink:#1a2433; --mut:#5b6b7f; --line:#e3e9f0; --soft:#f4f8fb; }
+  *{ box-sizing:border-box; }
+  body{ font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--ink); margin:0; background:#fff; line-height:1.6; font-size:15px; }
+  .page{ max-width:840px; margin:0 auto; padding:56px 48px; }
+  .cover{ border-bottom:4px solid var(--teal); padding-bottom:32px; margin-bottom:36px; }
+  .brand{ font-size:13px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--teal); }
+  h1{ font-size:34px; letter-spacing:-.5px; margin:14px 0 6px; color:var(--navy); line-height:1.15; }
+  .meta{ color:var(--mut); font-size:14px; margin-top:10px; }
+  .meta b{ color:var(--ink); }
+  h2{ font-size:21px; color:var(--navy); margin:38px 0 10px; padding-top:14px; border-top:1px solid var(--line); }
+  h3{ font-size:16.5px; color:var(--navy); margin:24px 0 8px; }
+  p{ margin:8px 0; }
+  ul,ol{ margin:8px 0 8px 4px; padding-left:20px; }
+  li{ margin:5px 0; }
+  table{ width:100%; border-collapse:collapse; margin:14px 0; font-size:13.5px; }
+  th{ text-align:left; background:var(--navy); color:#fff; padding:9px 12px; font-weight:600; }
+  td{ padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:nth-child(even) td{ background:var(--soft); }
+  .total td{ font-weight:800; font-size:15px; }
+  code{ background:#eef2f6; padding:1px 6px; border-radius:5px; font-size:13px; }
+  pre.arch{ background:#0d1b2a; color:#d8e6f3; padding:16px 18px; border-radius:8px; font-size:11.5px; line-height:1.45; overflow-x:auto; font-family:"SF Mono",Consolas,Menlo,monospace; }
+  .small{ font-size:12.5px; color:var(--mut); }
+  .footer{ margin-top:48px; padding-top:18px; border-top:1px solid var(--line); color:var(--mut); font-size:12.5px; }
+  @media print{ body{ font-size:12.5px } .page{ padding:24px } h2{ page-break-after:avoid } table{ page-break-inside:avoid } pre.arch{ font-size:9.5px } }
+</style>
+</head>
+<body><div class="page">
+
+<div class="cover">
+  <div class="brand">Technical &amp; Commercial Proposal</div>
+  <h1>Bloom Academy<br>IELTS Learning Platform</h1>
+  <div class="meta">
+    Prepared for <b>Bloom Academy</b> &nbsp;·&nbsp; Prepared by <b>Techfly Engineering</b><br>
+    16 September 2026 &nbsp;·&nbsp; Version 4.0 — &#8377;4.2L package · 3-month delivery · parallel AI-Tutor track
+  </div>
+</div>
+
+<p><b>Prepared for:</b> Bloom Academy (Bloom IELTS Academy) <b>Prepared by:</b> Techfly Engineering <b>Date:</b> 16 September 2026 <b>Version:</b> 4.0 — revised per client feedback (&#8377;4.2L package · 3-month delivery · parallel AI-Tutor track)</p>
+<h2>1. Executive Summary</h2>
+<p>Bloom Academy has already produced a complete, high-fidelity front-end prototype of its IELTS preparation platform — a public website, a student portal covering every IELTS module, faculty tools, and a full administration suite.</p>
+<p>We propose to rebuild this prototype as a <b>production-grade, scalable web platform</b> — with a real backend, secure authentication, and three capabilities the academy has requested:</p>
+<ol><li><b>Institutional student email IDs on a custom mail server</b> — every registered student gets their own <code>@bloomielts.com</code>-style mailbox, provisioned on a dedicated mail server we build and operate for the academy, with Gmail-style live availability checking at sign-up.</li><li><b>An always-on AI Tutor ("Bloom AI Tutor")</b> — a dedicated, separately scalable Python service built by a <b>parallel development track</b>, fully RAG + LangGraph based, trained on Bloom's own IELTS curriculum.</li><li><b>WhatsApp automation via WAISE.in</b> — enquiries, enrolment confirmations, class reminders, fee receipts and results delivered on WhatsApp through the WAISE WhatsApp Business platform (Professional yearly plan).</li></ol>
+<p><b>Development cost: &#8377;4,20,000 (fixed)</b> — delivered in <b>3 months</b> with staged module deliveries (Website → CMS Admin → LMS Admin → Teachers Panel → Student Panel), while a second engineer builds the Bloom AI Tutor in parallel.</p>
+<h2>2. What Exists Today — Bloom Prototype Audit</h2>
+<p>The delivered <code>FMAHTML</code> bundle contains the complete Bloom Academy product as a <b>working functional specification</b> (the bundle also contains an unrelated "FMA Admin" medical-admissions suite, which is out of scope for this proposal).</p>
+<h3>2.1 Public website (CMS-driven)</h3>
+<p>Home, About, Courses &amp; Pricing, IELTS explainer, Medical/OET, Study Abroad, Blog, Results, Careers, Contact, Login — every page served from a CMS, with complete SEO plumbing (Open Graph, JSON-LD <code>EducationalOrganization</code> schema, sitemap, robots.txt, PWA manifest) and an enquiry inbox wired to a WhatsApp alert stub.</p>
+<h3>2.2 Student portal — every IELTS module</h3>
+<p>The portal is organised around the <b>real IELTS paper structure</b> — a 15-part module map that governs the library, lectures, practice labs and mock exams:</p>
+<table><tr><th>Module</th><th>Parts in prototype</th><th>What students get</th></tr><tr><td><b>Listening</b></td><td>Part 1–4 (form completion → academic lecture)</td><td>Audio-based practice per part, map/matching drills, lecture-comprehension sets</td></tr><tr><td><b>Reading</b></td><td>Passage 1–3 + General Training (<code>rgt</code>)</td><td>Timed passages, matching-headings / YNNG question types, GT workplace texts</td></tr><tr><td><b>Writing</b></td><td>Task 1 (report/letter) + Task 2 (essay)</td><td>Guided task practice, model answers, five essay question types</td></tr><tr><td><b>Speaking</b></td><td>Part 1 interview · Part 2 cue card · Part 3 discussion</td><td>Cue-card practice, fluency drills, part-wise band descriptors</td></tr><tr><td><b>Grammar &amp; Vocabulary</b></td><td><code>gv</code> — underpins all four skills</td><td>Vocabulary lab, grammar trainer (Lexical Resource + Grammatical Range = half the W/S marks)</td></tr><tr><td><b>Exam Strategy</b></td><td><code>strategy</code> — timing, transfer, test day</td><td>Test-day checklists, timing plans</td></tr></table>
+<p>Around this module map the portal already models:</p>
+<ul><li><b>Placement test + onboarding</b> — CEFR-level estimate on entry</li><li><b>Mock exams</b> — full timed mocks with band-score reporting; the same shell already carries TOEFL iBT (120 pt), PTE Academic (90 pt) and Duolingo (160 pt, adaptive) engines, so multi-exam expansion is designed-in</li><li><b>Exam tracks</b> — staff assign each student a track (<code>ielts-a</code>, <code>ielts-g</code>, <code>toefl</code>, <code>pte</code>, <code>duolingo</code>, <code>cambridge</code>, <code>oet</code>); the portal reconfigures mocks, school parts and practice content to match, and the student cannot override it</li><li><b>Study planner</b> — weighted day-by-day plan generated from the student's weakest module, PDF export</li><li><b>Skill labs</b> — Reading / Writing / Speaking / Vocabulary / Grammar trainers</li><li><b>Live classes &amp; schedule</b> — class timetable, in-portal meeting rooms</li><li><b>Bloom Tutor</b> — AI-tutor chat UI (currently simulated — see §3.5)</li><li><b>1-on-1 tutoring booking</b> — human teacher slots</li><li><b>Library</b> — 17 downloadable materials, 12 seeded lectures, 13 audio tracks, all organised by IELTS part</li><li><b>Progress &amp; English Profile</b> — band trajectory, weakest-module detection, score concordance (IELTS↔TOEFL↔PTE↔Duolingo↔Cambridge↔OET)</li></ul>
+<h3>2.3 Faculty &amp; admin suite</h3>
+<ul><li><b>Faculty (Teachers Panel):</b> teaching planner, live teaching console, class roster, content manager, exam builder</li><li><b>Admin:</b> overview dashboard, admissions &amp; student records, communications, academic, finance (fees/receipts/subscriptions/reminders), personnel &amp; HR documents, content manager, exam builder, operations, analytics, exam-track assignment, website CMS, enquiry inbox, WhatsApp alerts</li></ul>
+<h3>2.4 Engineering reality</h3>
+<p><b>Important:</b> the prototype has no server — every screen runs in the browser and all data lives in <code>localStorage</code> (demo login <code>bloom2026</code> is hardcoded; the "AI Tutor" returns canned rule-based replies; WhatsApp is a webhook stub). The design system, user journeys and domain models are excellent and reusable — the application itself must be rebuilt on a real stack.</p>
+<h2>3. Proposed Solution</h2>
+<h3>3.1 Technology stack — fixed per client specification</h3>
+<table><tr><th>Layer</th><th>Choice</th><th>Why</th></tr><tr><td>Web frontend (all panels + portal)</td><td><b>React + Vite + TypeScript</b></td><td>Fast SPA for the portal and all admin/teachers panels; huge talent pool</td></tr><tr><td>Public website</td><td><b>React + Vite with SSR/prerendered pages</b></td><td>Same stack, SEO preserved (sitemap, schema, OG all carried over)</td></tr><tr><td>Backend API</td><td><b>FastAPI (Python)</b></td><td>Single Python ecosystem across platform API and AI services; async-first, high throughput</td></tr><tr><td>Database</td><td><b>PostgreSQL</b></td><td>Reliable, cheap to host, suits exam/attempt data</td></tr><tr><td>DB optimisation</td><td><b>PgBouncer</b></td><td>Connection pooling in front of Postgres — keeps the DB stable under exam-day traffic spikes</td></tr><tr><td>Vector search / embedded learning</td><td><b>pgvector</b> (inside PostgreSQL)</td><td>Embedding store for the AI Tutor's knowledge base — no separate vector DB to run</td></tr><tr><td>Cache + queue</td><td><b>Redis</b></td><td>Sessions, rate limits, and the job queue feeding the AI worker pool</td></tr><tr><td>AI Tutor</td><td><b>Python worker pool + LangGraph + RAG</b></td><td>Dedicated horizontally-scalable service — see §3.5</td></tr><tr><td>File storage</td><td>S3-compatible object storage + CDN</td><td>Audio tracks, PDFs, lecture recordings</td></tr><tr><td>Auth</td><td>JWT + OTP (phone/email), role-based access</td><td>Student / Teacher / Admin roles already in the design</td></tr><tr><td><b>Email IDs</b></td><td><b>Custom self-hosted mail server</b> (Postfix + Dovecot stack) on academy domain</td><td>See §3.4 — architecture included</td></tr><tr><td>WhatsApp</td><td><b>WAISE.in — Professional yearly plan</b></td><td>See §3.6</td></tr><tr><td>Payments</td><td>Razorpay / Cashfree (UPI, cards, EMI)</td><td>Standard for Indian ed-tech</td></tr><tr><td>Infra</td><td>Docker on cloud VPS (AWS / DigitalOcean), CI/CD, monitoring, daily backups</td><td>Starts lean, scales on demand</td></tr></table>
+<h3>3.2 How the platform will work</h3>
+<ul><li><b>Public website + CMS</b> — marketing pages managed by staff from the admin panel, exactly as the prototype's Website Content section works today.</li><li><b>Unified Admin Panel</b> — the website CMS is <b>merged into the LMS admin panel</b>: one operations suite covering admissions, student records, fees, communications, exam tracks, personnel, analytics <b>and</b> website content — a single admin surface instead of two.</li><li><b>Teachers Panel</b> — faculty planner, live teaching console, class roster, content manager, exam builder.</li><li><b>Student Panel</b> — enrolment → student record → exam-track assignment → placement → personalised study plan → skill labs → live &amp; recorded classes → mocks → band-score progress reports. Every screen in the prototype becomes real.</li></ul>
+<h3>3.3 Student Email-ID System — custom mail server (requested feature)</h3>
+<p>At registration the student picks a username; the UI checks availability <b>live</b> — Gmail-style "taken / available" with suggestions. On confirmation the system provisions a <b>real mailbox</b>:</p>
+<p><code>studentname@bloomielts.com</code></p>
+<h3>3.4 Mail Server — Architecture Design</h3>
+<p>The email system runs on a <b>dedicated mail VPS</b>, isolated from the application server, built on the standard open-source mail stack (mailcow-style: Postfix + Dovecot + Rspamd + SOGo, dockerised):</p>
+<pre class="arch">┌──────────────────────────────┐        ┌─────────────────────────────────────────────┐
+│  Bloom Platform (app VPS)    │        │  Dedicated Mail VPS — academy domain        │
+│                              │        │                                             │
+│  Student registration        │        │  ┌───────────────────────────────────────┐  │
+│   └─ live availability check │──API──▶│  │ Mail Provisioning API (our service)  │  │
+│      &quot;username taken/free&quot;   │        │  │  - create / suspend / reset mailbox  │  │
+│   └─ confirm username        │──API──▶│  │  - quota per student                 │  │
+│                              │        │  └───────────────┬───────────────────┘  │
+│  Admin panel controls        │──API──▶│                  ▼                      │
+│  (suspend / reset / quota)   │        │  ┌───────────────────────────────────────┐│
+│                              │        │  │ Postfix (SMTP)  ·  Dovecot (IMAP/POP3)││
+│                              │        │  │ Rspamd (spam)   ·  SOGo (webmail)     ││
+│                              │        │  │ Mailbox DB      ·  DKIM signing       ││
+│                              │        │  └───────────────────────────────────────┘│
+└──────────────────────────────┘        └─────────────────────────────────────────────┘
+              DNS on academy domain: MX · SPF · DKIM · DMARC · PTR (rDNS)</pre>
+<ul><li><b>Flow:</b> student picks username → platform calls the provisioning API → mailbox created in seconds → credentials issued → student uses <b>webmail (SOGo)</b> or any mail app via <b>IMAP/SMTP</b>.</li><li><b>Deliverability by design:</b> DKIM/SPF/DMARC signing, PTR record, IP warm-up and rate limits so academy mail lands in inbox, not spam.</li><li><b>Unlimited mailboxes</b> — cost is the server, not per-student licensing. At thousands of students this is dramatically cheaper than per-seat Google Workspace (&#8377;130–250/student/month), and the academy owns the infrastructure.</li><li><b>Admin controls from inside the platform:</b> suspend/reset mailbox, storage quota per student, alumni-mailbox policy.</li><li><b>Isolation:</b> mail VPS is separate from the app VPS — a mail IP issue can never take the learning platform down (and vice-versa).</li></ul>
+<p><b>Pricing:</b> delivered as an <b>additional one-time setup — &#8377;20,000</b> (mail server build, provisioning API, webmail, admin controls, DNS/deliverability configuration). The mail VPS itself is a separate running cost (~&#8377;3,000–5,000/month) taken by the academy — flat regardless of student count.</p>
+<h3>3.5 Bloom AI Tutor — Architecture Design (built on a parallel track)</h3>
+<p>The AI Tutor is a <b>fully RAG + LangGraph</b> service, developed by a <b>dedicated engineer in parallel</b> with the main platform, and designed for <b>horizontal scaling via a Python worker pool</b>:</p>
+<pre class="arch">┌────────────────────────────────────────────────────────────────────────┐
+│  Bloom AI Tutor service (independent deployment, own scaling group)     │
+│                                                                        │
+│  Student chat / portal request                                         │
+│        ▼                                                               │
+│  FastAPI gateway ──▶ Redis queue ──▶ Python worker pool (N replicas,   │
+│   (auth, rate limits,                   horizontal scale-out: add       │
+│    streaming)                           workers as usage grows)         │
+│                                            ▼                           │
+│                              LangGraph agent graph                     │
+│                               ├─ Profile node: student context from    │
+│                               │   Postgres (track, CEFR level, weak    │
+│                               │   modules, error history)              │
+│                               ├─ Retrieval node: pgvector search over  │
+│                               │   Bloom knowledge base                 │
+│                               └─ LLM node: answer generation           │
+│                                  (streamed back to student)            │
+│                                                                        │
+│  Knowledge-base pipeline: Bloom curriculum (notes, model answers,      │
+│  band descriptors, question banks) ─▶ chunking ─▶ embeddings ─▶        │
+│  pgvector index  ·  re-indexable as content grows                      │
+└────────────────────────────────────────────────────────────────────────┘</pre>
+<ul><li><b>AI Agent profiles</b> — the tutor is configured as a proper agent: persona, teaching style, guardrails, per-module expertise (a Listening tutor vs. a Writing tutor behave differently).</li><li><b>Knowledge base</b> — Bloom's own material embedded into pgvector; the tutor answers <i>from Bloom's IELTS curriculum</i>, not generic internet text.</li><li><b>Embedded learning</b> — the tutor reads each student's live profile (exam track, band trajectory, weakest module, attempt history) and adapts answers and difficulty accordingly.</li><li><b>Proper training &amp; evaluation</b> — curated Q&amp;A/eval sets from Bloom material, regression-checked against model updates before release.</li><li><b>Horizontal scaling</b> — stateless Python workers behind a Redis queue; capacity = number of workers. Usage metering per student keeps cost predictable (~&#8377;30–80/student/month on paid LLM APIs; lower with open models).</li><li><b>Isolated &amp; always-on</b> — separate deployment and billing from the main app; if the AI service is busy or down, the platform stays up.</li></ul>
+<h3>3.6 WhatsApp — WAISE.in platform (requested feature)</h3>
+<p>WhatsApp automation runs on <b>WAISE.in</b> (AI-enabled WhatsApp engine, Meta-verified tech provider) — the academy's own WAISE subscription, integrated into the platform by us:</p>
+<ul><li>Official <b>WhatsApp Business API</b> through WAISE (Meta-verified sender).</li><li>Automated notifications: enquiry follow-up, admission confirmation, class reminders, fee receipts, mock-exam results, document-checklist nudges.</li><li>Two-way: student replies on WhatsApp land in the WAISE shared inbox / CRM; AI auto-routing and FAQ bot included in WAISE plans.</li><li>Template management and broadcast campaigns from WAISE; enquiry inbox inside the Bloom admin panel syncs via WAISE API/webhooks.</li><li><b>Required from initial development</b> — the WAISE account/API access is needed in Month 1 so we can prepare and test the platform's WhatsApp endpoints against the real API.</li></ul>
+<p><b>Subscription — taken separately by the academy:</b> <b>WAISE.in Professional yearly plan — &#8377;7,500/year</b> (3 users, up to 10,000 messages/month — sized for academy volumes). Other tiers available: Starter &#8377;5,999/yr (1 user, 5,000 msgs/mo), Enterprise &#8377;12,999/yr (unlimited). Meta conversation charges are paid directly to Meta at standard rates — WAISE adds no markup on messaging.</p>
+<p>Our development scope covers WAISE account setup assistance, sender verification, template creation, and platform↔WAISE integration (API + webhooks) — included in the &#8377;4.2L package.</p>
+<h2>4. Delivery Plan — 3 Months, Staged Module Deliveries</h2>
+<p>Modules are delivered <b>in the client's required order</b>, each stage ending with a demo + acceptance checkpoint. The <b>Bloom AI Tutor is built in parallel by a separate engineer</b> across all three months, so it never gates the main deliveries.</p>
+<h3>Main track (platform team)</h3>
+<table><tr><th>Stage</th><th>Module delivered</th><th>Detail</th></tr><tr><td><b>Stage 1 (Month 1)</b></td><td><b>Public Website</b></td><td>Server/VPS setup, domain + SSL, all public pages rebuilt and live on the real domain, enquiry form → WhatsApp alert, SEO plumbing. <b>Website live from Month 1.</b> WAISE account activated — WhatsApp endpoints prepared against the real API.</td></tr><tr><td><b>Stage 2</b></td><td><b>CMS Admin Panel</b></td><td>Staff CMS for all website content, blog, results, media — exactly as the prototype's Website Content section.</td></tr><tr><td><b>Stage 3 (Month 2)</b></td><td><b>LMS Admin Panel</b> <i>(CMS merged in)</i></td><td>One unified admin suite: admissions &amp; student records, fees/receipts/subscriptions/reminders, communications, exam tracks, personnel, analytics — <b>with the CMS merged into the same panel</b>. Mail server set up here → student email-ID provisioning goes live.</td></tr><tr><td><b>Stage 4</b></td><td><b>Teachers Panel</b></td><td>Faculty planner, live teaching console, class roster, content manager, exam builder.</td></tr><tr><td><b>Stage 5 (Month 3)</b></td><td><b>Student Panel + go-live</b></td><td>Student login/auth + <code>@bloomielts.com</code> email ID at registration, dashboard, all module labs (L/R/W/S + GV), placement, mocks + band analytics, study planner, library, live classes, progress. Final QA/performance pass, production go-live, staff handover training.</td></tr></table>
+<h3>Parallel track (dedicated AI engineer — Bloom AI Tutor)</h3>
+<table><tr><th>Month</th><th>AI Tutor progress</th></tr><tr><td>Month 1</td><td>Service skeleton (FastAPI + Redis queue + worker pool), LangGraph agent graph, knowledge-base ingestion pipeline, first embeddings into pgvector</td></tr><tr><td>Month 2</td><td>RAG quality pass on Bloom curriculum, student-profile context node, agent profiles &amp; guardrails, eval-set training</td></tr><tr><td>Month 3</td><td>Load testing + horizontal scale-out, metering, integration into Student Panel, go-live with the platform</td></tr></table>
+<p><b>Total delivery time: 3 months</b> from kickoff to full go-live.</p>
+<p><b>Team:</b> 1 architect/PM (part-time), 2 full-stack engineers on the main track, 1 dedicated AI engineer on the parallel track, shared QA &amp; DevOps.</p>
+<h2>5. Investment</h2>
+<h3>5.1 Development cost — &#8377;4,20,000 fixed, divided by core module</h3>
+<table><tr><th>Core module</th><th>Scope</th><th>Price (INR)</th></tr><tr><td>Public website + CMS frontend</td><td>All public pages, enquiry inbox, SEO, domain/SSL deployment</td><td>&#8377;70,000</td></tr><tr><td>Unified Admin Panel (CMS + LMS merged)</td><td>Website CMS + admissions, student records, fees/receipts/subscriptions, communications, exam tracks, personnel, analytics</td><td>&#8377;90,000</td></tr><tr><td>Teachers Panel</td><td>Teaching planner, live console, roster, content manager, exam builder</td><td>&#8377;50,000</td></tr><tr><td>Student Panel + IELTS learning engine</td><td>Auth/RBAC, dashboard, all module labs, placement, mocks + band analytics, study planner, library, live classes, progress</td><td>&#8377;1,20,000</td></tr><tr><td>Bloom AI Tutor service (parallel track)</td><td>FastAPI gateway + Python worker pool, LangGraph + RAG on pgvector, agent profiles, knowledge base, training &amp; eval</td><td>&#8377;55,000</td></tr><tr><td>WhatsApp integration</td><td>WAISE.in setup + sender verification, notification templates, platform↔WAISE API/webhooks, broadcast automation</td><td>&#8377;35,000</td></tr><tr class="total"><td><b>Total development cost</b></td><td></td><td><b>&#8377;4,20,000</b></td></tr></table>
+<h3>5.2 Additional one-time cost</h3>
+<table><tr><th>Item</th><th>Price (INR)</th></tr><tr><td><b>Custom mail server setup</b> — dedicated mail stack (Postfix + Dovecot + Rspamd + SOGo) on academy domain, provisioning API, webmail, spam/DKIM/SPF/DMARC + PTR, admin controls</td><td><b>&#8377;20,000</b> (one-time)</td></tr></table>
+<p><b>Package total: &#8377;4,20,000 development + &#8377;20,000 one-time mail-server setup = &#8377;4,40,000.</b></p>
+<h3>5.3 Payment milestones — distributed across the 3 months</h3>
+<table><tr><th>Milestone</th><th>Trigger</th><th>Amount (INR)</th></tr><tr><td>Booking advance</td><td>Project kickoff, infrastructure &amp; environment setup</td><td>&#8377;60,000</td></tr><tr><td>Month 1 delivery</td><td>Public website live + CMS admin panel</td><td>&#8377;1,20,000</td></tr><tr><td>Month 2 delivery</td><td>Unified LMS admin panel + Teachers Panel + student email IDs live</td><td>&#8377;1,40,000</td></tr><tr><td>Month 3 delivery</td><td>Student Panel + Bloom AI Tutor + WhatsApp automation + go-live</td><td>&#8377;1,00,000</td></tr><tr><td>Mail server setup (one-time)</td><td>Mail server configured &amp; student email IDs live (Month 2)</td><td>&#8377;20,000</td></tr><tr class="total"><td><b>Total</b></td><td></td><td><b>&#8377;4,40,000</b></td></tr></table>
+<p>3 months post-launch support included; optional AMC thereafter.</p>
+<h3>5.4 Running / external costs — taken separately by the academy (at actuals)</h3>
+<table><tr><th>Item</th><th>Cost</th><th>Notes</th></tr><tr><td><b>WAISE.in WhatsApp platform</b></td><td><b>&#8377;7,500/year</b> (Professional yearly plan)</td><td>3 users, ~10,000 msgs/mo. Needed <b>from initial development</b> to prepare &amp; test WhatsApp endpoints. Meta conversation charges paid directly to Meta (no markup).</td></tr><tr><td>Cloud VPS (app + database)</td><td>~&#8377;4,000–8,000/month</td><td>Any <b>16 / 12 / 8 GB RAM (8 GB minimum)</b> cloud VPS — AWS / DigitalOcean / equivalent. 16 GB recommended for comfortable headroom.</td></tr><tr><td>Mail server VPS</td><td>~&#8377;3,000–5,000/month</td><td>Flat, unlimited student mailboxes</td></tr><tr><td>AI Tutor LLM usage</td><td>~&#8377;5,000–20,000/month</td><td>Usage-based; lower with open models</td></tr><tr><td>Object storage + CDN</td><td>~&#8377;500–2,000/month</td><td>Audio, PDFs, recordings</td></tr><tr><td>Domain renewal</td><td>~&#8377;1,000/year</td><td>Academy's own domain</td></tr><tr><td>Maintenance &amp; support (AMC, optional after first 3 months)</td><td>&#8377;15,000–30,000/month</td><td>Optional</td></tr></table>
+<p><i>Scope note:</i> this price assumes the delivered prototype as the agreed functional spec; new features beyond it are quoted as change requests.</p>
+<h3>Optional add-ons (not in the package)</h3>
+<ul><li>Native iOS/Android apps (PWA covers launch) — quoted separately</li><li>Custom WebRTC live-class rooms (default: Zoom/Google Meet integration) — quoted separately</li><li>Advanced AI features: auto-graded writing/speaking feedback, personalised revision engine — Phase 4 candidate</li></ul>
+<h2>6. Challenges in a project this size — and how the Techfly team manages them</h2>
+<p>A platform spanning a public website, three role-based panels, a custom mail system, WhatsApp automation and a standalone AI service is a large build. These are the real challenges, and how we handle each:</p>
+<table><tr><th>Challenge</th><th>How Techfly manages it</th></tr><tr><td><b>Breadth of scope</b> — 6 modules + AI + mail + WhatsApp in 3 months</td><td>Module-wise contract: the delivered prototype is the spec, each stage has a demo + acceptance checkpoint, scope changes are quoted separately — no silent scope creep</td></tr><tr><td><b>Parallel development</b> — AI Tutor built alongside the main platform</td><td>Shared API contracts first: the platform↔AI and platform↔WAISE interfaces are frozen in Month 1 (OpenAPI schemas), so the two tracks never block each other</td></tr><tr><td><b>Email deliverability</b> — a new mail server can land in spam</td><td>Dedicated IP + full DNS auth (SPF/DKIM/DMARC/PTR), IP warm-up schedule, sending-rate limits, and deliverability monitoring from day one</td></tr><tr><td><b>AI answer quality</b> — a tutor that answers wrongly damages trust</td><td>RAG restricted to Bloom's own knowledge base, curated eval sets, guardrails + escalation to human teachers for off-scope questions</td></tr><tr><td><b>Exam-day load spikes</b> — hundreds of students in timed mocks simultaneously</td><td>PgBouncer pooling, Redis caching, load-tested mocks module, and worker-pool isolation so AI traffic can never starve exam traffic</td></tr><tr><td><b>Data safety</b> — student records, fees, results</td><td>Daily automated backups + tested restore runbook, RBAC on every admin action, audit logs on finance/records</td></tr><tr><td><b>Team coordination at this scale</b></td><td>Single architect/PM as the client's one point of contact, weekly progress demos, code review on every merge, CI/CD with staging environment — the client's team sees progress every week, not just at month-ends</td></tr></table>
+<h2>7. Why this approach</h2>
+<ul><li>The prototype removes the biggest project risk — <b>unclear requirements</b>. Every screen and every IELTS module is already decided; we build exactly what the academy designed, on infrastructure that survives real traffic.</li><li><b>Website-first delivery</b> means the academy is live and visible from Month 1 — enrolment enquiries can start while the panels are being built.</li><li><b>Merging the CMS into the LMS admin</b> gives staff one panel to learn instead of two — less training, fewer permission mistakes.</li><li><b>Custom mail server</b> means unlimited student email IDs at flat cost — the academy owns the system instead of renting per-seat licences forever.</li><li><b>A dedicated parallel AI track</b> means the Bloom AI Tutor gets a specialist's full attention — proper RAG + LangGraph, real training, horizontal scaling — without slowing the platform.</li><li><b>WAISE.in for WhatsApp</b> gives a ready, Meta-verified platform with CRM, AI routing and broadcasts — cheaper and faster than building messaging infrastructure from scratch, and the academy controls the subscription directly.</li><li>Student email IDs + a curriculum-trained AI tutor + WhatsApp automation are genuine differentiators vs. off-the-shelf LMS products (Teachable/Graphy/Moodle), which offer none of the three natively.</li></ul>
+<h2>8. Assumptions &amp; Exclusions</h2>
+<ul><li>Content (questions, notes, videos, audio) is provided by the academy; we build the tools to manage it.</li><li>Domain, DNS access, WAISE.in subscription, and Meta/WhatsApp Business verification are owned and paid by the academy (we assist with setup).</li><li>Prices exclude GST. Third-party costs (WAISE subscription, Meta conversation fees, VPS, LLM API) are billed at actuals by the respective providers.</li></ul>
+<p><i>Prepared by the Techfly engineering team — happy to walk the academy through the prototype audit and milestone plan on a call.</i></p>
+
+</div></body></html>

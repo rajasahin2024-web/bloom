@@ -1,0 +1,13 @@
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact & free consultation — Bloom IELTS Academy</title>
+<meta name="description" content="Book a free consultation, ask about a course, or get an honest assessment of how far you are from your target band.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="bloom-site.css" rel="stylesheet">
+<link href="bloom-site-2.css" rel="stylesheet">
+<script src="bloom-cms-data.js"></script>
+<script src="image-slot.js"></script>
