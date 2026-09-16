@@ -1,0 +1,130 @@
+# Bloom platform — local development stack
+# Postgres 16 (pgvector) + PgBouncer + Redis + FastAPI API + Vite web
+#
+# Usage:
+#   cp .env.example .env
+#   docker compose up -d                       # infra (postgres, pgbouncer, redis)
+#   docker compose up -d --build api web       # full stack
+#   docker compose logs -f api
+#   docker compose down -v                     # tear down + drop volumes
+
+name: bloom
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bloom}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bloom_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-bloom}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bloom
+
+  pgbouncer:
+    # edoburu/pgbouncer is configurable via env vars (no config file needed).
+    image: edoburu/pgbouncer:1.23.1
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-bloom}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-bloom_dev_password}
+      DB_NAME: ${POSTGRES_DB:-bloom}
+      POOL_MODE: ${PGBOUNCER_POOL_MODE:-transaction}
+      MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-200}
+      DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
+      AUTH_TYPE: scram-sha-256
+      LISTEN_PORT: 6432
+      ADMIN_USERS: ${POSTGRES_USER:-bloom}
+    ports:
+      - "6432:6432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U $${DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bloom
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - bloom
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-bloom}:${POSTGRES_PASSWORD:-bloom_dev_password}@pgbouncer:6432/${POSTGRES_DB:-bloom}
+      DATABASE_URL_DIRECT: postgresql+psycopg://${POSTGRES_USER:-bloom}:${POSTGRES_PASSWORD:-bloom_dev_password}@postgres:5432/${POSTGRES_DB:-bloom}
+      REDIS_URL: redis://redis:6379/0
+      API_ENV: ${API_ENV:-development}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=5).status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - bloom
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: ${WEB_BUILD_TARGET:-development}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "5173:5173"
+    networks:
+      - bloom
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  bloom:
+    driver: bridge
