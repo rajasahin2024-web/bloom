@@ -24,8 +24,11 @@ if config.config_file_name is not None:
 _settings = get_settings()
 
 # Prefer the direct Postgres URL for migrations; fall back to the app URL.
+# May be None when the app is still unconfigured (pre-setup) — leave whatever
+# URL was passed programmatically in that case.
 migration_url = _settings.database_url_direct or _settings.database_url
-config.set_main_option("sqlalchemy.url", migration_url)
+if migration_url:
+    config.set_main_option("sqlalchemy.url", migration_url)
 
 target_metadata = Base.metadata
 
@@ -47,6 +50,8 @@ def run_migrations_online() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        # Safe through PgBouncer transaction pooling too.
+        connect_args={"prepare_threshold": None},
     )
 
     with connectable.connect() as connection:
