@@ -118,11 +118,26 @@ def _pg_connect(target: DatabaseTestIn, dbname: str) -> psycopg.Connection[Any]:
     )
 
 
+# psycopg raises OperationalError with sqlstate=None for connect-time
+# failures — the server's FATAL sqlstate is not propagated — so the equivalent
+# class is recovered from the libpq message text.
+_MESSAGE_SQLSTATES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"password authentication failed"), "28P01"),
+    (re.compile(r"database\b.*\bdoes not exist"), "3D000"),
+    (re.compile(r"no pg_hba\.conf entry|is not permitted to log in"), "28000"),
+)
+
+
 def _classify_connect_error(exc: psycopg.Error, database: str) -> tuple[str, str]:
     """Map a connect failure to (plain-language error, actionable hint)."""
     sqlstate = getattr(exc, "sqlstate", "") or ""
     text = str(exc)
     low = text.lower()
+    if not sqlstate:
+        sqlstate = next(
+            (code for pattern, code in _MESSAGE_SQLSTATES if pattern.search(low)),
+            "",
+        )
     if sqlstate == "28P01":
         return (
             "Authentication failed — the username or password was rejected.",
@@ -149,6 +164,10 @@ def _classify_connect_error(exc: psycopg.Error, database: str) -> tuple[str, str
             "Toggle the SSL option — the server may require SSL, or may not support it.",
         )
     first_line = text.splitlines()[0] if text else "Connection failed."
+    # Drop libpq's "connection failed: connection to server at ... failed:"
+    # wrapper so the server's own message (e.g. the FATAL line) shows.
+    first_line = re.sub(r"^connection failed:\s*", "", first_line)
+    first_line = re.sub(r"^connection to server .*?failed:\s*", "", first_line)
     return first_line, "Check the connection details and try again."
 
 

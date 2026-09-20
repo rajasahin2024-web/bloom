@@ -195,8 +195,89 @@ def test_test_database_bad_credentials(scratch_env: Path) -> None:
     )
     body = response.json()
     assert body["ok"] is False
-    assert "auth" in body["error"].lower() or "password" in body["error"].lower()
-    assert body["hint"]
+    # connect-time errors arrive with sqlstate=None, so this asserts the
+    # message-text classification in _classify_connect_error really fires
+    assert body["error"] == (
+        "Authentication failed — the username or password was rejected."
+    )
+    assert body["hint"] == "Double-check the database username and password."
+
+
+@requires_infra
+def test_test_database_missing_database(scratch_env: Path) -> None:
+    response = client.post(
+        "/api/setup/test-database",
+        json={
+            "host": PG_HOST,
+            "port": PG_PORT,
+            "database": "bloom_missing_db",
+            "username": PG_USER,
+            "password": PG_PASSWORD,
+            "connection_type": "direct",
+        },
+    )
+    body = response.json()
+    assert body["ok"] is False
+    assert body["error"] == (
+        'Database "bloom_missing_db" does not exist on this server.'
+    )
+    assert body["hint"] == "Create the database first, or fix the database name."
+
+
+# ── connect-error classification ─────────────────────────────────────────
+
+
+def _connect_error(message: str) -> psycopg.OperationalError:
+    """Connect-time failure shape: OperationalError with sqlstate=None."""
+    return psycopg.OperationalError(message)
+
+
+def test_classify_connect_error_password_auth() -> None:
+    exc = _connect_error(
+        'connection failed: connection to server at "127.0.0.1", port 5433 '
+        'failed: FATAL:  password authentication failed for user "bloom"'
+    )
+    error, hint = setup_service._classify_connect_error(exc, "bloom")
+    assert error == "Authentication failed — the username or password was rejected."
+    assert hint == "Double-check the database username and password."
+
+
+def test_classify_connect_error_missing_database() -> None:
+    exc = _connect_error(
+        'connection failed: connection to server at "127.0.0.1", port 5433 '
+        'failed: FATAL:  database "nope" does not exist'
+    )
+    error, hint = setup_service._classify_connect_error(exc, "nope")
+    assert error == 'Database "nope" does not exist on this server.'
+    assert hint == "Create the database first, or fix the database name."
+
+
+def test_classify_connect_error_pg_hba() -> None:
+    exc = _connect_error(
+        'connection failed: connection to server at "10.0.0.5", port 5432 '
+        'failed: FATAL:  no pg_hba.conf entry for host "10.0.0.9", user '
+        '"bloom", database "bloom", no encryption'
+    )
+    error, hint = setup_service._classify_connect_error(exc, "bloom")
+    assert "pg_hba" in error
+    assert "pg_hba.conf" in hint
+
+
+def test_classify_connect_error_sqlstate_still_wins() -> None:
+    exc = _connect_error("anything")
+    exc.sqlstate = "3D000"
+    error, _ = setup_service._classify_connect_error(exc, "gone")
+    assert error == 'Database "gone" does not exist on this server.'
+
+
+def test_classify_connect_error_generic_strips_libpq_wrapper() -> None:
+    exc = _connect_error(
+        'connection failed: connection to server at "h", port 5432 '
+        "failed: FATAL:  sorry, too many clients already"
+    )
+    error, hint = setup_service._classify_connect_error(exc, "bloom")
+    assert error == "FATAL:  sorry, too many clients already"
+    assert hint == "Check the connection details and try again."
 
 
 # ── test-redis ───────────────────────────────────────────────────────────
