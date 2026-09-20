@@ -14,6 +14,14 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
     strictPort: true,
+    // Same-origin API calls in dev: the browser only ever talks to :5173,
+    // so the dev server works over LAN/public IP without exposing :8000.
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
   },
   test: {
     // jsdom is added by later stages when they write DOM/component tests.

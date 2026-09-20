@@ -164,8 +164,20 @@ export function SetupWizard() {
 
   return (
     <div className="wiz">
-      {/* ── Guide panel ── */}
-      <aside className="wiz-guide">
+      <div className="wiz-win">
+        {/* ── Installer title bar ── */}
+        <header className="wiz-titlebar">
+          <img src="/assets/bloom-mark.png" alt="" />
+          <div className="wiz-titlebar-t">
+            <strong>Bloom Academy IELTS — Setup</strong>
+            <span>First-run installer</span>
+          </div>
+          <span className="wiz-titlebar-tag">v0.1</span>
+        </header>
+
+        <div className="wiz-body">
+          {/* ── Guide panel ── */}
+          <aside className="wiz-guide">
         <div className="fma-crest">
           <img src="/assets/bloom-mark.png" alt="Bloom IELTS Academy" />
           <div>
@@ -661,8 +673,31 @@ export function SetupWizard() {
               </div>
             </>
           )}
+          </div>
+        </main>
         </div>
-      </main>
+
+        {/* ── Installer status bar ── */}
+        <footer className="wiz-statusbar">
+          <span className="wiz-statusbar-step">
+            Step {stepIndex + 1} of {STEPS.length} · {STEPS[stepIndex]?.title}
+          </span>
+          <div
+            className="wiz-progress"
+            role="progressbar"
+            aria-valuenow={stepIndex + 1}
+            aria-valuemin={1}
+            aria-valuemax={STEPS.length}
+            aria-label="Setup progress"
+          >
+            <i
+              style={{
+                width: `${((stepIndex + 1) / STEPS.length) * 100}%`,
+              }}
+            />
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

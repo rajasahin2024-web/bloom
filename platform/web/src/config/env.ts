@@ -10,9 +10,10 @@
 
 function required(value: string | undefined, name: string): string {
   if (!value) {
-    // In dev, fall back to localhost so the app still renders without a .env.
+    // In dev, fall back to same-origin so the app works over any host —
+    // vite's /api proxy forwards to the API (see vite.config.ts).
     if (import.meta.env.DEV) {
-      return "http://localhost:8000";
+      return "";
     }
     throw new Error(`Missing required env var: ${name}`);
   }
