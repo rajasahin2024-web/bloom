@@ -37,6 +37,9 @@ _APPLY_ENV_KEYS = (
     "JWT_SECRET",
     "SETUP_COMPLETE",
     "REDIS_URL",
+    "INSTITUTE_NAME",
+    "INSTITUTE_TAGLINE",
+    "INSTITUTE_LOGO_URL",
 )
 
 
@@ -110,12 +113,47 @@ def test_all_endpoints_lock_once_configured(scratch_env: Path) -> None:
                 "admin_email": "a@b.co",
                 "admin_password": "password123",
                 "admin_name": "A",
+                "institute_name": "Test Institute",
             },
         ),
     ]
     for method, path, body in calls:
         response = client.request(method, path, json=body)
         assert response.status_code == 410, f"{method} {path} should be locked"
+
+
+# ── branding (readable after lock, unlike /api/setup/*) ──────────────────
+
+
+def test_branding_endpoint_shape(scratch_env: Path) -> None:
+    response = client.get("/api/branding")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) == {"name", "tagline", "logo_url"}
+
+
+def test_branding_still_served_after_lock(scratch_env: Path) -> None:
+    scratch_env.write_text("SETUP_COMPLETE=true\n")
+    assert client.get("/api/setup/status").status_code == 410
+    response = client.get("/api/branding")
+    assert response.status_code == 200
+
+
+def test_branding_logo_404_when_none(
+    scratch_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(setup_service, "UPLOADS_DIR", scratch_env.parent / "nope")
+    assert client.get("/api/branding/logo").status_code == 404
+
+
+def test_save_logo_rejects_bad_input(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(setup_service, "UPLOADS_DIR", tmp_path)
+    with pytest.raises(ValueError):
+        setup_service._save_logo("data:text/html;base64,PGI+aGk8L2I+")
+    with pytest.raises(ValueError):
+        setup_service._save_logo("not-a-data-url")
 
 
 # ── test-database ────────────────────────────────────────────────────────
@@ -319,6 +357,7 @@ def test_apply_fails_when_db_unreachable(scratch_env: Path) -> None:
             "admin_email": "admin@techfly.dev",
             "admin_password": "password123",
             "admin_name": "Setup Admin",
+            "institute_name": "Techfly IELTS",
         },
     )
     body = response.json()
@@ -330,9 +369,36 @@ def test_apply_fails_when_db_unreachable(scratch_env: Path) -> None:
     assert client.get("/api/setup/status").json() == {"configured": False}
 
 
+def test_apply_requires_institute_name(scratch_env: Path) -> None:
+    response = client.post(
+        "/api/setup/apply",
+        json={
+            "database": {
+                "host": "127.0.0.1",
+                "port": 1,
+                "database": "bloom",
+                "username": "bloom",
+                "password": "x",
+            },
+            "redis": None,
+            "admin_email": "admin@techfly.dev",
+            "admin_password": "password123",
+            "admin_name": "Setup Admin",
+        },
+    )
+    assert response.status_code == 422
+
+
 @requires_infra
-def test_apply_end_to_end(scratch_env: Path) -> None:
+def test_apply_end_to_end(scratch_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    uploads = scratch_env.parent / "uploads"
+    monkeypatch.setattr(setup_service, "UPLOADS_DIR", uploads)
     email = "setup-test-admin@techfly.dev"
+    # 1x1 transparent PNG
+    logo = (
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    )
     response = client.post(
         "/api/setup/apply",
         json={
@@ -348,6 +414,9 @@ def test_apply_end_to_end(scratch_env: Path) -> None:
             "admin_email": email,
             "admin_password": "password123",
             "admin_name": "Setup Test Admin",
+            "institute_name": "Test IELTS Institute",
+            "institute_tagline": "Band 7 or bust",
+            "institute_logo": logo,
         },
     )
     body = response.json()
@@ -361,8 +430,16 @@ def test_apply_end_to_end(scratch_env: Path) -> None:
             "REDIS_URL",
             "JWT_SECRET",
             "SETUP_COMPLETE=true",
+            'INSTITUTE_NAME="Test IELTS Institute"',
+            'INSTITUTE_TAGLINE="Band 7 or bust"',
+            "INSTITUTE_LOGO_URL=/api/branding/logo",
         ):
             assert key in content
+        # uploaded logo landed on disk and is served
+        assert (uploads / "branding" / "logo.png").is_file()
+        logo_resp = client.get("/api/branding/logo")
+        assert logo_resp.status_code == 200
+        assert logo_resp.headers["content-type"] == "image/png"
         # admin row exists with role=admin
         conn = psycopg.connect(
             host=PG_HOST, port=PG_PORT, dbname=PG_DB, user=PG_USER, password=PG_PASSWORD

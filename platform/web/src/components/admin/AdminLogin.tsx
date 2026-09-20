@@ -9,6 +9,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError } from "@/lib/api";
+import { useBranding } from "@/lib/branding";
 import { fetchMe, login, saveSession } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
 import { FloatField } from "@/components/FloatField";
@@ -19,6 +20,7 @@ interface AdminLoginProps {
 }
 
 export function AdminLogin({ onSuccess }: AdminLoginProps) {
+  const branding = useBranding();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -59,9 +61,12 @@ export function AdminLogin({ onSuccess }: AdminLoginProps) {
     <div className="fma-login">
       <div className="fma-login-side">
         <div className="fma-crest">
-          <img src="/assets/bloom-mark.png" alt="Bloom IELTS Academy" />
+          <img
+            src={branding.logo_url ?? "/assets/bloom-mark.png"}
+            alt={branding.name}
+          />
           <div>
-            <strong>Bloom IELTS Academy</strong>
+            <strong>{branding.name}</strong>
             <span>Admin Portal</span>
           </div>
         </div>
@@ -91,7 +96,7 @@ export function AdminLogin({ onSuccess }: AdminLoginProps) {
           </div>
           <div className="fma-ls-actions">
             <a className="fma-ls-site-link" href="/">
-              Bloom Academy — home <ExternalIcon size={11} />
+              {branding.name} — home <ExternalIcon size={11} />
             </a>
           </div>
         </div>
@@ -149,7 +154,7 @@ export function AdminLogin({ onSuccess }: AdminLoginProps) {
           </form>
 
           <div className="fma-login-foot">
-            <span>Bloom IELTS Academy · admin portal</span>
+            <span>{branding.name} · admin portal</span>
             <span>Restricted to administrators</span>
           </div>
         </div>

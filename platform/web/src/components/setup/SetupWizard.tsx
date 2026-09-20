@@ -13,6 +13,7 @@ import {
   adminStepComplete,
   dbStepComplete,
   dbTargetFromForm,
+  instituteStepComplete,
   redisStepComplete,
   redisTargetFromForm,
   STEPS,
@@ -30,9 +31,11 @@ import {
   CheckIcon,
   ChevronIcon,
   ExternalIcon,
+  GradCapIcon,
   InfoIcon,
   LockIcon,
   ServerIcon,
+  XIcon,
 } from "@/components/icons";
 
 function StepError({ message }: { message: string | null }) {
@@ -52,10 +55,40 @@ export function SetupWizard() {
   const [showGuide, setShowGuide] = useState(false);
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
+  const eyebrow = `Step ${stepIndex + 1} of ${STEPS.length} · ${STEPS[stepIndex].title}`;
 
   function patch<K extends keyof WizardData>(key: K, value: WizardData[K]) {
     setData((d) => ({ ...d, [key]: value }));
   }
+
+  // ── step 2: institute ───────────────────────────────────────────────
+  function onLogoPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+      setErrors({ logoDataUrl: "Logo must be a PNG, JPEG or WebP image" });
+      return;
+    }
+    if (file.size > 512 * 1024) {
+      setErrors({ logoDataUrl: "Logo must be 512KB or smaller" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setData((d) => ({
+        ...d,
+        institute: {
+          ...d.institute,
+          logoDataUrl: String(reader.result),
+          logoName: file.name,
+        },
+      }));
+      setErrors({});
+    };
+    reader.readAsDataURL(file);
+  }
+
+  const instituteOk = instituteStepComplete(data);
 
   function go(next: StepId) {
     setErrors({});
@@ -145,6 +178,9 @@ export function SetupWizard() {
         admin_email: data.admin.email.trim(),
         admin_password: data.admin.password,
         admin_name: data.admin.name.trim(),
+        institute_name: data.institute.name.trim(),
+        institute_tagline: data.institute.tagline.trim(),
+        institute_logo: data.institute.logoDataUrl,
       });
       if (result.ok) {
         go("done");
@@ -167,10 +203,12 @@ export function SetupWizard() {
       <div className="wiz-win">
         {/* ── Installer title bar ── */}
         <header className="wiz-titlebar">
-          <img src="/assets/bloom-mark.png" alt="" />
+          <span className="wiz-mark">
+            <GradCapIcon size={17} />
+          </span>
           <div className="wiz-titlebar-t">
-            <strong>Bloom Academy IELTS — Setup</strong>
-            <span>First-run installer</span>
+            <strong>IELTS Installer</strong>
+            <span>Setup wizard</span>
           </div>
           <span className="wiz-titlebar-tag">v0.1</span>
         </header>
@@ -179,9 +217,15 @@ export function SetupWizard() {
           {/* ── Guide panel ── */}
           <aside className="wiz-guide">
         <div className="fma-crest">
-          <img src="/assets/bloom-mark.png" alt="Bloom IELTS Academy" />
+          {data.institute.logoDataUrl ? (
+            <img src={data.institute.logoDataUrl} alt="Institute logo" />
+          ) : (
+            <span className="wiz-mark">
+              <GradCapIcon size={20} />
+            </span>
+          )}
           <div>
-            <strong>Bloom IELTS Academy</strong>
+            <strong>{data.institute.name.trim() || "IELTS Installer"}</strong>
             <span>First-run setup</span>
           </div>
         </div>
@@ -220,14 +264,21 @@ export function SetupWizard() {
         <div className="wiz-main-inner">
           {step === "welcome" && (
             <>
-              <div className="fma-eyebrow">Step 1 of 5 · Welcome</div>
-              <h2>Set up Bloom.</h2>
+              <div className="fma-eyebrow">{eyebrow}</div>
+              <h2>Set up your platform.</h2>
               <p className="fma-sub">
-                This one-time installer connects the platform to its database
-                and cache, runs the migrations, and creates the first
-                administrator. It takes about two minutes.
+                This one-time installer names the institute, connects the
+                platform to its database and cache, runs the migrations, and
+                creates the first administrator. It takes about two minutes.
               </p>
               <ul className="wiz-list">
+                <li>
+                  <GradCapIcon size={15} />
+                  <span>
+                    <b>Institute identity</b> — the name, tagline and logo
+                    shown across the app.
+                  </span>
+                </li>
                 <li>
                   <ServerIcon size={15} />
                   <span>
@@ -254,7 +305,7 @@ export function SetupWizard() {
                 <button
                   type="button"
                   className="fma-btn fma-btn-primary grow"
-                  onClick={() => go("database")}
+                  onClick={() => go("institute")}
                 >
                   Get started <ArrowRightIcon size={12} />
                 </button>
@@ -262,9 +313,117 @@ export function SetupWizard() {
             </>
           )}
 
+          {step === "institute" && (
+            <>
+              <div className="fma-eyebrow">{eyebrow}</div>
+              <h2>Name your institute.</h2>
+              <p className="fma-sub">
+                These details become the platform&apos;s public identity —
+                sign-in pages and the admin console read them from core
+                settings. Everything is editable later from admin settings.
+              </p>
+
+              <StepError message={stepError} />
+
+              <div className={`fma-field${errors.name ? " invalid" : ""}`}>
+                <label htmlFor="in-name">Institute name</label>
+                <input
+                  id="in-name"
+                  value={data.institute.name}
+                  onChange={(e) =>
+                    patch("institute", { ...data.institute, name: e.target.value })
+                  }
+                  placeholder="e.g. Sunrise IELTS Academy"
+                  autoComplete="organization"
+                />
+                {errors.name && (
+                  <div className="fma-field-msg">{errors.name}</div>
+                )}
+              </div>
+
+              <div className={`fma-field${errors.tagline ? " invalid" : ""}`}>
+                <label htmlFor="in-tagline">Tagline (optional)</label>
+                <input
+                  id="in-tagline"
+                  value={data.institute.tagline}
+                  onChange={(e) =>
+                    patch("institute", {
+                      ...data.institute,
+                      tagline: e.target.value,
+                    })
+                  }
+                  placeholder="e.g. IELTS preparation that works"
+                  autoComplete="off"
+                />
+                {errors.tagline && (
+                  <div className="fma-field-msg">{errors.tagline}</div>
+                )}
+              </div>
+
+              <div
+                className={`fma-field${errors.logoDataUrl ? " invalid" : ""}`}
+              >
+                <label htmlFor="in-logo">Logo (optional)</label>
+                {data.institute.logoDataUrl ? (
+                  <div className="wiz-logo-pick">
+                    <img
+                      src={data.institute.logoDataUrl}
+                      alt="Institute logo preview"
+                    />
+                    <span className="wiz-logo-name">
+                      {data.institute.logoName}
+                    </span>
+                    <button
+                      type="button"
+                      className="fma-btn fma-btn-ghost wiz-logo-remove"
+                      onClick={() =>
+                        patch("institute", {
+                          ...data.institute,
+                          logoDataUrl: null,
+                          logoName: null,
+                        })
+                      }
+                      aria-label="Remove logo"
+                    >
+                      <XIcon size={11} />
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    id="in-logo"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={onLogoPick}
+                  />
+                )}
+                {errors.logoDataUrl && (
+                  <div className="fma-field-msg">{errors.logoDataUrl}</div>
+                )}
+              </div>
+
+              <div className="wiz-actions">
+                <button
+                  type="button"
+                  className="fma-btn fma-btn-ghost"
+                  onClick={() => go("welcome")}
+                >
+                  <ArrowLeftIcon size={12} /> Back
+                </button>
+                <button
+                  type="button"
+                  className="fma-btn fma-btn-primary grow"
+                  onClick={() => go("database")}
+                  disabled={!instituteOk}
+                >
+                  Continue <ArrowRightIcon size={12} />
+                </button>
+              </div>
+            </>
+          )}
+
           {step === "database" && (
             <>
-              <div className="fma-eyebrow">Step 2 of 5 · Database</div>
+              <div className="fma-eyebrow">{eyebrow}</div>
               <h2>Connect PostgreSQL.</h2>
               <p className="fma-sub">
                 The database must already exist and have pgvector available —
@@ -308,6 +467,39 @@ export function SetupWizard() {
                   </span>
                 </label>
               </div>
+
+              <details className="wiz-details">
+                <summary>How do I set up PgBouncer?</summary>
+                <div className="wiz-details-body">
+                  <ol>
+                    <li>
+                      <b>Docker (easiest):</b> run <code>edoburu/pgbouncer</code>{" "}
+                      with <code>DB_HOST</code>, <code>DB_NAME</code>,{" "}
+                      <code>DB_USER</code>, <code>DB_PASSWORD</code>,{" "}
+                      <code>POOL_MODE=transaction</code>,{" "}
+                      <code>LISTEN_PORT=6432</code>.
+                    </li>
+                    <li>
+                      <b>Manual:</b> <code>pgbouncer.ini</code> →{" "}
+                      <code>[databases] bloom = host=… dbname=…</code>,{" "}
+                      <code>listen_port = 6432</code>,{" "}
+                      <code>pool_mode = transaction</code>,{" "}
+                      <code>auth_file = userlist.txt</code>; add the user to{" "}
+                      <code>userlist.txt</code>.
+                    </li>
+                    <li>
+                      Point this form at the pooler (host + port{" "}
+                      <code>6432</code>) and choose <b>Via PgBouncer</b> — the
+                      test verifies it through the admin console.
+                    </li>
+                    <li>
+                      Migrations need the <b>direct</b> Postgres endpoint —
+                      set <code>DATABASE_URL_DIRECT</code> in <code>.env</code>{" "}
+                      after apply.
+                    </li>
+                  </ol>
+                </div>
+              </details>
 
               <div className="wiz-grid-2">
                 <div className={`fma-field${errors.host ? " invalid" : ""}`}>
@@ -408,7 +600,7 @@ export function SetupWizard() {
                 <button
                   type="button"
                   className="fma-btn fma-btn-ghost"
-                  onClick={() => go("welcome")}
+                  onClick={() => go("institute")}
                 >
                   <ArrowLeftIcon size={12} /> Back
                 </button>
@@ -435,7 +627,7 @@ export function SetupWizard() {
 
           {step === "redis" && (
             <>
-              <div className="fma-eyebrow">Step 3 of 5 · Redis</div>
+              <div className="fma-eyebrow">{eyebrow}</div>
               <h2>Connect Redis.</h2>
               <p className="fma-sub">
                 Optional but recommended — Redis powers one-time passcodes,
@@ -544,7 +736,7 @@ export function SetupWizard() {
 
           {step === "review" && (
             <>
-              <div className="fma-eyebrow">Step 4 of 5 · Review &amp; apply</div>
+              <div className="fma-eyebrow">{eyebrow}</div>
               <h2>Review, then apply.</h2>
               <p className="fma-sub">
                 Applying re-tests the database, runs migrations, seeds the
@@ -556,6 +748,14 @@ export function SetupWizard() {
 
               <div className="wiz-review">
                 <dl>
+                  <dt>Institute</dt>
+                  <dd>
+                    {data.institute.name}
+                    {data.institute.tagline
+                      ? ` — ${data.institute.tagline}`
+                      : ""}
+                    {data.institute.logoDataUrl ? " · logo attached" : ""}
+                  </dd>
                   <dt>Database</dt>
                   <dd>
                     {data.db.username}@{data.db.host}:{data.db.port}/
@@ -585,7 +785,7 @@ export function SetupWizard() {
                   onChange={(e) =>
                     patch("admin", { ...data.admin, name: e.target.value })
                   }
-                  placeholder="Ayesha Rahman"
+                  placeholder="Full name"
                   autoComplete="name"
                   className={errors.name ? "invalid" : ""}
                 />
@@ -601,7 +801,7 @@ export function SetupWizard() {
                     onChange={(e) =>
                       patch("admin", { ...data.admin, email: e.target.value })
                     }
-                    placeholder="admin@bloomacademy.com"
+                    placeholder="admin@example.com"
                     autoComplete="email"
                   />
                   {errors.email && (
@@ -656,12 +856,13 @@ export function SetupWizard() {
               <div className="wiz-done-badge">
                 <CheckIcon size={26} />
               </div>
-              <div className="fma-eyebrow">Step 5 of 5 · Done</div>
-              <h2>Bloom is configured.</h2>
+              <div className="fma-eyebrow">{eyebrow}</div>
+              <h2>{data.institute.name.trim() || "Your platform"} is configured.</h2>
               <p className="fma-sub">
-                Migrations ran, the first administrator was created and{" "}
-                <code>platform/.env</code> was written. This wizard is now
-                locked — every setup endpoint refuses further calls.
+                Migrations ran, the first administrator was created, the
+                institute settings were saved and <code>platform/.env</code>{" "}
+                was written. This wizard is now locked — every setup endpoint
+                refuses further calls.
               </p>
               <div className="wiz-actions">
                 <Link

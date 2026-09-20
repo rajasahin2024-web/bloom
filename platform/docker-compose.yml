@@ -96,6 +96,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       API_ENV: ${API_ENV:-development}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    volumes:
+      # Wizard-uploaded branding (institute logo) survives rebuilds.
+      - api_uploads:/app/uploads
     ports:
       - "8000:8000"
     healthcheck:
@@ -126,6 +129,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  api_uploads:
 
 networks:
   bloom:

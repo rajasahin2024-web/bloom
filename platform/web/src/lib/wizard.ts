@@ -11,6 +11,7 @@ import type {
 
 export const STEPS = [
   { id: "welcome", title: "Welcome" },
+  { id: "institute", title: "Institute" },
   { id: "database", title: "Database" },
   { id: "redis", title: "Redis" },
   { id: "review", title: "Review & apply" },
@@ -41,7 +42,17 @@ export interface AdminForm {
   password: string;
 }
 
+export interface InstituteForm {
+  name: string;
+  tagline: string;
+  /** Picked logo as a data URL (`data:image/{png,jpeg,webp};base64,…`). */
+  logoDataUrl: string | null;
+  /** Original filename — display only. */
+  logoName: string | null;
+}
+
 export interface WizardData {
+  institute: InstituteForm;
   db: DbForm;
   /** the target exactly as it was last sent to /test-database */
   dbTestedTarget: DatabaseTarget | null;
@@ -54,6 +65,7 @@ export interface WizardData {
 }
 
 export const initialWizardData: WizardData = {
+  institute: { name: "", tagline: "", logoDataUrl: null, logoName: null },
   db: {
     host: "localhost",
     port: "5433",
@@ -122,6 +134,20 @@ export function validateRedisForm(form: RedisForm): FieldErrors<RedisForm> {
   return errors;
 }
 
+const LOGO_DATA_URL_RE = /^data:image\/(png|jpeg|webp);base64,/;
+
+export function validateInstituteForm(
+  form: InstituteForm,
+): FieldErrors<InstituteForm> {
+  const errors: FieldErrors<InstituteForm> = {};
+  if (!form.name.trim()) errors.name = "Institute name is required";
+  if (form.tagline.length > 300)
+    errors.tagline = "Tagline must be 300 characters or fewer";
+  if (form.logoDataUrl !== null && !LOGO_DATA_URL_RE.test(form.logoDataUrl))
+    errors.logoDataUrl = "Logo must be a PNG, JPEG or WebP image";
+  return errors;
+}
+
 export function validateAdminForm(form: AdminForm): FieldErrors<AdminForm> {
   const errors: FieldErrors<AdminForm> = {};
   if (!form.name.trim()) errors.name = "Name is required";
@@ -167,6 +193,10 @@ export function redisStepComplete(data: WizardData): boolean {
     data.redisTestedTarget !== null &&
     sameRedis(target, data.redisTestedTarget)
   );
+}
+
+export function instituteStepComplete(data: WizardData): boolean {
+  return Object.keys(validateInstituteForm(data.institute)).length === 0;
 }
 
 export function adminStepComplete(data: WizardData): boolean {

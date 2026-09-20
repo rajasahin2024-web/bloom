@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { applyBrandingToDocument, getBranding } from "@/lib/branding";
 import { getSetupStatus } from "@/lib/setup";
 
 export function SetupGate() {
@@ -20,6 +21,7 @@ export function SetupGate() {
     getSetupStatus(controller.signal)
       .then(setConfigured)
       .catch(() => setConfigured(true));
+    getBranding().then(applyBrandingToDocument);
     return () => controller.abort();
   }, []);
 

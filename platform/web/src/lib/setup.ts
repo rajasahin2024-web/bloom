@@ -50,6 +50,10 @@ export interface SetupApplyPayload {
   admin_email: string;
   admin_password: string;
   admin_name: string;
+  institute_name: string;
+  institute_tagline: string;
+  /** `data:image/...;base64,…` URL, or null when no logo was picked. */
+  institute_logo: string | null;
 }
 
 export interface SetupApplyResult {

@@ -77,6 +77,23 @@
   height: 30px;
   display: block;
 }
+/* Generic installer mark — the wizard carries no institute branding until
+   the operator names one on the institute step. */
+.wiz-mark {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--la);
+}
+.wiz-guide .wiz-mark {
+  width: 46px;
+  height: 46px;
+}
 .wiz-titlebar-t {
   display: flex;
   flex-direction: column;
@@ -402,6 +419,90 @@
   line-height: 1.45;
 }
 
+/* Logo picker (institute step) */
+.wiz-logo-pick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--wz-rule);
+  background: var(--wz-paper);
+  padding: 10px 12px;
+}
+.wiz-logo-pick img {
+  height: 40px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+}
+.wiz-logo-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--wz-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wiz-logo-remove {
+  min-width: 0;
+  padding: 6px 8px;
+}
+.wiz .fma-field input[type="file"] {
+  padding: 9px 10px;
+  font-size: 12.5px;
+  color: var(--wz-ink-3);
+}
+
+/* Inline how-to (PgBouncer guide) */
+.wiz-details {
+  border: 1px solid var(--wz-rule);
+  background: var(--wz-paper);
+  margin-bottom: 16px;
+}
+.wiz-details summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--wz-ink-2);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+.wiz-details summary::before {
+  content: "+";
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--wz-primary);
+}
+.wiz-details[open] summary::before {
+  content: "–";
+}
+.wiz-details-body {
+  padding: 0 14px 12px;
+  font-size: 12.5px;
+  color: var(--wz-ink-2);
+}
+.wiz-details-body ol {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wiz-details-body li {
+  line-height: 1.55;
+}
+.wiz-details-body code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--wz-pale);
+  border: 1px solid var(--wz-rule);
+  padding: 0 4px;
+}
+
 /* Toggle (SSL / skip) */
 .wiz-toggle {
   display: inline-flex;
@@ -663,30 +764,43 @@
     border: none;
     box-shadow: none;
   }
+  .wiz-titlebar {
+    padding: 9px 14px;
+    gap: 10px;
+  }
   .wiz-body {
     grid-template-columns: 1fr;
     overflow-y: auto;
   }
   .wiz-guide {
-    padding: 20px 20px 18px;
+    padding: 16px 16px 12px;
     overflow: visible;
   }
   .wiz-guide .fma-crest {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
+  }
+  .wiz-guide .fma-crest img,
+  .wiz-guide .wiz-mark {
+    width: 36px;
+    height: 36px;
   }
   .wiz-steps {
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
-    gap: 6px;
-    margin-bottom: 16px;
+    gap: 4px;
+    margin-bottom: 12px;
     padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .wiz-steps::-webkit-scrollbar {
+    display: none;
   }
   .wiz-steps li {
     border-left: none;
     border-bottom: 2px solid rgba(255, 255, 255, 0.12);
-    padding: 6px 8px;
-    font-size: 11.5px;
+    padding: 5px 7px;
+    font-size: 11px;
     white-space: nowrap;
   }
   .wiz-steps li.on {
@@ -723,8 +837,14 @@
     justify-content: space-between;
   }
   .wiz-main {
-    padding: 26px 20px 0;
+    padding: 20px 16px 0;
     overflow-y: visible;
+  }
+  .wiz-main h2 {
+    font-size: 21px;
+  }
+  .wiz-main .fma-sub {
+    margin-bottom: 18px;
   }
   .wiz-grid-2,
   .wiz-grid-2.even,
@@ -733,6 +853,57 @@
   }
   .wiz-review dl {
     grid-template-columns: 120px 1fr;
+  }
+  /* Buttons share rows evenly; the primary action takes its own full row. */
+  .wiz-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 0;
+  }
+  .wiz-actions .fma-btn {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .wiz-actions .grow {
+    flex-basis: 100%;
+    order: 10;
+  }
+  .wiz-statusbar {
+    padding: 8px 14px;
+    gap: 10px;
+  }
+}
+
+/* Phones — collapse the rail to numbered chips, stack the review table */
+@media (max-width: 560px) {
+  .wiz-titlebar-tag {
+    display: none;
+  }
+  .wiz-titlebar-t strong {
+    font-size: 13.5px;
+  }
+  .wiz-steps li {
+    font-size: 0;
+    gap: 0;
+    padding: 6px;
+  }
+  .wiz-steps li .n {
+    font-size: 11px;
+  }
+  .wiz-steps li.on {
+    font-size: 11px;
+    gap: 8px;
+  }
+  .wiz-review dl {
+    grid-template-columns: 1fr;
+  }
+  .wiz-review dt {
+    border-bottom: none;
+    padding-bottom: 2px;
+  }
+  .wiz-review dd {
+    padding-top: 2px;
+    border-bottom: 1px solid var(--wz-rule);
   }
 }
 @media (min-width: 821px) {

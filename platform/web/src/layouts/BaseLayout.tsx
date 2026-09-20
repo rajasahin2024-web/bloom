@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import { useBranding } from "@/lib/branding";
 
 /**
  * Base layout shared by every page.
@@ -7,11 +8,13 @@ import { Outlet } from "react-router-dom";
  */
 
 export function BaseLayout() {
+  const branding = useBranding();
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <a href="/" className="app-logo">
-          Bloom Academy
+          {branding.name}
         </a>
         <nav className="app-nav">
           <a href="/about">About</a>
@@ -24,7 +27,9 @@ export function BaseLayout() {
       </main>
 
       <footer className="app-footer">
-        <span>Bloom Academy — IELTS learning platform</span>
+        <span>
+          {branding.name} — {branding.tagline || "IELTS learning platform"}
+        </span>
       </footer>
     </div>
   );

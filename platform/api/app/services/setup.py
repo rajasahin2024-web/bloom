@@ -11,6 +11,7 @@ the wizard retryable.
 
 from __future__ import annotations
 
+import base64
 import logging
 import os
 import re
@@ -49,6 +50,10 @@ logger = logging.getLogger(__name__)
 # Env file the wizard writes / reads for the configured flag. Module-level so
 # tests can point it at a scratch file.
 ENV_FILE_PATH = PLATFORM_ENV_FILE
+
+# Runtime uploads (institute logo etc.) — `platform/api/uploads`, `/app/uploads`
+# inside the api container. Module-level so tests can redirect it.
+UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads"
 
 _TCP_TIMEOUT_SECONDS = 4
 _PG_CONNECT_TIMEOUT_SECONDS = 5
@@ -339,6 +344,35 @@ def test_redis(target: RedisTestIn) -> RedisTestOut:
 
 # ── apply ────────────────────────────────────────────────────────────────
 
+_LOGO_DATA_URL = re.compile(r"^data:image/(png|jpeg|webp);base64,(?P<data>.+)$", re.S)
+_LOGO_EXT = {"png": "png", "jpeg": "jpg", "webp": "webp"}
+_LOGO_MEDIA = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}
+_LOGO_MAX_BYTES = 512 * 1024
+
+
+def _save_logo(data_url: str) -> None:
+    """Persist the wizard's logo upload under uploads/branding/logo.<ext>."""
+    match = _LOGO_DATA_URL.match(data_url.strip())
+    if not match:
+        raise ValueError("logo must be a PNG, JPEG or WebP image")
+    raw = base64.b64decode(match.group("data"), validate=True)
+    if len(raw) > _LOGO_MAX_BYTES:
+        raise ValueError("logo image must be 512KB or smaller")
+    dest = UPLOADS_DIR / "branding"
+    dest.mkdir(parents=True, exist_ok=True)
+    for old in dest.glob("logo.*"):
+        old.unlink()
+    (dest / f"logo.{_LOGO_EXT[match.group(1)]}").write_bytes(raw)
+
+
+def logo_file() -> Path | None:
+    """The stored institute logo, if the wizard uploaded one."""
+    for ext in _LOGO_MEDIA:
+        candidate = UPLOADS_DIR / "branding" / f"logo.{ext}"
+        if candidate.is_file():
+            return candidate
+    return None
+
 
 def _sqlalchemy_url(target: DatabaseTestIn) -> str:
     user = quote_plus(target.username)
@@ -488,13 +522,20 @@ def apply_setup(payload: SetupApplyIn) -> SetupApplyOut:
             "DATABASE_URL_DIRECT": database_url,
             "JWT_SECRET": secrets.token_hex(32),
             "SETUP_COMPLETE": "true",
+            # Core settings — institute identity collected by the wizard.
+            "INSTITUTE_NAME": payload.institute_name.strip(),
+            "INSTITUTE_TAGLINE": payload.institute_tagline.strip(),
         }
         if payload.redis is not None:
             updates["REDIS_URL"] = _redis_url(payload.redis)
 
         # Stage env vars so alembic env.py / settings resolve the new URLs
-        # before the file lands on disk.
-        saved = {key: os.environ.get(key) for key in updates}
+        # before the file lands on disk. INSTITUTE_LOGO_URL is included so a
+        # failed apply restores it too (it is only set when a logo uploads).
+        saved = {
+            key: os.environ.get(key)
+            for key in (*updates, "INSTITUTE_LOGO_URL")
+        }
         try:
             os.environ.update(updates)
             get_settings.cache_clear()
@@ -511,6 +552,13 @@ def apply_setup(payload: SetupApplyIn) -> SetupApplyOut:
                 )
             except Exception as exc:
                 raise _ApplyStageError(f"Admin user seeding failed: {exc}") from exc
+            if payload.institute_logo:
+                try:
+                    _save_logo(payload.institute_logo)
+                except Exception as exc:
+                    raise _ApplyStageError(f"Institute logo failed: {exc}") from exc
+                updates["INSTITUTE_LOGO_URL"] = "/api/branding/logo"
+                os.environ["INSTITUTE_LOGO_URL"] = "/api/branding/logo"
             try:
                 _write_env_file(updates)
             except Exception as exc:

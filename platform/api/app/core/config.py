@@ -72,6 +72,12 @@ class Settings(BaseSettings):
     # Once true, all /api/setup/* endpoints refuse with 410.
     setup_complete: bool = Field(default=False, alias="SETUP_COMPLETE")
 
+    # Institute identity — "core settings" pushed by the IELTS installer
+    # wizard at apply time. Editable later from admin settings (DB-backed).
+    institute_name: str = Field(default="", alias="INSTITUTE_NAME")
+    institute_tagline: str = Field(default="", alias="INSTITUTE_TAGLINE")
+    institute_logo_url: str = Field(default="", alias="INSTITUTE_LOGO_URL")
+
     # CORS — comma-separated list of allowed origins.
     cors_origins: str = Field(
         default="http://localhost:5173,http://localhost:4173",

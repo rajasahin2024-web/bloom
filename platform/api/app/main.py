@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.core.config import get_settings
-from app.routers import auth, cms, content, enquiries, health, setup
+from app.routers import auth, branding, cms, content, enquiries, health, setup
 
 _settings = get_settings()
 
@@ -37,6 +37,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(setup.router)
+    app.include_router(branding.router)
     app.include_router(auth.router)
     app.include_router(enquiries.router)
     app.include_router(cms.router)

@@ -54,6 +54,19 @@ class SetupApplyIn(BaseModel):
     admin_email: EmailStr
     admin_password: str = Field(min_length=8, max_length=128)
     admin_name: str = Field(min_length=1, max_length=200)
+    # Institute identity — pushed into env-backed core settings on apply.
+    institute_name: str = Field(min_length=1, max_length=200)
+    institute_tagline: str = Field(default="", max_length=300)
+    # Optional logo as a `data:image/{png|jpeg|webp};base64,…` URL.
+    institute_logo: str | None = Field(default=None, max_length=750_000)
+
+
+class BrandingOut(BaseModel):
+    """Public institute identity — readable before and after setup."""
+
+    name: str
+    tagline: str
+    logo_url: str | None = None
 
 
 class SetupApplyOut(BaseModel):

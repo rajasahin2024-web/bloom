@@ -115,6 +115,14 @@ export function ChevronIcon(props: IconProps) {
   );
 }
 
+export function GradCapIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M8 1 .3 4.7 8 8.4l5.7-2.4V11h1.3V4.7L8 1zM2.7 7.6V11c0 1.8 2.4 3.2 5.3 3.2s5.3-1.4 5.3-3.2V7.6L8 10.1 2.7 7.6z",
+  );
+}
+
 export function ServerIcon(props: IconProps) {
   return svg(
     props.size,

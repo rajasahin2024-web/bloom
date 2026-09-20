@@ -4,6 +4,7 @@
  */
 import { clearSession } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
+import { useBranding } from "@/lib/branding";
 import { SignInIcon } from "@/components/icons";
 
 interface AdminDashboardProps {
@@ -12,6 +13,8 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({ session, onSignOut }: AdminDashboardProps) {
+  const branding = useBranding();
+
   function signOut() {
     clearSession();
     onSignOut();
@@ -21,9 +24,12 @@ export function AdminDashboard({ session, onSignOut }: AdminDashboardProps) {
     <div className="admin-dash">
       <header className="admin-dash-top">
         <div className="fma-crest">
-          <img src="/assets/bloom-mark.png" alt="Bloom IELTS Academy" />
+          <img
+            src={branding.logo_url ?? "/assets/bloom-mark.png"}
+            alt={branding.name}
+          />
           <div>
-            <strong>Bloom IELTS Academy</strong>
+            <strong>{branding.name}</strong>
             <span>Admin Console</span>
           </div>
         </div>

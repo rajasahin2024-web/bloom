@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from "react";
 import { env } from "@/config/env";
+import { useBranding } from "@/lib/branding";
 
 type HealthState =
   | { status: "loading" }
@@ -11,6 +12,7 @@ type HealthState =
   | { status: "error"; message: string };
 
 export function HomePage() {
+  const branding = useBranding();
   const [health, setHealth] = useState<HealthState>({ status: "loading" });
 
   useEffect(() => {
@@ -25,8 +27,8 @@ export function HomePage() {
 
   return (
     <section className="home">
-      <h1>Bloom Academy</h1>
-      <p>IELTS learning platform — Stage 0 scaffold.</p>
+      <h1>{branding.name}</h1>
+      <p>{branding.tagline || "IELTS learning platform"}</p>
 
       <div className="health-card">
         <h2>API health</h2>

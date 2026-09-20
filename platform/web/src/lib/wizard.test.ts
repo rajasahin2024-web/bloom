@@ -5,11 +5,13 @@ import {
   dbStepComplete,
   dbTargetFromForm,
   initialWizardData,
+  instituteStepComplete,
   parsePort,
   redisStepComplete,
   redisTargetFromForm,
   validateAdminForm,
   validateDbForm,
+  validateInstituteForm,
   validateRedisForm,
 } from "@/lib/wizard";
 import type { DatabaseTestResult, RedisTestResult } from "@/lib/setup";
@@ -114,6 +116,38 @@ describe("validation", () => {
         password: "long-enough",
       }),
     ).toEqual({});
+  });
+});
+
+describe("institute form", () => {
+  it("requires a name; tagline and logo are optional", () => {
+    const errs = validateInstituteForm(initialWizardData.institute);
+    expect(errs.name).toBeTruthy();
+    expect(errs.tagline).toBeUndefined();
+    expect(errs.logoDataUrl).toBeUndefined();
+    expect(instituteStepComplete(initialWizardData)).toBe(false);
+  });
+  it("passes with just a name", () => {
+    const d = {
+      ...initialWizardData,
+      institute: {
+        name: "Sunrise IELTS Academy",
+        tagline: "",
+        logoDataUrl: null,
+        logoName: null,
+      },
+    };
+    expect(validateInstituteForm(d.institute)).toEqual({});
+    expect(instituteStepComplete(d)).toBe(true);
+  });
+  it("rejects a non-image logo data URL", () => {
+    const errs = validateInstituteForm({
+      name: "X",
+      tagline: "",
+      logoDataUrl: "data:text/html;base64,PGI+",
+      logoName: "x.html",
+    });
+    expect(errs.logoDataUrl).toBeTruthy();
   });
 });
 
