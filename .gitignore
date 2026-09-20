@@ -8,6 +8,7 @@ Thumbs.db
 
 # Scratch / local
 .scratch/
+misc/
 .env
 .env.local
 .env.*.local

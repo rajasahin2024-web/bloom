@@ -3,7 +3,7 @@
 **Prepared for:** Bloom Academy (Bloom IELTS Academy)
 **Prepared by:** Techfly Engineering
 **Date:** 16 September 2026
-**Version:** 4.0 — revised per client feedback (₹4.2L package · 3-month delivery · parallel AI-Tutor track)
+**Version:** 5.1 — repriced to the client's ₹2.7L structure (₹2,50,000 package · Mail Engine setup ₹20,000 extra · 3-month delivery · external/running costs in a separate annexure)
 
 ---
 
@@ -14,10 +14,12 @@ Bloom Academy has already produced a complete, high-fidelity front-end prototype
 We propose to rebuild this prototype as a **production-grade, scalable web platform** — with a real backend, secure authentication, and three capabilities the academy has requested:
 
 1. **Institutional student email IDs on a custom mail server** — every registered student gets their own `@bloomielts.com`-style mailbox, provisioned on a dedicated mail server we build and operate for the academy, with Gmail-style live availability checking at sign-up.
-2. **An always-on AI Tutor ("Bloom AI Tutor")** — a dedicated, separately scalable Python service built by a **parallel development track**, fully RAG + LangGraph based, trained on Bloom's own IELTS curriculum.
+2. **An always-on AI Tutor ("Bloom AI Tutor")** — a dedicated Python service built on a **parallel development track**, RAG + LangGraph based, trained on Bloom's own IELTS curriculum (Essentials scope at this budget — see §3.5).
 3. **WhatsApp automation via WAISE.in** — enquiries, enrolment confirmations, class reminders, fee receipts and results delivered on WhatsApp through the WAISE WhatsApp Business platform (Professional yearly plan).
 
-**Development cost: ₹4,20,000 (fixed)** — delivered in **3 months** with staged module deliveries (Website → CMS Admin → LMS Admin → Teachers Panel → Student Panel), while a second engineer builds the Bloom AI Tutor in parallel.
+**Package price: ₹2,50,000 (all development) + one-time Mail Engine setup ₹20,000 — total engagement ₹2,70,000** — delivered in **3 months** with staged module deliveries (Website → CMS Admin → LMS Admin → Teachers Panel → Student Panel), while a second engineer builds the Bloom AI Tutor in parallel.
+
+**All third-party / running costs** (VPS hosting, domain, WAISE subscription, Meta conversation charges, LLM API usage, storage/CDN, payment-gateway fees) are **paid directly by the academy at actuals** and are listed separately in the companion document **`Bloom-External-Costs` annexure** — they are not part of the ₹2.5L package.
 
 ---
 
@@ -78,8 +80,8 @@ Around this module map the portal already models:
 | Database | **PostgreSQL** | Reliable, cheap to host, suits exam/attempt data |
 | DB optimisation | **PgBouncer** | Connection pooling in front of Postgres — keeps the DB stable under exam-day traffic spikes |
 | Vector search / embedded learning | **pgvector** (inside PostgreSQL) | Embedding store for the AI Tutor's knowledge base — no separate vector DB to run |
-| Cache + queue | **Redis** | Sessions, rate limits, and the job queue feeding the AI worker pool |
-| AI Tutor | **Python worker pool + LangGraph + RAG** | Dedicated horizontally-scalable service — see §3.5 |
+| Cache + queue | **Redis** | Sessions, rate limits, and the job queue feeding the AI worker |
+| AI Tutor | **Python service + LangGraph + RAG** | Dedicated deployable service — see §3.5 |
 | File storage | S3-compatible object storage + CDN | Audio tracks, PDFs, lecture recordings |
 | Auth | JWT + OTP (phone/email), role-based access | Student / Teacher / Admin roles already in the design |
 | **Email IDs** | **Custom self-hosted mail server** (Postfix + Dovecot stack) on academy domain | See §3.4 — architecture included |
@@ -129,11 +131,11 @@ The email system runs on a **dedicated mail VPS**, isolated from the application
 - **Admin controls from inside the platform:** suspend/reset mailbox, storage quota per student, alumni-mailbox policy.
 - **Isolation:** mail VPS is separate from the app VPS — a mail IP issue can never take the learning platform down (and vice-versa).
 
-**Pricing:** delivered as an **additional one-time setup — ₹20,000** (mail server build, provisioning API, webmail, admin controls, DNS/deliverability configuration). The mail VPS itself is a separate running cost (~₹3,000–5,000/month) taken by the academy — flat regardless of student count.
+**Pricing:** the one-time Mail Engine setup is a **separate one-time charge of ₹20,000, billed outside the ₹2.5L package** (mail server build, provisioning API, webmail, admin controls, DNS/deliverability configuration) — bringing the total engagement to **₹2,70,000**. The mail VPS itself is a running cost (~₹3,000–5,000/month) paid directly by the academy — see the External Costs annexure — flat regardless of student count.
 
-### 3.5 Bloom AI Tutor — Architecture Design (built on a parallel track)
+### 3.5 Bloom AI Tutor — Architecture Design (parallel track, Essentials scope)
 
-The AI Tutor is a **fully RAG + LangGraph** service, developed by a **dedicated engineer in parallel** with the main platform, and designed for **horizontal scaling via a Python worker pool**:
+The AI Tutor is a **fully RAG + LangGraph** service, developed on a **parallel track** alongside the main platform, and designed so capacity grows by adding workers:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -141,9 +143,9 @@ The AI Tutor is a **fully RAG + LangGraph** service, developed by a **dedicated 
 │                                                                        │
 │  Student chat / portal request                                         │
 │        ▼                                                               │
-│  FastAPI gateway ──▶ Redis queue ──▶ Python worker pool (N replicas,   │
-│   (auth, rate limits,                   horizontal scale-out: add       │
-│    streaming)                           workers as usage grows)         │
+│  FastAPI gateway ──▶ Redis queue ──▶ Python worker(s) (scale-out       │
+│   (auth, rate limits,                   ready: add workers as usage     │
+│    streaming)                           grows)                         │
 │                                            ▼                           │
 │                              LangGraph agent graph                     │
 │                               ├─ Profile node: student context from    │
@@ -163,9 +165,11 @@ The AI Tutor is a **fully RAG + LangGraph** service, developed by a **dedicated 
 - **AI Agent profiles** — the tutor is configured as a proper agent: persona, teaching style, guardrails, per-module expertise (a Listening tutor vs. a Writing tutor behave differently).
 - **Knowledge base** — Bloom's own material embedded into pgvector; the tutor answers *from Bloom's IELTS curriculum*, not generic internet text.
 - **Embedded learning** — the tutor reads each student's live profile (exam track, band trajectory, weakest module, attempt history) and adapts answers and difficulty accordingly.
-- **Proper training & evaluation** — curated Q&A/eval sets from Bloom material, regression-checked against model updates before release.
-- **Horizontal scaling** — stateless Python workers behind a Redis queue; capacity = number of workers. Usage metering per student keeps cost predictable (~₹30–80/student/month on paid LLM APIs; lower with open models).
+- **Training & evaluation** — curated Q&A/eval set built from Bloom material so answer quality is verified before go-live.
+- **Scale-out ready** — stateless workers behind a Redis queue; the Essentials build ships with a single-worker deployment sized for launch cohorts, and adding workers is an ops action, not a rebuild. Usage metering per student keeps cost predictable (~₹30–80/student/month on paid LLM APIs; lower with open models).
 - **Isolated & always-on** — separate deployment and billing from the main app; if the AI service is busy or down, the platform stays up.
+
+**Essentials scope at this budget:** the ₹2.5L package delivers the production RAG tutor above — grounded answers from Bloom's curriculum, per-student context, guardrails and metering. The expanded items (multi-worker load-testing at scale, extended eval suites, auto-graded writing/speaking feedback) are scoped as a post-launch phase so the budget stays at ₹2.5L.
 
 ### 3.6 WhatsApp — WAISE.in platform (requested feature)
 
@@ -174,20 +178,20 @@ WhatsApp automation runs on **WAISE.in** (AI-enabled WhatsApp engine, Meta-verif
 - Official **WhatsApp Business API** through WAISE (Meta-verified sender).
 - Automated notifications: enquiry follow-up, admission confirmation, class reminders, fee receipts, mock-exam results, document-checklist nudges.
 - Two-way: student replies on WhatsApp land in the WAISE shared inbox / CRM; AI auto-routing and FAQ bot included in WAISE plans.
-- Template management and broadcast campaigns from WAISE; enquiry inbox inside the Bloom admin panel syncs via WAISE API/webhooks.
+- Template management and broadcast campaigns run from WAISE's own dashboard (included in the plan); enquiry inbox inside the Bloom admin panel syncs via WAISE API/webhooks.
 - **Required from initial development** — the WAISE account/API access is needed in Month 1 so we can prepare and test the platform's WhatsApp endpoints against the real API.
 
-**Subscription — taken separately by the academy:** **WAISE.in Professional yearly plan — ₹7,500/year** (3 users, up to 10,000 messages/month — sized for academy volumes). Other tiers available: Starter ₹5,999/yr (1 user, 5,000 msgs/mo), Enterprise ₹12,999/yr (unlimited). Meta conversation charges are paid directly to Meta at standard rates — WAISE adds no markup on messaging.
+**Subscription — taken separately by the academy:** **WAISE.in Professional yearly plan — ₹7,500/year** (3 users, up to 10,000 messages/month — sized for academy volumes). Other tiers available: Starter ₹5,999/yr (1 user, 5,000 msgs/mo), Enterprise ₹12,999/yr (unlimited). Meta conversation charges are paid directly to Meta at standard rates — WAISE adds no markup on messaging. Full external-cost breakdown in the **`Bloom-External-Costs` annexure**.
 
-Our development scope covers WAISE account setup assistance, sender verification, template creation, and platform↔WAISE integration (API + webhooks) — included in the ₹4.2L package.
+Our development scope covers WAISE account setup assistance, sender verification, the core notification template set, and platform↔WAISE integration (API + webhooks) — included in the ₹2.5L package.
 
 ---
 
 ## 4. Delivery Plan — 3 Months, Staged Module Deliveries
 
-Modules are delivered **in the client's required order**, each stage ending with a demo + acceptance checkpoint. The **Bloom AI Tutor is built in parallel by a separate engineer** across all three months, so it never gates the main deliveries.
+Modules are delivered **in the client's required order**, each stage ending with a demo + acceptance checkpoint. The **Bloom AI Tutor is built in parallel by the second engineer** across all three months, so it never gates the main deliveries.
 
-### Main track (platform team)
+### Main track (platform)
 
 | Stage | Module delivered | Detail |
 |---|---|---|
@@ -197,66 +201,52 @@ Modules are delivered **in the client's required order**, each stage ending with
 | **Stage 4** | **Teachers Panel** | Faculty planner, live teaching console, class roster, content manager, exam builder. |
 | **Stage 5 (Month 3)** | **Student Panel + go-live** | Student login/auth + `@bloomielts.com` email ID at registration, dashboard, all module labs (L/R/W/S + GV), placement, mocks + band analytics, study planner, library, live classes, progress. Final QA/performance pass, production go-live, staff handover training. |
 
-### Parallel track (dedicated AI engineer — Bloom AI Tutor)
+### Parallel track (AI engineer — Bloom AI Tutor)
 
 | Month | AI Tutor progress |
 |---|---|
-| Month 1 | Service skeleton (FastAPI + Redis queue + worker pool), LangGraph agent graph, knowledge-base ingestion pipeline, first embeddings into pgvector |
-| Month 2 | RAG quality pass on Bloom curriculum, student-profile context node, agent profiles & guardrails, eval-set training |
-| Month 3 | Load testing + horizontal scale-out, metering, integration into Student Panel, go-live with the platform |
+| Month 1 | Service skeleton (FastAPI + Redis queue + worker), LangGraph agent graph, knowledge-base ingestion pipeline, first embeddings into pgvector |
+| Month 2 | RAG quality pass on Bloom curriculum, student-profile context node, agent profiles & guardrails, eval-set checks |
+| Month 3 | `/ai/chat` hardened + metered, integration into Student Panel, go-live with the platform |
 
 **Total delivery time: 3 months** from kickoff to full go-live.
 
-**Team:** 1 architect/PM (part-time), 2 full-stack engineers on the main track, 1 dedicated AI engineer on the parallel track, shared QA & DevOps.
+**Team:** 1 architect/PM (part-time), 1 full-stack engineer on the main track, 1 engineer on DevOps + mail server + the parallel AI track, shared QA.
 
 ---
 
-## 5. Investment
+## 5. Investment — ₹2,70,000 total (₹2.5L package + ₹20K Mail Engine setup)
 
-### 5.1 Development cost — ₹4,20,000 fixed, divided by core module
+### 5.1 Package breakdown — divided by core module
 
 | Core module | Scope | Price (INR) |
 |---|---|---|
-| Public website + CMS frontend | All public pages, enquiry inbox, SEO, domain/SSL deployment | ₹70,000 |
-| Unified Admin Panel (CMS + LMS merged) | Website CMS + admissions, student records, fees/receipts/subscriptions, communications, exam tracks, personnel, analytics | ₹90,000 |
-| Teachers Panel | Teaching planner, live console, roster, content manager, exam builder | ₹50,000 |
-| Student Panel + IELTS learning engine | Auth/RBAC, dashboard, all module labs, placement, mocks + band analytics, study planner, library, live classes, progress | ₹1,20,000 |
-| Bloom AI Tutor service (parallel track) | FastAPI gateway + Python worker pool, LangGraph + RAG on pgvector, agent profiles, knowledge base, training & eval | ₹55,000 |
-| WhatsApp integration | WAISE.in setup + sender verification, notification templates, platform↔WAISE API/webhooks, broadcast automation | ₹35,000 |
-| **Total development cost** | | **₹4,20,000** |
+| Public website + CMS frontend | All public pages, enquiry inbox, SEO, domain/SSL deployment | ₹40,000 |
+| Unified Admin Panel (CMS + LMS merged) | Website CMS + admissions, student records, fees/receipts/subscriptions, communications, exam tracks, personnel, analytics | ₹60,000 |
+| Teachers Panel | Teaching planner, live console, roster, content manager, exam builder | ₹30,000 |
+| Student Panel + IELTS learning engine | Auth/RBAC, dashboard, all module labs, placement, mocks + band analytics, study planner, library, live classes, progress | ₹80,000 |
+| Bloom AI Tutor service (parallel track, Essentials) | FastAPI gateway + worker, LangGraph + RAG on pgvector, agent profiles, knowledge base, eval set, metering | ₹30,000 |
+| WhatsApp integration | WAISE.in setup + sender verification, core notification templates, platform↔WAISE API/webhooks | ₹10,000 |
+| **Package subtotal — all development** | | **₹2,50,000** |
+| Mail Engine setup (one-time, **extra**) | Mail stack (Postfix + Dovecot + Rspamd + SOGo) on academy domain, provisioning API, webmail, SPF/DKIM/DMARC + PTR, admin controls | ₹20,000 |
+| **Grand total** | | **₹2,70,000** |
 
-### 5.2 Additional one-time cost
-
-| Item | Price (INR) |
-|---|---|
-| **Custom mail server setup** — dedicated mail stack (Postfix + Dovecot + Rspamd + SOGo) on academy domain, provisioning API, webmail, spam/DKIM/SPF/DMARC + PTR, admin controls | **₹20,000** (one-time) |
-
-**Package total: ₹4,20,000 development + ₹20,000 one-time mail-server setup = ₹4,40,000.**
-
-### 5.3 Payment milestones — distributed across the 3 months
+### 5.2 Payment milestones — distributed across the 3 months
 
 | Milestone | Trigger | Amount (INR) |
 |---|---|---|
-| Booking advance | Project kickoff, infrastructure & environment setup | ₹60,000 |
-| Month 1 delivery | Public website live + CMS admin panel | ₹1,20,000 |
-| Month 2 delivery | Unified LMS admin panel + Teachers Panel + student email IDs live | ₹1,40,000 |
-| Month 3 delivery | Student Panel + Bloom AI Tutor + WhatsApp automation + go-live | ₹1,00,000 |
-| Mail server setup (one-time) | Mail server configured & student email IDs live (Month 2) | ₹20,000 |
-| **Total** | | **₹4,40,000** |
+| Booking advance | Project kickoff, infrastructure & environment setup | ₹50,000 |
+| Month 1 delivery | Public website live + CMS admin panel | ₹55,000 |
+| Month 2 delivery | Unified LMS admin panel + Teachers Panel + student email IDs live | ₹85,000 |
+| Mail Engine setup (one-time extra) | Billed with Month 2 — mail server configured, student email-ID provisioning live | ₹20,000 |
+| Month 3 delivery | Student Panel + Bloom AI Tutor + WhatsApp automation + go-live | ₹60,000 |
+| **Total** | | **₹2,70,000** |
 
-3 months post-launch support included; optional AMC thereafter.
+3 months post-launch support included; optional AMC thereafter (see annexure).
 
-### 5.4 Running / external costs — taken separately by the academy (at actuals)
+### 5.3 External / running costs — separate annexure
 
-| Item | Cost | Notes |
-|---|---|---|
-| **WAISE.in WhatsApp platform** | **₹7,500/year** (Professional yearly plan) | 3 users, ~10,000 msgs/mo. Needed **from initial development** to prepare & test WhatsApp endpoints. Meta conversation charges paid directly to Meta (no markup). |
-| Cloud VPS (app + database) | ~₹4,000–8,000/month | Any **16 / 12 / 8 GB RAM (8 GB minimum)** cloud VPS — AWS / DigitalOcean / equivalent. 16 GB recommended for comfortable headroom. |
-| Mail server VPS | ~₹3,000–5,000/month | Flat, unlimited student mailboxes |
-| AI Tutor LLM usage | ~₹5,000–20,000/month | Usage-based; lower with open models |
-| Object storage + CDN | ~₹500–2,000/month | Audio, PDFs, recordings |
-| Domain renewal | ~₹1,000/year | Academy's own domain |
-| Maintenance & support (AMC, optional after first 3 months) | ₹15,000–30,000/month | Optional |
+Every third-party and running cost is **paid directly by the academy at actuals** and is intentionally **kept out of this package price**. The full itemised list — domain, app VPS, mail VPS, WAISE subscription + Meta conversation charges, LLM API usage, storage/CDN, payment-gateway fees, optional AMC — lives in the separate document **`Bloom-External-Costs` (annexure)** so this proposal shows exactly one package number — **₹2,50,000** — plus the single extra Mail Engine setup line (₹20,000): **total engagement ₹2,70,000**.
 
 *Scope note:* this price assumes the delivered prototype as the agreed functional spec; new features beyond it are quoted as change requests.
 
@@ -264,7 +254,7 @@ Modules are delivered **in the client's required order**, each stage ending with
 
 - Native iOS/Android apps (PWA covers launch) — quoted separately
 - Custom WebRTC live-class rooms (default: Zoom/Google Meet integration) — quoted separately
-- Advanced AI features: auto-graded writing/speaking feedback, personalised revision engine — Phase 4 candidate
+- AI Tutor scale-out phase: multi-worker load-test at scale, expanded eval suites, auto-graded writing/speaking feedback, personalised revision engine — post-launch phase, quoted separately
 
 ---
 
@@ -275,10 +265,11 @@ A platform spanning a public website, three role-based panels, a custom mail sys
 | Challenge | How Techfly manages it |
 |---|---|
 | **Breadth of scope** — 6 modules + AI + mail + WhatsApp in 3 months | Module-wise contract: the delivered prototype is the spec, each stage has a demo + acceptance checkpoint, scope changes are quoted separately — no silent scope creep |
+| **Fixed budget** — full platform scope inside ₹2.5L, mail setup as one extra line | Lean two-engineer split (application vs DevOps+AI), Essentials-scoped AI Tutor, no redundant tooling — trade-offs are listed openly in §3.5 and §5 instead of hidden |
 | **Parallel development** — AI Tutor built alongside the main platform | Shared API contracts first: the platform↔AI and platform↔WAISE interfaces are frozen in Month 1 (OpenAPI schemas), so the two tracks never block each other |
 | **Email deliverability** — a new mail server can land in spam | Dedicated IP + full DNS auth (SPF/DKIM/DMARC/PTR), IP warm-up schedule, sending-rate limits, and deliverability monitoring from day one |
 | **AI answer quality** — a tutor that answers wrongly damages trust | RAG restricted to Bloom's own knowledge base, curated eval sets, guardrails + escalation to human teachers for off-scope questions |
-| **Exam-day load spikes** — hundreds of students in timed mocks simultaneously | PgBouncer pooling, Redis caching, load-tested mocks module, and worker-pool isolation so AI traffic can never starve exam traffic |
+| **Exam-day load spikes** — hundreds of students in timed mocks simultaneously | PgBouncer pooling, Redis caching, load-tested mocks module, and service isolation so AI traffic can never starve exam traffic |
 | **Data safety** — student records, fees, results | Daily automated backups + tested restore runbook, RBAC on every admin action, audit logs on finance/records |
 | **Team coordination at this scale** | Single architect/PM as the client's one point of contact, weekly progress demos, code review on every merge, CI/CD with staging environment — the client's team sees progress every week, not just at month-ends |
 
@@ -288,7 +279,7 @@ A platform spanning a public website, three role-based panels, a custom mail sys
 - **Website-first delivery** means the academy is live and visible from Month 1 — enrolment enquiries can start while the panels are being built.
 - **Merging the CMS into the LMS admin** gives staff one panel to learn instead of two — less training, fewer permission mistakes.
 - **Custom mail server** means unlimited student email IDs at flat cost — the academy owns the system instead of renting per-seat licences forever.
-- **A dedicated parallel AI track** means the Bloom AI Tutor gets a specialist's full attention — proper RAG + LangGraph, real training, horizontal scaling — without slowing the platform.
+- **A parallel AI track** means the Bloom AI Tutor gets a specialist's attention — proper RAG + LangGraph on Bloom's curriculum — without slowing the platform, and Essentials scope keeps it inside the ₹2.5L budget.
 - **WAISE.in for WhatsApp** gives a ready, Meta-verified platform with CRM, AI routing and broadcasts — cheaper and faster than building messaging infrastructure from scratch, and the academy controls the subscription directly.
 - Student email IDs + a curriculum-trained AI tutor + WhatsApp automation are genuine differentiators vs. off-the-shelf LMS products (Teachable/Graphy/Moodle), which offer none of the three natively.
 
@@ -296,7 +287,7 @@ A platform spanning a public website, three role-based panels, a custom mail sys
 
 - Content (questions, notes, videos, audio) is provided by the academy; we build the tools to manage it.
 - Domain, DNS access, WAISE.in subscription, and Meta/WhatsApp Business verification are owned and paid by the academy (we assist with setup).
-- Prices exclude GST. Third-party costs (WAISE subscription, Meta conversation fees, VPS, LLM API) are billed at actuals by the respective providers.
+- Prices exclude GST. Third-party costs (WAISE subscription, Meta conversation fees, VPS, LLM API, storage/CDN, gateway fees) are billed at actuals by the respective providers — itemised in the `Bloom-External-Costs` annexure.
 
 ---
 

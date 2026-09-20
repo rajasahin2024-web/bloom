@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Development Roadmap &amp; Milestones — Bloom Academy IELTS Learning Platform</title>
+<style>
+  :root{ --navy:#0b2a4a; --teal:#0f8a8a; --ink:#1a2433; --mut:#5b6b7f; --line:#e3e9f0; --soft:#f4f8fb; --good:#0e7a3d; --goodbg:#eaf7ef; --amber:#8a5a00; --amberbg:#fdf6e7; }
+  *{ box-sizing:border-box; }
+  body{ font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--ink); margin:0; background:#fff; line-height:1.6; font-size:15px; }
+  .page{ max-width:840px; margin:0 auto; padding:56px 48px; }
+  .cover{ border-bottom:4px solid var(--teal); padding-bottom:32px; margin-bottom:36px; }
+  .brand{ font-size:13px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--teal); }
+  h1{ font-size:34px; letter-spacing:-.5px; margin:14px 0 6px; color:var(--navy); line-height:1.15; }
+  .meta{ color:var(--mut); font-size:14px; margin-top:10px; }
+  .meta b{ color:var(--ink); }
+  h2{ font-size:21px; color:var(--navy); margin:38px 0 10px; padding-top:14px; border-top:1px solid var(--line); }
+  h3{ font-size:16.5px; color:var(--navy); margin:24px 0 8px; }
+  p{ margin:8px 0; }
+  ul,ol{ margin:8px 0 8px 4px; padding-left:20px; }
+  li{ margin:5px 0; }
+  table{ width:100%; border-collapse:collapse; margin:14px 0; font-size:13.5px; }
+  th{ text-align:left; background:var(--navy); color:#fff; padding:9px 12px; font-weight:600; }
+  td{ padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:nth-child(even) td{ background:var(--soft); }
+  .total td{ font-weight:800; font-size:15px; }
+  .price{ font-weight:700; color:var(--navy); white-space:nowrap; }
+  .callout{ background:var(--goodbg); border:1px solid #bfe3cd; border-radius:8px; padding:14px 18px; margin:16px 0; }
+  .callout b{ color:var(--good); }
+  .need{ background:var(--amberbg); border:1px solid #ecd9a8; border-radius:8px; padding:12px 16px; margin:12px 0; font-size:13.5px; }
+  .need b{ color:var(--amber); }
+  .milestone{ border:1px solid var(--line); border-left:5px solid var(--teal); border-radius:8px; padding:16px 20px; margin:16px 0; }
+  .milestone h3{ margin:0 0 4px; }
+  .milestone .when{ font-size:12.5px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--teal); }
+  .tag{ display:inline-block; background:var(--soft); border:1px solid var(--line); border-radius:12px; padding:1px 10px; font-size:12px; color:var(--mut); margin:2px 4px 2px 0; }
+  code{ background:#eef2f6; padding:1px 6px; border-radius:5px; font-size:13px; }
+  .small{ font-size:12.5px; color:var(--mut); }
+  .footer{ margin-top:48px; padding-top:18px; border-top:1px solid var(--line); color:var(--mut); font-size:12.5px; }
+  .tick{ color:var(--good); font-weight:700; }
+  .bar{ height:10px; border-radius:5px; background:var(--teal); display:block; }
+  .barwrap{ background:var(--soft); border-radius:5px; overflow:hidden; }
+  @media print{ body{ font-size:12.5px } .page{ padding:24px } h2{ page-break-after:avoid } table{ page-break-inside:avoid } .milestone{ page-break-inside:avoid } }
+</style>
+</head>
+<body><div class="page">
+
+<div class="cover">
+  <div class="brand">Development Roadmap &amp; Milestones</div>
+  <h1>Bloom Academy<br>IELTS Learning Platform</h1>
+  <div class="meta">
+    Prepared for <b>Bloom Academy</b> &nbsp;·&nbsp; Prepared by <b>Techfly Engineering</b><br>
+    16 September 2026 &nbsp;·&nbsp; Companion document to Proposal v5.0 (&#8377;2.5L package) — delivery plan &amp; milestone checkpoints
+  </div>
+</div>
+
+<h2>1. How we will build it</h2>
+<p>Your existing HTML prototype is the agreed functional spec — every screen, every IELTS module, every admin section is already decided. Our job is to rebuild it on a production-grade, scalable stack (React + FastAPI + PostgreSQL) and add the three requested capabilities: <b>student email IDs on a custom mail server</b>, the <b>Bloom AI Tutor</b>, and <b>WhatsApp automation via WAISE.in</b>.</p>
+<p>Delivery runs on <b>two parallel tracks</b> over <b>3 months</b>:</p>
+<ul>
+  <li><b>Main track</b> — our application engineer delivers the platform module by module, in the order you asked for: Website → CMS Admin → LMS Admin → Teachers Panel → Student Panel → go-live.</li>
+  <li><b>AI + infra track</b> — a second engineer owns servers/DevOps, the custom mail server, and builds the Bloom AI Tutor in parallel, so it never delays the main deliveries.</li>
+</ul>
+<p>Every milestone ends with a <b>live demo + acceptance checkpoint</b>. You see working software every stage — not just at the end.</p>
+
+<h2>2. Timeline at a glance</h2>
+<table>
+  <tr><th>Milestone</th><th>What is delivered</th><th>Timeline</th><th>Checkpoint</th></tr>
+  <tr><td><b>M0 — Foundation</b></td><td>Servers, environments, security foundation, project setup</td><td>Week 1</td><td>Staging environment live</td></tr>
+  <tr><td><b>M1 — Public Website + CMS</b></td><td>All public pages live on your domain, enquiry form → WhatsApp alert, staff CMS for website content</td><td>Weeks 2–4</td><td><b>Website live — Month 1 demo</b></td></tr>
+  <tr><td><b>M2 — Unified Admin Panel</b></td><td>Admissions, student records, fees &amp; receipts, communications, HR, analytics, exam tracks — with website CMS merged in</td><td>Weeks 5–8</td><td><b>Month 2 demo</b></td></tr>
+  <tr><td><b>M3 — Teachers Panel</b></td><td>Teaching planner, live console, roster, content manager, exam builder</td><td>Weeks 6–9</td><td>Panel demo</td></tr>
+  <tr><td><b>M4 — Student Panel</b></td><td>Registration with <code>@bloomielts.com</code> email ID, dashboard, all IELTS labs, mocks, planner, library, live classes</td><td>Weeks 7–11</td><td>Panel demo</td></tr>
+  <tr><td><b>M5 — Go-live</b></td><td>AI Tutor integrated, WhatsApp notifications complete, payments live, final QA, launch + staff training</td><td>Weeks 11–12</td><td><b>Production launch — Month 3</b></td></tr>
+  <tr><td><b>AI Tutor (parallel)</b></td><td>Bloom AI Tutor — built alongside, integrated at M5</td><td>Weeks 1–12</td><td>Progress shown at each demo</td></tr>
+</table>
+
+<h2>3. Milestone details</h2>
+
+<div class="milestone">
+  <div class="when">Milestone 0 · Week 1 · Foundation</div>
+  <h3>Foundation &amp; environment setup</h3>
+  <ul>
+    <li>Cloud VPS, database (PostgreSQL), cache/queue (Redis), and deployment pipeline set up</li>
+    <li>Secure login foundation (JWT + OTP, roles: student / teacher / admin)</li>
+    <li>Staging environment live — you can watch progress on a private preview URL throughout the project</li>
+    <li>Interface contracts frozen between the platform, the AI Tutor and WAISE.in — so all tracks build independently without blocking each other</li>
+  </ul>
+  <p><b>Checkpoint:</b> staging environment live. <span class="price">Payment: Booking advance — ₹50,000</span></p>
+  <div class="need"><b>Needed from Bloom this week:</b> domain/DNS access, VPS purchase approval, WAISE.in Professional subscription activated, Razorpay/Cashfree merchant KYC started, first batch of curriculum content for the AI knowledge base.</div>
+</div>
+
+<div class="milestone">
+  <div class="when">Milestone 1 · Weeks 2–4 · Month 1 delivery</div>
+  <h3>Public Website + CMS — <span style="color:var(--good)">website goes live</span></h3>
+  <ul>
+    <li>All public pages rebuilt and live on your real domain: Home, About, Courses &amp; Pricing, IELTS, Medical/OET, Study Abroad, Blog, Results, Careers, Contact, Login</li>
+    <li>Full SEO plumbing carried over: sitemap, structured data (JSON-LD), social cards, PWA manifest</li>
+    <li>Enquiry &amp; careers forms → admin inbox → instant WhatsApp alert via WAISE.in</li>
+    <li>Staff CMS: your team edits all website content, blog posts, results and media without a developer</li>
+  </ul>
+  <p><b>Checkpoint:</b> live website demo + your acceptance. <span class="price">Payment: Month 1 delivery — ₹55,000</span></p>
+</div>
+
+<div class="milestone">
+  <div class="when">Milestone 2 · Weeks 5–8 · Month 2 delivery</div>
+  <h3>Unified Admin Panel + student email system</h3>
+  <ul>
+    <li>One operations suite for staff: admissions &amp; student records, fees / receipts / subscriptions / reminders, communications, academic setup, personnel &amp; HR documents, operations, analytics, exam-track assignment — <b>with the website CMS merged into the same panel</b></li>
+    <li><b>Custom mail server built</b> on a dedicated VPS (Postfix + Dovecot + Rspamd + SOGo): full SPF/DKIM/DMARC/PTR mail authentication so academy email lands in inboxes</li>
+    <li>Mailbox provisioning API connected to the platform — the foundation for student <code>@bloomielts.com</code> email IDs at registration</li>
+    <li>Admin mailbox controls: suspend, reset password, storage quota per student</li>
+  </ul>
+  <p><b>Checkpoint:</b> admin suite demo + email-ID provisioning demo. <span class="price">Payment: Month 2 delivery — ₹85,000 (includes one-time mail-server setup)</span></p>
+</div>
+
+<div class="milestone">
+  <div class="when">Milestone 3 · Weeks 6–9</div>
+  <h3>Teachers Panel</h3>
+  <ul>
+    <li>Teaching planner and class roster</li>
+    <li>Live teaching console for running classes</li>
+    <li>Content manager — teachers upload material to the library</li>
+    <li>Exam builder — faculty authors passages, sections and question sets</li>
+  </ul>
+  <p><b>Checkpoint:</b> teachers panel demo with your faculty.</p>
+</div>
+
+<div class="milestone">
+  <div class="when">Milestone 4 · Weeks 7–11 · Month 3 delivery</div>
+  <h3>Student Panel — the full learning experience</h3>
+  <ul>
+    <li>Registration with <b>live email-ID availability check</b> — Gmail-style "taken / available" — then a real <code>studentname@bloomielts.com</code> mailbox is created automatically</li>
+    <li>Placement test + CEFR level, personalised dashboard, weakest-module detection</li>
+    <li>Every IELTS skill lab: Listening Part 1–4, Reading (Academic + GT), Writing Task 1–2, Speaking Part 1–3, Grammar &amp; Vocabulary, Exam Strategy</li>
+    <li>Mock exams with band-score reporting; multi-exam tracks (IELTS A/G, TOEFL, PTE, Duolingo, Cambridge, OET) assigned by staff</li>
+    <li>Study planner, library, live classes &amp; schedule, 1-on-1 tutoring booking, progress &amp; English Profile</li>
+    <li>Fee payment online (Razorpay/Cashfree — UPI, cards, EMI)</li>
+  </ul>
+  <p><b>Checkpoint:</b> full student journey demo — register → email ID → placement → practice → mock → band report.</p>
+</div>
+
+<div class="milestone">
+  <div class="when">Milestone 5 · Weeks 11–12 · Go-live</div>
+  <h3>Integration, hardening &amp; launch</h3>
+  <ul>
+    <li>Bloom AI Tutor integrated into the student portal</li>
+    <li>Full WhatsApp notification set live: enquiry follow-up, admission confirmation, class reminders, fee receipts, results</li>
+    <li>Load testing (exam-day traffic), security review, daily automated backups + restore drill</li>
+    <li>Your team's acceptance testing, final fixes, production launch, staff handover training</li>
+  </ul>
+  <p><b>Checkpoint:</b> go-live + handover. <span class="price">Payment: Month 3 delivery — ₹60,000</span></p>
+</div>
+
+<div class="milestone">
+  <div class="when">Parallel track · Weeks 1–12</div>
+  <h3>Bloom AI Tutor (dedicated engineer)</h3>
+  <ul>
+    <li><b>Month 1:</b> service skeleton — AI gateway, worker, knowledge-base pipeline, first embeddings of Bloom curriculum</li>
+    <li><b>Month 2:</b> answer-quality pass on your material, student-profile awareness, tutor personas &amp; guardrails, evaluation checks</li>
+    <li><b>Month 3:</b> hardening + usage metering, integrated into the Student Panel, live with the platform</li>
+  </ul>
+  <p class="small">The tutor answers only from Bloom's own curriculum — not generic internet text — and adapts to each student's level and weak modules.</p>
+</div>
+
+<h2>4. Payment milestones — same as Proposal v5.0</h2>
+<table>
+  <tr><th>Milestone</th><th>Trigger</th><th>Amount (INR)</th></tr>
+  <tr><td>Booking advance</td><td>Kickoff — infrastructure &amp; environment setup (M0)</td><td class="price">₹50,000</td></tr>
+  <tr><td>Month 1 delivery</td><td>Public website live + CMS admin (M1)</td><td class="price">₹55,000</td></tr>
+  <tr><td>Month 2 delivery</td><td>Unified admin + teachers panel + student email IDs + mail server configured (M2–M3)</td><td class="price">₹85,000</td></tr>
+  <tr><td>Month 3 delivery</td><td>Student panel + AI Tutor + WhatsApp + go-live (M4–M5)</td><td class="price">₹60,000</td></tr>
+  <tr class="total"><td>Total — all-inclusive package</td><td></td><td class="price">₹2,50,000</td></tr>
+</table>
+<p class="small">External/running costs (domain, VPS, mail VPS, LLM usage, WAISE.in ₹7,500/yr subscription, Meta conversation charges, storage/CDN, gateway fees) are paid separately by the academy at actuals — itemised in the <b>Bloom-External-Costs annexure</b>.</p>
+
+<h2>5. What we need from Bloom Academy</h2>
+<table>
+  <tr><th>Item</th><th>When needed</th><th>Why</th></tr>
+  <tr><td>Domain + DNS access (bloomielts.com)</td><td>Week 1</td><td>Website deployment, SSL, mail DNS records</td></tr>
+  <tr><td>WAISE.in Professional subscription + API access</td><td>Week 1–2</td><td>WhatsApp endpoints must be built and tested against the real API from Month 1</td></tr>
+  <tr><td>VPS purchase approvals (app VPS ~₹4–8k/mo, mail VPS ~₹3–5k/mo)</td><td>Week 1</td><td>Staging + production environments</td></tr>
+  <tr><td>Razorpay/Cashfree merchant account (KYC)</td><td>By Week 6</td><td>Fee payments in the student panel</td></tr>
+  <tr><td>Curriculum content — notes, model answers, question banks, audio</td><td>Rolling from Week 1; bulk by Week 4</td><td>Feeds the AI Tutor knowledge base and the library</td></tr>
+  <tr><td>A named staff contact for weekly demos + acceptance</td><td>Throughout</td><td>Fast decisions keep the 3-month timeline</td></tr>
+</table>
+
+<h2>6. How we keep it on time</h2>
+<ul>
+  <li><b>Weekly progress demos</b> — you see working software every week on the staging environment, not just at month-ends.</li>
+  <li><b>Milestone acceptance checkpoints</b> — each stage closes only after your demo sign-off; payments map to accepted deliveries.</li>
+  <li><b>Prototype = spec</b> — no discovery phase, no re-design debates; the build starts on day one.</li>
+  <li><b>Frozen interface contracts</b> — the AI Tutor and WhatsApp work proceed in parallel without blocking the platform.</li>
+  <li><b>Single point of contact</b> — one architect/PM answers for schedule, scope and quality.</li>
+  <li><b>Scope control</b> — anything beyond the prototype's agreed scope is quoted as a change request, so the timeline is never silently stretched.</li>
+</ul>
+
+<div class="callout"><b>Bottom line:</b> 6 milestones, 3 months, demo + acceptance at every stage. The website is live from Month 1, the operations suite and student email IDs from Month 2, and the complete student experience — with the AI Tutor and WhatsApp automation — goes live at the end of Month 3.</div>
+
+<div class="footer">
+  Techfly Engineering · Prepared for Bloom Academy · 16 September 2026<br>
+  Companion to "Bloom Academy IELTS Learning Platform" Proposal v5.0 (₹2,50,000 package). Prices exclude GST. External costs: see Bloom-External-Costs annexure.
+</div>
+
+</div></body>
+</html>

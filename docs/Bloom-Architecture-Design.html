@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Architecture Design — Bloom Academy IELTS Platform</title>
+<style>
+  :root{ --navy:#0b2a4a; --teal:#0f8a8a; --ink:#1a2433; --mut:#5b6b7f; --line:#e3e9f0; --soft:#f4f8fb; --amber:#8a5a00; --amberbg:#fdf6e7; }
+  *{ box-sizing:border-box; }
+  body{ font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--ink); margin:0; background:#fff; line-height:1.6; font-size:14.5px; }
+  .page{ max-width:960px; margin:0 auto; padding:48px 44px; }
+  h1{ font-size:28px; letter-spacing:-.5px; margin:0 0 10px; color:var(--navy); line-height:1.2; border-bottom:4px solid var(--navy); padding-bottom:18px; }
+  h2{ font-size:19px; color:var(--navy); margin:32px 0 8px; padding-top:12px; border-top:1px solid var(--line); }
+  h3{ font-size:15.5px; color:var(--navy); margin:20px 0 6px; }
+  h4{ font-size:14px; color:var(--teal); margin:16px 0 4px; }
+  p{ margin:7px 0; }
+  ul,ol{ margin:6px 0 6px 4px; padding-left:20px; }
+  li{ margin:4px 0; }
+  table{ width:100%; border-collapse:collapse; margin:12px 0; font-size:12.8px; }
+  th{ text-align:left; background:var(--navy); color:#fff; padding:8px 10px; font-weight:600; }
+  td{ padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:nth-child(even) td{ background:var(--soft); }
+  code{ background:#eef2f6; padding:1px 6px; border-radius:5px; font-size:12.5px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  pre{ background:#0f1b2a; color:#dbe7f3; padding:14px 16px; border-radius:8px; overflow-x:auto; font-size:12px; line-height:1.45; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  blockquote{ margin:12px 0; padding:10px 16px; border-left:4px solid var(--teal); background:var(--soft); border-radius:0 8px 8px 0; }
+  blockquote p{ margin:0; }
+  .need{ background:var(--amberbg); border:1px solid #ecd9a8; border-radius:8px; padding:12px 16px; margin:12px 0; font-size:13px; }
+  .need b{ color:var(--amber); }
+  .footer-note{ margin-top:36px; padding-top:14px; border-top:1px solid var(--line); color:var(--mut); font-size:12.5px; }
+  @media print{ body{ font-size:12px } .page{ padding:20px } h2{ page-break-after:avoid } table{ page-break-inside:avoid } pre{ white-space:pre-wrap } }
+</style>
+</head>
+<body><div class="page">
+<h1>Bloom Academy — System Architecture Design (v1.0)</h1>
+<p><b>Date:</b> 18 September 2026 · <b>Status:</b> Architecture baseline for build · <b>Basis:</b> Proposal v5.1 (accepted) + Work Orders v3.1 · <b>Spec source:</b> <code>FMAHTML/</code> prototype = functional spec · <b>Companion docs:</b> Proposal v5.1 · Dev Tasks v3.1 · External &amp; Running Costs annexure</p>
+<h2>1. What this document is</h2>
+<p>This is the <b>whole-system architecture design</b> for the Bloom Academy platform — how every part works and how the parts talk to each other. It is written for the three builders (Sahim, Raja, Bikash) and for the client as a reference. It freezes the technical shape of the platform <b>before Week-1 contract freeze</b>, so the contracts in <code>platform/contracts/</code> are written against this design, not invented per-module.</p>
+<p>Scope covered: public website, unified Admin Panel, Teachers Panel, Student Panel, exam engine, CMS, payments, WhatsApp (WAISE), student email IDs, AI Tutor, and the infrastructure that runs all of it.</p>
+<h2>2. System context — who and what the platform touches</h2>
+<h3>2.1 Actors</h3>
+<table><tr><th>Actor</th><th>Enters through</th><th>What they do</th></tr><tr><td><b>Visitor</b></td><td>Public website</td><td>Reads pages, submits enquiry/career/contact forms</td></tr><tr><td><b>Student</b></td><td>Student Panel (web, mobile-responsive PWA)</td><td>Learns: classes, planner, flashcards, quiz lab, mocks, skill labs, AI tutor, payments, own mailbox</td></tr><tr><td><b>Teacher / Faculty</b></td><td>Teachers Panel</td><td>Planner, roster, live classes, content uploads, exam builder, student feedback</td></tr><tr><td><b>Admin / Staff</b></td><td>Unified Admin Panel</td><td>Admissions, student records, finance, comms, HR, ops, analytics, website CMS, mailbox controls</td></tr><tr><td><b>Owner (client)</b></td><td>Admin Panel + ops dashboards</td><td>Everything above + deliverability/cost reports</td></tr></table>
+<h3>2.2 External systems</h3>
+<table><tr><th>System</th><th>Direction</th><th>Purpose</th><th>Owner of integration</th></tr><tr><td><b>Mail engine</b> (dedicated VPS: Postfix/Dovecot/Rspamd/SOGo)</td><td>Platform → API calls; users → IMAP/webmail</td><td>Real <code>name@bloomielts.com</code> mailboxes</td><td>Bikash builds; Sahim consumes contract</td></tr><tr><td><b>WAISE</b> (waise.in WhatsApp Business API)</td><td>Platform → template sends; WAISE → inbound webhook</td><td>All WhatsApp notifications + enquiry alerts</td><td>Sahim (platform side)</td></tr><tr><td><b>Razorpay / Cashfree</b></td><td>Platform → checkout; gateway → webhook</td><td>Fees, subscriptions (UPI/cards/EMI)</td><td>Sahim</td></tr><tr><td><b>LLM API</b> (GPT/Claude-class)</td><td>AI service → API</td><td>Tutor answers</td><td>Raja</td></tr><tr><td><b>Zoom / Google Meet</b></td><td>Platform → link generation</td><td>Live classes</td><td>Sahim</td></tr><tr><td><b>S3-compatible object storage + CDN</b></td><td>Platform → put/get; users → CDN GET</td><td>PDFs, audio, images, receipts</td><td>Raja (infra), Sahim (code)</td></tr><tr><td><b>Meta embeds</b> (KaTeX/Chart.js replaced by npm bundles)</td><td>client-side</td><td>Math/chart rendering</td><td>Sahim</td></tr></table>
+<p><b>Boundary rule:</b> the platform talks to every external system through a <b>frozen contract</b> (<code>platform/contracts/*.yaml</code>). No module calls a third party directly outside its integration adapter.</p>
+<h2>3. Architecture principles</h2>
+<ol><li><b>Modular monolith first.</b> One <code>api</code> service, one <code>web</code> app, one database — internally split into strict modules. Services split out only where scaling or ownership demands it (already done for <code>ai-tutor</code> and the mail engine).</li><li><b>Contract-first.</b> Platform↔AI, platform↔mail, platform↔WAISE are frozen OpenAPI contracts in W1. All three builders work against mocks; nothing blocks on another person's unfinished service.</li><li><b>The prototype is the spec.</b> Every screen, enum, and user journey in <code>FMAHTML/</code> maps to a real module (§15). No redesign, no scope invention.</li><li><b>Single source of truth = Postgres.</b> The prototype's <code>localStorage</code> store becomes server-side relational data. localStorage survives only for ephemeral UI state (theme, draft autosave).</li><li><b>Everything tenant-important is auditable.</b> Every admin mutation writes an <code>audit_log</code> row (who, what, when, before/after).</li><li><b>Degrade gracefully.</b> AI down ≠ platform down. Mail API down ≠ signup broken (queued retry). WhatsApp down ≠ payment lost (idempotent webhooks + retry queue).</li><li><b>Boring, hireable stack.</b> Next.js + FastAPI + Postgres + Redis + Docker on VPS — mainstream in the Indian dev market, no exotic dependencies.</li></ol>
+<h2>4. High-level architecture</h2>
+<pre>                          ┌──────────────┐
+        Visitors/students │  CDN (static │
+        staff, teachers ─►│  + media)    │
+                          └──────┬───────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │   nginx reverse proxy   │  TLS, brotli, rate-limit
+                    │  bloomielts.com / api.* │
+                    └──────┬─────────┬────────┘
+                           │         │
+                ┌──────────▼──┐   ┌──▼─────────────┐        ┌────────────────┐
+                │  web        │   │  api           │        │  ai-tutor      │
+                │  Next.js    │   │  FastAPI       │───────►│  FastAPI gw    │
+                │  (SSR/SSG + │   │  modular       │contract│  → Redis queue │
+                │  portal SPA)│   │  monolith      │◄───────│  → worker pool │
+                └─────────────┘   └──┬───┬───┬───┬─┘(SSE)   │  → LangGraph   │
+                                     │   │   │   │         │  → LLM API     │
+                          ┌──────────▼┐ ┌▼─┐ ┌▼───▼──┐      └───────┬────────┘
+                          │ PostgreSQL│ │Re│ │  S3   │              │ reads
+                          │ +pgvector │ │di│ │ media │              ▼
+                          │ (PgBouncer│ │s │ └───────┘        ┌────────────┐
+                          └───────────┘ └──┘                  │ kb_chunks  │
+                                     │                        │ (pgvector) │
+            ┌────────────────────────┼──────────┐             └────────────┘
+            │                        │          │
+   ┌────────▼───────┐      ┌─────────▼──┐  ┌────▼─────────┐
+   │ Mail engine VPS│      │  WAISE.in  │  │ Razorpay /   │
+   │ provisioning   │      │ WhatsApp   │  │ Cashfree     │
+   │ API (contract) │      │ API + hook │  │ checkout+hook│
+   └────────────────┘      └────────────┘  └──────────────┘</pre>
+<p><b>Two physical servers:</b></p>
+<ul><li><b>App VPS</b> (≥8–16GB): <code>web</code>, <code>api</code>, Postgres+PgBouncer, Redis, <code>ai-tutor</code> gateway+worker — all Docker, behind nginx.</li><li><b>Mail VPS</b> (dedicated, Bikash): Postfix/Dovecot/Rspamd/SOGo + provisioning API — isolated so a mail problem can never take the platform down and vice versa.</li></ul>
+<h2>5. Deployment topology</h2>
+<table><tr><th>Hostname</th><th>Points to</th><th>Serves</th></tr><tr><td><code>bloomielts.com</code>, <code>www.</code></td><td>App VPS → CDN → nginx → <code>web</code></td><td>Public website (prerendered)</td></tr><tr><td><code>app.bloomielts.com</code></td><td>App VPS → nginx → <code>web</code></td><td>Student/Teacher/Admin portals</td></tr><tr><td><code>api.bloomielts.com</code></td><td>App VPS → nginx → <code>api</code></td><td>REST API <code>/api/v1/*</code></td></tr><tr><td><code>staging.bloomielts.com</code></td><td>App VPS (staging containers)</td><td>Full staging stack</td></tr><tr><td><code>mail.bloomielts.com</code></td><td>Mail VPS</td><td>SMTP/IMAP + provisioning API (allowlisted to app egress IP)</td></tr><tr><td><code>webmail.bloomielts.com</code></td><td>Mail VPS</td><td>SOGo webmail</td></tr><tr><td>MX record</td><td><code>mail.bloomielts.com</code></td><td>Inbound mail</td></tr></table>
+<p><b>Environments:</b> <code>staging</code> (auto-deploy on merge to <code>main</code>) and <code>prod</code> (manual promote). Same compose stack, different env files + secrets. All state on named volumes; daily <code>pg_dump</code> + media sync off-site.</p>
+<p><b>CI pipeline (every PR):</b> <code>ruff</code>+<code>mypy</code>+<code>pytest</code> (api, ai-tutor) · <code>eslint</code>+<code>tsc</code>+<code>vitest</code> (web) · docker build. Merge → staging deploy. Weekly demo runs on staging; monthly milestones promote to prod.</p>
+<h2>6. Repository layout (one monorepo)</h2>
+<pre>platform/
+├── web/                  # Next.js + TypeScript — website + 3 portals
+│   ├── app/              # routes: (site)/..., (portal)/..., (admin)/...
+│   ├── components/       # design-system primitives (§14)
+│   ├── lib/              # api client, auth, formatting
+│   └── theme/            # ported design tokens from bloom-core.css
+├── api/                  # FastAPI modular monolith
+│   ├── app/
+│   │   ├── modules/      # auth, students, cms, enquiries, finance,
+│   │   │                 # academic, exams, skills, planner, library,
+│   │   │                 # comms, mail_admin, hr, ops, analytics, notify
+│   │   ├── integrations/ # waise.py, razorpay.py, mail_api.py, ai_client.py
+│   │   ├── core/         # config, db, security, rbac, audit, errors
+│   │   └── workers/      # async jobs (reminders, retries, reports)
+│   └── alembic/          # migrations
+├── ai-tutor/             # Raja — independent service (§10)
+│   ├── gateway/          # FastAPI: auth, rate-limit, SSE
+│   ├── worker/           # LangGraph graph, retrieval, LLM calls
+│   └── ingest/           # curriculum → chunks → embeddings → pgvector
+├── contracts/            # FROZEN OpenAPI: ai-chat.yaml, mail-provisioning.yaml,
+│                         # waise.yaml, payments-events.md
+├── infra/                # docker-compose, nginx confs, backup scripts
+└── scripts/              # lint/typecheck/test entrypoints, seed, restore drills</pre>
+<p>Bikash keeps a <b>separate infra repo</b> for the mail stack; his only platform-repo path is <code>contracts/mail-provisioning.yaml</code>.</p>
+<h2>7. Frontend architecture (<code>web/</code>)</h2>
+<h3>7.1 Three shells, one codebase</h3>
+<table><tr><th>Shell</th><th>Routes</th><th>Rendering</th><th>Spec source</th></tr><tr><td><b>Public site</b></td><td><code>(site)</code> — home, about, courses, ielts, medical, abroad, blog, results, careers, contact, login</td><td>SSG/prerendered + ISR on CMS publish</td><td>12 prototype pages; SEO carried over exactly (OG/Twitter, JSON-LD, canonical, sitemap, manifest)</td></tr><tr><td><b>Portal</b></td><td><code>(portal)</code> — student + teacher</td><td>CSR app shell behind auth (sidebar + client router, mirroring <code>navTo()</code>)</td><td><code>Bloom.html</code> + <code>bloom-*.js</code></td></tr><tr><td><b>Admin</b></td><td><code>(admin)</code> — unified admin</td><td>CSR app shell, role-gated</td><td><code>FMA Admin*.html</code> + <code>bloom-admin/ops/hr/sitecms</code></td></tr></table>
+<p>Login page does OTP/JWT handshake then routes to the right shell by role.</p>
+<h3>7.2 Data flow</h3>
+<ul><li>Server Components fetch public CMS content at build/revalidate time.</li><li>Portal/admin shells use a typed API client (<code>lib/api.ts</code> generated from the api OpenAPI spec) with SWR-style caching; mutations go through the client so audit headers and idempotency keys are attached automatically.</li><li>Auth: <code>HttpOnly</code> refresh cookie + in-memory access token; no tokens in localStorage (fixes the prototype's <code>bloom_auth</code> console-bypass).</li></ul>
+<h3>7.3 Prototype UI → frontend mapping</h3>
+<p><code>bloom-core.css</code>/<code>bloom-site.css</code>/<code>bloom-site-2.css</code> tokens → <code>theme/</code> (colors, spacing, type scale). <code>image-slot.js</code> → <code>&lt;MediaSlot&gt;</code> component backed by <code>media_assets</code>. The FMA admin's theming (Light/Dark × Airy/Comfortable/Cozy/Modern/Editorial/Admin densities) becomes a supported theme matrix in the design system (§14).</p>
+<h2>8. Backend architecture (<code>api/</code>)</h2>
+<h3>8.1 Modular monolith — module map</h3>
+<p>Each module = <code>router + service + schemas + repo</code> inside <code>app/modules/</code>. Modules share the DB but never each other's tables directly — cross-module reads go through service functions (keeps a future split possible).</p>
+<table><tr><th>Module</th><th>Responsibility</th><th>Prototype spec</th></tr><tr><td><code>auth</code></td><td>OTP (email/SMS), JWT access+rotating refresh, sessions, RBAC</td><td><code>login.html</code> roles student/teacher/admin</td></tr><tr><td><code>students</code></td><td>Student records, enrolment, batch, track assignment (staff-gated), documents, status lifecycle</td><td><code>bloom-ops.js</code>, <code>bloom-admin.js</code>, <code>fma_students</code></td></tr><tr><td><code>cms</code></td><td>Keyed document store: pages, blog, faculty, pricing, testimonials, settings; draft/publish + revisions</td><td><code>bloom-cms-data.js</code>, <code>bloom-sitecms.js</code></td></tr><tr><td><code>enquiries</code></td><td>Public forms → inbox → WAISE alert → reply thread</td><td><code>bloom_enq_queue</code>, <code>site-admin</code> flow</td></tr><tr><td><code>finance</code></td><td>Fee plans, invoices, receipts (PDF), subscriptions, overdue reminders, Razorpay/Cashfree</td><td><code>fma_payments</code>, <code>fma_plans</code></td></tr><tr><td><code>academic</code></td><td>Courses, batches, exam tracks, schedule, live classes (Zoom/Meet links), attendance</td><td><code>bloom-schedule.js</code>, <code>bloom-live.js</code>, <code>fma_liveclasses</code>, <code>fma_schedule</code></td></tr><tr><td><code>exams</code></td><td>Exam builder + blueprint engine + attempt lifecycle + scoring + band reports + error bank</td><td><code>bloom-exambuilder.js</code>, <code>bloom-data-exams.js</code>, <code>bloom-mocks.js</code>, <code>bloom-exams.js</code>, <code>fma_mock_folders</code></td></tr><tr><td><code>skills</code></td><td>15-part skill labs: listening/reading/writing/speaking/grammar/vocab/strategy attempts</td><td><code>bloom-reading/writing/speaking/vocab/grammar.js</code>, <code>fma-quizlab.js</code></td></tr><tr><td><code>study</code></td><td>Planner (weighted day plan + PDF), flashcards (SM-2), textbooks/library, doubt booking</td><td><code>fma-planner.js</code>, <code>fma-flashcards*.js</code>, <code>fma-textbooks.js</code>, <code>fma-doubts.js</code>, <code>bloom-tutoring.js</code>, <code>bloom-library.js</code></td></tr><tr><td><code>progress</code></td><td>Dashboard, CEFR estimate, band trajectory, concordance, streaks, analytics feeds</td><td><code>bloom-progress.js</code>, <code>bloom-dashboard.js</code>, <code>bloom-tracks.js</code></td></tr><tr><td><code>comms</code></td><td>Announcements, email/WhatsApp template centre, notification fan-out</td><td><code>bloom-content.js</code>, <code>fma_notifs</code>, <code>fma_upcoming</code></td></tr><tr><td><code>mail_admin</code></td><td>Admin mailbox controls via Bikash's provisioning API (list/suspend/reset/quota) + student provisioning at signup</td><td>contract <code>mail-provisioning.yaml</code></td></tr><tr><td><code>hr</code></td><td>Staff/faculty records, hiring, leave, reviews, printable docs</td><td><code>bloom-hr*.js</code>, <code>bloom-faculty.js</code>, <code>fma_staff</code>, <code>fma_faculty</code></td></tr><tr><td><code>ops</code></td><td>Ops dashboards, checklists, toppers, activity feed</td><td><code>bloom-ops.js</code>, <code>fma_checklists</code>, <code>fma_toppers</code>, <code>fma_activity</code></td></tr><tr><td><code>notify</code></td><td>Internal notification bus: queues outbound email/WhatsApp/in-app; retry + dead-letter</td><td>replaces prototype's direct localStorage queues</td></tr></table>
+<h3>8.2 Request pipeline</h3>
+<p><code>nginx → FastAPI → dependency injection (db session, current_user, rbac guard) → module router → service → repo → Postgres</code></p>
+<ul><li><b>RBAC:</b> <code>student | teacher | admin</code> roles + permission decorators; exam-track assignment is staff-only (prototype rule).</li><li><b>Audit:</b> middleware writes <code>audit_log</code> on every mutating admin call.</li><li><b>Idempotency:</b> all payment/webhook/mailbox endpoints accept <code>Idempotency-Key</code>; duplicates return the stored first response.</li><li><b>Async work:</b> slow/failure-prone work (WhatsApp sends, mailbox provisioning retries, PDF renders, reminder fan-out) is queued on Redis and executed by <code>workers/</code> — never inline in a request.</li></ul>
+<h3>8.3 API conventions</h3>
+<ul><li>Base: <code>/api/v1/</code>, resource-oriented REST; <code>GET</code> list params <code>?cursor=&amp;limit=</code> (cursor pagination).</li><li>Error envelope: <code>{ &quot;error&quot;: { &quot;code&quot;: &quot;TRACK_LOCKED&quot;, &quot;message&quot;: &quot;...&quot;, &quot;details&quot;: {...} } }</code> — codes are stable strings the frontend switches on.</li><li>Validation: Pydantic schemas at the boundary; 422 on schema failure, 409 on state conflicts, 410 on expired resources.</li><li>Every module ships an OpenAPI fragment; <code>contracts/</code> files are hand-frozen, module specs are generated.</li></ul>
+<h2>9. Data architecture</h2>
+<h3>9.1 PostgreSQL schema (core entities)</h3>
+<pre>users ──┬── students ──┬── enrolments ── batches ── courses ── exam_tracks
+        │              ├── documents (checklist items, status)
+        │              ├── attempts ── exam_sections ── exam_blueprints
+        │              ├── error_bank_items
+        │              ├── study_plans / flashcard_states (SM-2)
+        │              ├── subscriptions ── invoices ── payments ── receipts
+        │              └── mailboxes (localpart, quota, status — mirror only)
+        └── staff ── faculty_profiles ── schedules ── live_classes
+
+enquiries ── enquiry_threads
+cms_documents ── cms_revisions          media_assets (S3 pointer + metadata)
+notifications ── notification_deliveries
+audit_log                               kb_chunks (pgvector — Raja&#x27;s AI track)</pre>
+<ul><li><b>Enums carried from prototype:</b> exam tracks <code>ielts-a, ielts-g, toefl, pte, duolingo, cambridge, oet, general</code>; IELTS part ids <code>l1–l4, r1–r3, rgt, w1, w2, s1–s3, gv, strategy</code> (from <code>PARTS</code>/<code>TRACK_PARTS</code> in <code>bloom-data-library.js</code>/<code>bloom-tracks.js</code>); document-checklist states from the FMA admin document pipeline.</li><li><b><code>cms_documents</code>:</b> keyed JSONB documents + <code>cms_revisions</code> for draft/publish/rollback — the production version of <code>bloom_cms</code> + <code>CMS_VERSION</code> optimistic concurrency.</li><li><b><code>kb_chunks</code>:</b> pgvector embeddings of curriculum; owned by <code>ai-tutor/ingest</code>, read by workers only.</li><li><b>PgBouncer</b> in transaction mode in front of Postgres — the exam engine's autosave bursts stay cheap.</li></ul>
+<h3>9.2 Redis usage</h3>
+<table><tr><th>Use</th><th>Notes</th></tr><tr><td>AI job queue</td><td>gateway → worker hand-off</td></tr><tr><td>Platform job queue</td><td>notifications, retries, PDF, reminders</td></tr><tr><td>Exam attempt state</td><td>autosave/in-progress attempt buffers — survive spikes</td></tr><tr><td>Public CMS read cache</td><td>invalidated on publish</td></tr><tr><td>Rate limiting</td><td>token buckets per user/IP</td></tr></table>
+<h3>9.3 localStorage → server mapping (prototype data becomes real)</h3>
+<table><tr><th>Prototype key</th><th>Becomes</th></tr><tr><td><code>bloom_auth</code></td><td><code>users</code> + session/JWT (HttpOnly cookie)</td></tr><tr><td><code>bloom_cms</code></td><td><code>cms_documents</code> + <code>cms_revisions</code></td></tr><tr><td><code>bloom_enq_queue</code> / <code>bloom_app_queue</code></td><td><code>enquiries</code> + <code>notify</code> queue</td></tr><tr><td><code>fma_students</code>, <code>fma_staff</code>, <code>fma_faculty</code></td><td><code>students</code>, <code>staff</code>, <code>faculty_profiles</code></td></tr><tr><td><code>fma_payments</code>, <code>fma_plans</code></td><td><code>payments</code>, <code>invoices</code>, <code>subscriptions</code></td></tr><tr><td><code>fma_schedule</code>, <code>fma_liveclasses</code></td><td><code>schedules</code>, <code>live_classes</code></td></tr><tr><td><code>fma_quiz_active</code>, <code>fma_quiz_history</code></td><td><code>attempts</code> (+ Redis in-progress state)</td></tr><tr><td><code>fma_fc_*</code> (flashcards)</td><td><code>flashcard_states</code>, <code>decks</code></td></tr><tr><td><code>fma_planner</code>, <code>fma_doubts</code></td><td><code>study_plans</code>, <code>doubt_bookings</code></td></tr><tr><td><code>fma_mock_folders</code>, <code>fma_notes_content</code>, <code>fma_checklists</code>, <code>fma_toppers</code>, <code>fma_upcoming</code>, <code>fma_notifs</code>, <code>fma_branding</code>, <code>fma_settings</code></td><td><code>exams</code>, <code>cms_documents</code>, <code>checklists</code>, <code>toppers</code>, <code>announcements</code>, <code>notifications</code>, <code>settings</code></td></tr><tr><td><code>bloom_state</code>, <code>bloom_theme</code>, <code>fma_tb_downloads</code></td><td>stays client-side (UI prefs / download hints)</td></tr></table>
+<h2>10. AI Tutor service (<code>ai-tutor/</code> — Raja)</h2>
+<p>Independent deployable: <b>AI down ≠ platform down.</b> Own scaling group; capacity = worker count.</p>
+<pre>POST /ai/chat (SSE) ─► FastAPI gateway ─► Redis queue ─► stateless worker(s)
+                            │                              │
+                            │                    LangGraph agent graph:
+                            │                    1. profile node ─► platform API
+                            │                       GET /ai/profile/{student_id}
+                            │                       (track, CEFR, weak modules,
+                            │                        error history)
+                            │                    2. retrieval node ─► pgvector
+                            │                       kb_chunks (Bloom curriculum)
+                            │                    3. LLM node ─► streamed tokens
+                            │                    4. guardrails ─► off-scope →
+                            │                       escalate to human teacher
+                            │
+                     rate limit, auth, usage metering (per-student cost report)</pre>
+<ul><li><b>Knowledge base pipeline:</b> curriculum (notes, model answers, question banks) → chunking → embeddings → <code>kb_chunks</code>; re-indexable job as content arrives (client dependency, bulk by W4).</li><li><b>Agent profiles:</b> per-module tutors (Listening tutor ≠ Writing tutor) with module-scoped retrieval filters.</li><li><b>Eval harness:</b> curated Q/A set runs on every model/prompt change — regression enforced in CI.</li><li><b>Launch shape (Essentials):</b> single worker; multi-worker scale-out + expanded eval is a post-launch phase per v5.1.</li><li><b>Contract:</b> <code>contracts/ai-chat.yaml</code> — Sahim builds the portal chat UI against the mock from W1.</li></ul>
+<h2>11. Email engine (Mail VPS — Bikash)</h2>
+<p>Dedicated VPS, fully isolated from the app VPS. Bikash owns it end-to-end; the platform sees only the provisioning API.</p>
+<pre>App VPS (api) ──HTTPS, bearer + IP allowlist──► provisioning API (nginx on mail VPS)
+                                                    │
+        ┌───────────────────────────────────────────┼───────────────┐
+        ▼                                           ▼               ▼
+   Postfix (587/465, virtual                  Dovecot (IMAP 993,   Rspamd
+   mailboxes from DB, LE TLS)                  managesieve, quota)  (DKIM sign,
+        │                                           │               SPF/DMARC,
+        └─────────────── SOGo webmail ──────────────┘               greylist,
+                       webmail.bloomielts.com                       rate limits)</pre>
+<ul><li><b>DNS auth:</b> MX → <code>mail.bloomielts.com</code>; SPF <code>v=spf1 mx -all</code>; DKIM public key; DMARC <code>p=quarantine</code> → <code>p=reject</code> post-warm-up; PTR with provider.</li><li><b>Contract:</b> <code>check_username / create_mailbox / suspend / unsuspend / reset_password / set_quota / list_mailboxes</code> — idempotent on <code>localpart</code>, bearer token + source-IP allowlist, mailbox usable &lt;30s.</li><li><b>Warm-up (non-compressible calendar):</b> seed-list &lt;50/day → transactional &lt;200/day → ramp to sign-up volume; weekly deliverability report (mail-tester ≥9/10, placement ≥90%, no blacklists) is the go-live quality gate.</li><li><b>Signup flow:</b> student picks username → live debounced <code>check_username</code> → on confirm <code>create_mailbox</code> → credentials shown once → welcome mail + WhatsApp; SOGo link + IMAP/SMTP settings in profile.</li><li><b>Resilience:</b> platform queues <code>create_mailbox</code> retries if the API is down — signup never blocks on mail availability; admin panel shows provisioning status.</li></ul>
+<h2>12. Integration architecture</h2>
+<table><tr><th>Integration</th><th>Pattern</th><th>Key design points</th></tr><tr><td><b>WAISE WhatsApp</b></td><td><code>integrations/waise.py</code> adapter; outbound template sends via <code>notify</code> queue; inbound webhook → enquiry thread/student reply</td><td>All triggers: enquiry alert, admission confirm, class reminder, fee receipt, results, document nudges. Template registry in <code>comms</code>.</td></tr><tr><td><b>Razorpay/Cashfree</b></td><td>checkout session → gateway webhook → <code>finance</code></td><td>Webhook is <b>idempotent</b> (gateway retries) → ledger entry + receipt PDF + WhatsApp/email receipt. Signature verified; duplicate delivery returns stored result.</td></tr><tr><td><b>Mail provisioning</b></td><td><code>integrations/mail_api.py</code> → contract client</td><td>All calls logged; failures queue for retry; <code>mail_admin</code> surfaces status to admins.</td></tr><tr><td><b>AI tutor</b></td><td><code>integrations/ai_client.py</code> → <code>POST /ai/chat</code> SSE proxy</td><td>Portal chat UI streams through api (auth + metering pass-through).</td></tr><tr><td><b>Zoom/Meet</b></td><td>link generation in <code>academic</code></td><td>Live-class schedule → student timetable → WAISE reminder.</td></tr><tr><td><b>S3 + CDN</b></td><td>presigned uploads from <code>cms</code>/<code>study</code>/HR docs; public GETs via CDN</td><td><code>media_assets</code> rows carry key + metadata; uploads virus-checked before publish.</td></tr></table>
+<p><b>Adapter rule:</b> third-party specifics live only in <code>app/integrations/</code> — modules call <code>waise.send_template(...)</code>, never raw HTTP. Swap a provider = change one adapter + contract revision.</p>
+<h2>13. Key end-to-end flows</h2>
+<ol><li><b>Enquiry:</b> public form → <code>POST /api/v1/enquiries</code> → DB → admin inbox + WAISE alert to staff → staff replies (WhatsApp deep-link / in-panel) → thread logged → convert to student on admission.</li><li><b>Admission → mailbox:</b> admin creates student → enrolment + track assignment (audited) → student sets username at first login → <code>check_username</code>/<code>create_mailbox</code> → welcome pack (email + WhatsApp).</li><li><b>Payment:</b> student/admin initiates → Razorpay checkout → webhook (idempotent) → payment row + receipt PDF → WhatsApp + email receipt → finance dashboard updates.</li><li><b>Class:</b> teacher schedules in planner → batch timetable updates → students see it → reminder queue fires WhatsApp/email at configured offsets → attendance recorded.</li><li><b>Mock exam:</b> teacher blueprint → published exam → student attempt (Redis autosave per section) → submit → scoring → band report + error-bank items → progress updates → AI tutor's profile node sees the new weak modules.</li><li><b>AI tutoring:</b> student asks in portal → api proxies SSE → worker pulls profile + retrieves KB chunks → streamed answer citing Bloom material → off-scope → human-teacher escalation ticket.</li><li><b>CMS publish:</b> admin edits → draft → publish → <code>cms_revisions</code> snapshot → public cache invalidated → prerendered page revalidated (ISR) → live without deploy; rollback = republish older revision.</li></ol>
+<h2>14. UI design system</h2>
+<p>The user-facing design system is ported from the prototype, not reinvented:</p>
+<ul><li><b>Tokens:</b> color, spacing, radius, shadow, type scale extracted from <code>bloom-core.css</code>/<code>bloom-site.css</code> → <code>web/theme/tokens.ts</code> (single source; CSS vars generated).</li><li><b>Theme matrix:</b> Light/Dark × density (Airy/Comfortable/Cozy/Modern/Editorial/Admin) — preserves the FMA admin's theming feature.</li><li><b>Primitives:</b> <code>AppShell</code> (sidebar+topbar), <code>Card</code>, <code>DataTable</code> (sort/filter/paginate), <code>Form</code> controls, <code>Modal</code>, <code>Toast</code>, <code>Tabs</code>, <code>Badge</code>, <code>EmptyState</code>, <code>MediaSlot</code> (replaces <code>image-slot.js</code>), <code>PdfButton</code>, <code>ChatStream</code> (SSE).</li><li><b>Patterns:</b> list→detail layouts, wizard forms (document checklists), attempt runner (timed sections), dashboard cards.</li><li><b>Rules:</b> every screen uses primitives only; new component = design-system change request. Demo page (<code>/dev/primitives</code>) renders all primitives for QA.</li></ul>
+<h2>15. Prototype → production module map (the build checklist)</h2>
+<table><tr><th>Prototype file(s)</th><th>Target</th></tr><tr><td>12 public pages + <code>bloom-site*.css</code></td><td><code>web/(site)</code> + <code>cms</code> module</td></tr><tr><td><code>bloom-cms-data.js</code>, <code>bloom-sitecms.js</code>, <code>site-admin.html</code>, <code>image-slot.js</code></td><td><code>cms</code> + <code>media_assets</code> + Website Content admin UI</td></tr><tr><td><code>login.html</code></td><td><code>auth</code> (real OTP/JWT/RBAC)</td></tr><tr><td><code>Bloom.html</code> + <code>bloom-dashboard/progress/tracks.js</code></td><td>Portal shell + <code>progress</code></td></tr><tr><td><code>bloom-vocab/grammar/reading/writing/speaking.js</code>, <code>bloom-data-lang.js</code></td><td><code>skills</code></td></tr><tr><td><code>bloom-placement.js</code>, <code>bloom-mocks.js</code>, <code>bloom-exams.js</code>, <code>bloom-exambuilder.js</code>, <code>bloom-data-exams.js</code></td><td><code>exams</code> (builder + engine)</td></tr><tr><td><code>bloom-live.js</code>, <code>bloom-meet.js</code>, <code>bloom-schedule.js</code></td><td><code>academic</code> (schedule + live)</td></tr><tr><td><code>bloom-library.js</code>, <code>bloom-data-library.js</code></td><td><code>study</code> (library)</td></tr><tr><td><code>bloom-tutor.js</code> (simulated)</td><td><code>web</code> chat UI → <code>ai-tutor</code> (real)</td></tr><tr><td><code>bloom-tutoring.js</code></td><td><code>study</code> (1:1 booking)</td></tr><tr><td><code>bloom-admin.js</code>, <code>bloom-ops.js</code>, <code>bloom-content.js</code></td><td><code>students</code>, <code>ops</code>, <code>comms</code>, <code>enquiries</code></td></tr><tr><td><code>bloom-faculty.js</code></td><td>Teachers Panel + <code>hr</code></td></tr><tr><td><code>bloom-hr*.js</code>, <code>bloom-data-hr/staff.js</code></td><td><code>hr</code></td></tr><tr><td><code>bloom-data-core/ops/content/tutoring/exams.js</code></td><td>reference-data seeds (<code>api</code> seed)</td></tr><tr><td><code>FMA Admin*.html</code> (3 variants)</td><td>unified <code>(admin)</code> shell — all sections</td></tr><tr><td><code>fma-textbooks.js</code>, <code>fma-planner.js</code>, <code>fma-flashcards*.js</code>, <code>fma-quizlab.js</code>, <code>fma-doubts.js</code></td><td><code>study</code> (textbooks, planner, flashcards/SM-2, quiz lab, doubt booking)</td></tr><tr><td><code>uploads/</code>, <code>.c/</code>, <code>versions/</code>, <code>*.zip</code></td><td><b>not carried over</b> — prototype artifacts; media moves to S3</td></tr></table>
+<h2>16. Security architecture</h2>
+<ul><li><b>AuthN:</b> OTP via email/SMS; short-lived access JWT + rotating refresh (reuse detection); HttpOnly cookies.</li><li><b>AuthZ:</b> RBAC everywhere; staff-gated track assignment; admin-only finance/HR/CMS publish; object-level checks (student sees only own data).</li><li><b>Audit:</b> <code>audit_log</code> on every admin mutation; auth events logged.</li><li><b>Edge:</b> nginx rate limits on auth/forms/webhooks; security headers; TLS everywhere; HSTS on apex.</li><li><b>Secrets:</b> env-injected, never in repo; WAISE/Razorpay keys in platform secrets store; webhook signatures verified.</li><li><b>Data:</b> daily <code>pg_dump</code> + off-site copy; media versioning on S3; PII access minimized — exports are admin-only + audited.</li><li><b>Mail VPS:</b> allowlist-only API, ufw, fail2ban, key-only SSH (Bikash's E1 hardening list).</li><li><b>Removal of prototype risks:</b> no source zips in webroot, no public <code>uploads/</code>, no <code>.c/</code>/<code>versions/</code> artifacts, no CDN-loaded third-party JS (vendored via npm instead), no console-bypassable auth.</li></ul>
+<h2>17. Reliability &amp; scale path</h2>
+<ul><li><b>Launch targets:</b> hundreds of concurrent timed mock attempts; public CMS reads &lt;50ms (cached); mailbox usable &lt;30s; tutor first-token &lt;3s.</li><li><b>Scale levers (in order):</b> PgBouncer/Redis tuning → api horizontal replicas behind nginx → ai-tutor worker count → DB read replica → split <code>exams</code>/<code>notify</code> into own services if needed.</li><li><b>Failure posture:</b> retries + dead-letter on notifications; queued mailbox provisioning; exam autosave to Redis (attempt survives api restart); AI outage shows &quot;tutor unavailable&quot; card, platform unaffected.</li><li><b>Observability:</b> uptime probe, container health, queue depth, mail deliverability alerts (Bikash's feed into Raja's dashboard), per-student AI cost metering; weekly report to client.</li><li><b>DR:</b> restore drills in W6 and W11; RPO = 24h (daily backups), RTO = hours (documented runbook).</li></ul>
+<h2>18. Decisions locked by this document</h2>
+<table><tr><th>#</th><th>Decision</th><th>Consequence</th></tr><tr><td>A1</td><td>Modular monolith <code>api</code> (not microservices)</td><td>one deployable; modules split only if a proven need appears</td></tr><tr><td>A2</td><td><code>ai-tutor</code> is a separate service</td><td>independent scaling/billing; contract <code>ai-chat.yaml</code></td></tr><tr><td>A3</td><td>Mail on dedicated VPS with provisioning contract</td><td>isolation + outsourced ownership; platform never touches Postfix</td></tr><tr><td>A4</td><td>Postgres + pgvector (no separate vector DB)</td><td>one less system; kb_chunks live beside the data they personalize</td></tr><tr><td>A5</td><td>All outbound comms through <code>notify</code> queue</td><td>retry/dedup/metering in one place</td></tr><tr><td>A6</td><td>Contracts frozen W1 in <code>platform/contracts/</code></td><td>all three builders develop in parallel against mocks</td></tr><tr><td>A7</td><td>Prototype localStorage data model → relational schema</td><td>§9.3 mapping is the migration spec</td></tr><tr><td>A8</td><td>Design system ported, not redesigned</td><td>build speed + client already approved the look</td></tr></table>
+<p class="footer-note">Techfly Engineering · Architecture v1.0 · 18 September 2026 — the technical baseline the W1 contracts are frozen against. Companion docs: Proposal v5.1 · Dev Tasks v3.1 · Costs annexure · <code>FMAHTML/</code> prototype = functional spec.</p>
+</div></body>
+</html>

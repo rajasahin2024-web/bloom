@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Developer Roadmap — Bloom Academy IELTS Learning Platform</title>
+<style>
+  :root{ --navy:#0b2a4a; --teal:#0f8a8a; --ink:#1a2433; --mut:#5b6b7f; --line:#e3e9f0; --soft:#f4f8fb; --good:#0e7a3d; --goodbg:#eaf7ef; --amber:#8a5a00; --amberbg:#fdf6e7; --red:#b3432b; }
+  *{ box-sizing:border-box; }
+  body{ font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--ink); margin:0; background:#fff; line-height:1.6; font-size:14.5px; }
+  .page{ max-width:960px; margin:0 auto; padding:48px 44px; }
+  .cover{ border-bottom:4px solid var(--navy); padding-bottom:28px; margin-bottom:32px; }
+  .brand{ font-size:13px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--navy); }
+  h1{ font-size:30px; letter-spacing:-.5px; margin:12px 0 6px; color:var(--navy); line-height:1.15; }
+  .meta{ color:var(--mut); font-size:13.5px; margin-top:8px; }
+  .meta b{ color:var(--ink); }
+  h2{ font-size:20px; color:var(--navy); margin:34px 0 8px; padding-top:12px; border-top:1px solid var(--line); }
+  h3{ font-size:15.5px; color:var(--navy); margin:20px 0 6px; }
+  p{ margin:7px 0; }
+  ul,ol{ margin:6px 0 6px 4px; padding-left:20px; }
+  li{ margin:4px 0; }
+  table{ width:100%; border-collapse:collapse; margin:12px 0; font-size:12.8px; }
+  th{ text-align:left; background:var(--navy); color:#fff; padding:8px 10px; font-weight:600; }
+  td{ padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:nth-child(even) td{ background:var(--soft); }
+  code{ background:#eef2f6; padding:1px 6px; border-radius:5px; font-size:12.5px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  pre{ background:#0f1b29; color:#dbe7f3; padding:14px 16px; border-radius:8px; overflow-x:auto; font-size:12.5px; line-height:1.55; }
+  pre code{ background:none; color:inherit; padding:0; }
+  .small{ font-size:12.5px; color:var(--mut); }
+  .footer{ margin-top:44px; padding-top:16px; border-top:1px solid var(--line); color:var(--mut); font-size:12.5px; }
+  .callout{ background:var(--goodbg); border:1px solid #bfe3cd; border-radius:8px; padding:12px 16px; margin:14px 0; }
+  .need{ background:var(--amberbg); border:1px solid #ecd9a8; border-radius:8px; padding:12px 16px; margin:12px 0; font-size:13px; }
+  .need b{ color:var(--amber); }
+  .task{ border:1px solid var(--line); border-radius:8px; margin:10px 0; overflow:hidden; }
+  .task-h{ background:var(--soft); padding:8px 14px; font-weight:700; color:var(--navy); border-bottom:1px solid var(--line); }
+  .task-h .tid{ color:var(--teal); font-family:ui-monospace,Menlo,monospace; margin-right:8px; }
+  .task-b{ padding:10px 14px; }
+  .task-b ul{ margin:4px 0; }
+  .ac{ font-size:12.5px; color:var(--mut); margin-top:6px; padding-top:6px; border-top:1px dashed var(--line); }
+  .ac b{ color:var(--good); }
+  .dep{ font-size:12px; color:var(--mut); }
+  .dep b{ color:var(--red); font-weight:600; }
+  .pill{ display:inline-block; border-radius:10px; padding:0 8px; font-size:11px; font-weight:700; letter-spacing:.4px; }
+  .p-dev{ background:#e7f0fd; color:#1d4e9e; } .p-inf{ background:#f3eafd; color:#6b35a8; }
+  .p-ai{ background:#fdeee7; color:#a84a1d; } .p-int{ background:#fdf6e7; color:#8a5a00; }
+  .p-joint{ background:#eaf7ef; color:#0e7a3d; }
+  .wk{ font-weight:800; color:var(--navy); white-space:nowrap; }
+  @media print{ body{ font-size:12px } .page{ padding:20px } h2{ page-break-after:avoid } table,.task{ page-break-inside:avoid } }
+</style>
+</head>
+<body><div class="page">
+
+<div class="cover">
+  <div class="brand">Developer Roadmap — Internal</div>
+  <h1>Bloom Academy IELTS Learning Platform</h1>
+  <div class="meta">
+    Prepared by <b>Techfly Engineering</b> · 16 September 2026 · <b>v2.2 — restructured to &#8377;2.5L client budget</b><br>
+    Week-by-week build plan for the real team: <b>Sahin Mehbub Sarkar (all application/feature development)</b> + <b>Raja Sahin (DevOps + AI engine + email engine + hosting)</b>.
+    Client-facing version: <i>Development Roadmap &amp; Milestones</i>. Spec: <code>FMAHTML/</code> prototype.
+  </div>
+</div>
+
+<h2>0. Who builds what — the real team</h2>
+<table>
+  <tr><th>Person</th><th>Owns end-to-end</th><th>Does NOT touch</th></tr>
+  <tr>
+    <td><b>Sahin Mehbub Sarkar</b><br><span class="small">application dev</span></td>
+    <td><b>All custom application development</b> — frontend + backend of every panel: public website, unified Admin Panel (CMS + LMS), Teachers Panel, Student Panel, exam engine, and all platform-side integration code (WAISE API calls, Razorpay/Cashfree, calls into the mail provisioning API, AI-tutor chat UI).</td>
+    <td>Servers, deploys, DNS, mail stack, AI internals. Never waits on infra — Raja keeps environments ahead of the build.</td>
+  </tr>
+  <tr>
+    <td><b>Raja Sahin</b><br><span class="small">DevOps + email + hosting + AI engine</span></td>
+    <td><b>Hosting / DevOps:</b> VPS provisioning, nginx, TLS, CI/CD, staging + production deploys, backups, monitoring.<br>
+    <b>Email engine:</b> dedicated mail server — Postfix + Dovecot + Rspamd + SOGo, DNS auth, IP warm-up, mail provisioning API.<br>
+    <b>Bloom AI Tutor engine:</b> the complete AI service — FastAPI gateway → Redis queue → horizontally-scalable Python worker pool → LangGraph agent graph → RAG over Bloom curriculum on pgvector, eval + metering + scale-out.</td>
+    <td>Application screens and domain logic inside the platform.</td>
+  </tr>
+</table>
+<p class="small">Legend: <span class="pill p-dev">SAHIN&nbsp;M.</span> Sahin Mehbub Sarkar — application · <span class="pill p-inf">RAJA·OPS</span> Raja Sahin — devops/mail/hosting · <span class="pill p-ai">RAJA·AI</span> Raja Sahin — ai-tutor engine · <span class="pill p-int">INT</span> third-party integration · <span class="pill p-joint">JOINT</span> needs both</p>
+
+<div class="callout"><b>Design principle:</b> Sahin M. never does ops and Raja never writes panel code. The two sides meet only at <b>frozen API contracts</b> (Week 1): platform↔AI, platform↔WAISE, platform↔mail. Once contracts are committed to <code>platform/contracts/</code>, both sides build independently — zero blocking.</div>
+
+<h2>1. Week-by-week roadmap — who does what, when</h2>
+<table>
+  <tr><th>Week</th><th>Sahin M. — application build</th><th>Raja — DevOps / mail / hosting</th><th>Raja — AI Tutor engine</th></tr>
+  <tr>
+    <td class="wk">W1<br><span class="small">M0</span></td>
+    <td>Auth core (JWT + OTP + RBAC, audit log) · core schema v1 + seed data · design-system port (CSS tokens → theme, app shells per role)</td>
+    <td>App VPS + staging env: nginx, TLS, CI/CD, auto-deploy on merge, daily backups · mail VPS ordered · domain/DNS access chased</td>
+    <td><code>ai-tutor/</code> service skeleton: FastAPI gateway (auth, rate limits, SSE) → Redis queue → worker pool</td>
+  </tr>
+  <tr>
+    <td class="wk">W1<br><span class="small">joint</span></td>
+    <td colspan="2"><span class="pill p-joint">JOINT</span> Freeze contracts — <code>POST /ai/chat</code>, <code>GET /ai/profile/{id}</code>, WAISE send/webhook, mail <code>check_username/create_mailbox/suspend/reset/quota</code> — commit to <code>contracts/</code></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td class="wk">W2</td>
+    <td>CMS backend: keyed document store, draft/publish + revisions, media → S3 + CDN, Redis-cached public reads</td>
+    <td>Staging polish; WAISE account/API credentials in hand</td>
+    <td>Knowledge-base pipeline: Bloom curriculum → chunking → embeddings → pgvector <code>kb_chunks</code></td>
+  </tr>
+  <tr>
+    <td class="wk">W3</td>
+    <td>Public pages ×12 rebuilt prerendered, all SEO carried over · enquiry form → DB → admin inbox → WAISE WhatsApp alert</td>
+    <td><b>Mail VPS build starts</b> — Postfix + Dovecot + Rspamd + SOGo; MX/SPF/DKIM/DMARC/PTR; <b>IP warm-up begins</b> (needs lead time)</td>
+    <td>LangGraph graph v1: profile node → retrieval node → LLM node, streamed</td>
+  </tr>
+  <tr>
+    <td class="wk">W4</td>
+    <td>Website CMS admin UI (edit pages, blog, results, media) → deploy to prod → <b>WEBSITE LIVE — Month-1 demo</b></td>
+    <td>Production VPS + domain cutover + CDN + uptime probe</td>
+    <td>First end-to-end streamed answer grounded in Bloom KB</td>
+  </tr>
+  <tr>
+    <td class="wk">W5</td>
+    <td>Unified admin shell + admissions &amp; student records + exam-track assignment (staff-gated)</td>
+    <td>Mail provisioning API v1 on mail VPS per frozen contract</td>
+    <td>RAG quality pass on Bloom material (chunking/embedding tuning)</td>
+  </tr>
+  <tr>
+    <td class="wk">W6</td>
+    <td>Finance: fee plans, invoices, receipts (PDF), subscriptions, due reminders → WAISE templates</td>
+    <td>SOGo webmail live, per-mailbox quotas; warm-up continues</td>
+    <td>Student-profile context node live against platform API (track, CEFR, weak modules, error history)</td>
+  </tr>
+  <tr>
+    <td class="wk">W7</td>
+    <td>Communications + academic setup + personnel/HR docs + ops + analytics · CMS merged into the same admin panel</td>
+    <td>Deliverability monitoring + alerts; staging/prod parity check</td>
+    <td>Agent profiles + guardrails + human-teacher escalation; eval-set harness</td>
+  </tr>
+  <tr>
+    <td class="wk">W8</td>
+    <td>Teachers Panel: teaching planner + class roster + live console (Zoom/Meet links) → <b>Month-2 demo (admin + mailbox provisioning)</b></td>
+    <td>Mailbox provisioning demo support — create mailbox from admin → usable in SOGo</td>
+    <td>Eval set green; regression harness enforced on every change</td>
+  </tr>
+  <tr>
+    <td class="wk">W9</td>
+    <td>Teachers: content manager → library feed · exam builder (passages/sections/questions, per-exam blueprints)</td>
+    <td>—</td>
+    <td>Harden /ai/chat; single-worker prod sizing (multi-worker scale-out = post-launch phase)</td>
+  </tr>
+  <tr>
+    <td class="wk">W10</td>
+    <td>Student Panel: registration with live <code>@bloomielts.com</code> availability check → mailbox created · placement test + dashboard + progress/English Profile</td>
+    <td>Provisioning API production-ready for sign-up traffic</td>
+    <td>Per-student usage metering (cost per student/month report)</td>
+  </tr>
+  <tr>
+    <td class="wk">W11</td>
+    <td>Student: exam engine (blueprints, timed attempts, autosave, scoring/band) + all skill labs on the 15-part map + mocks</td>
+    <td>Load-test mock concurrency with Sahin M. · security pass · backup restore drill</td>
+    <td>Final hardening; <code>/ai/chat</code> ready for UI integration</td>
+  </tr>
+  <tr>
+    <td class="wk">W12</td>
+    <td>Student: study planner + library + 1-on-1 booking + payments (Razorpay/Cashfree → receipt → WhatsApp) · AI tutor chat UI wired to <code>/ai/chat</code> · full WhatsApp notification set · UAT fixes → <b>GO-LIVE — Month-3 demo</b></td>
+    <td>Production cutover, monitoring + alerts live, ops handover docs</td>
+    <td>AI Tutor integrated + live in the student portal</td>
+  </tr>
+</table>
+
+<div class="need"><b>Capacity reality check:</b> Sahin M. is carrying the whole application alone. It holds at 12 weeks only because (a) the prototype removes all design/requirement ambiguity, and (b) Raja absorbs 100% of infra, mail and AI work. The Student Panel (W10–12) is the densest stretch — if it needs more room, it takes precedence and go-live moves; any new ask beyond the prototype is a change request, never absorbed silently. Weekly demos surface slippage early, not at month-end.</div>
+<div class="need"><b>Budget discipline (v2.2):</b> package fixed at <b>&#8377;2,50,000</b>. AI Tutor ships Essentials scope (single-worker prod, metering, eval set); WhatsApp = core notification templates. All external spend (VPS, mail VPS, WAISE, Meta, LLM API, storage/CDN) is the academy&#8217;s direct cost — tracked in <code>Bloom-External-Costs.md</code>, never absorbed into the package.</div>
+
+<h2>2. Sahin Mehbub Sarkar — application track, detailed task list (sequential)</h2>
+<p class="small">Spec = the prototype. Referenced by file name. Definition of Done per task: reviewed + merged, lint/typecheck/tests green (<code>platform/scripts/</code>), deployed to staging, demo-able.</p>
+
+<h3>Week 1 — Foundation</h3>
+<div class="task"><div class="task-h"><span class="tid">D1.1</span> Auth core: JWT + OTP + RBAC <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Access + rotating refresh JWT (reuse detection); OTP via email/SMS for registration + login.</li>
+  <li>RBAC middleware: roles <code>student|teacher|admin</code>; permission decorators on routers; audit log table for admin mutations.</li>
+  <li>Rule from prototype: staff assign exam track; students cannot self-override.</li>
+</ul>
+<div class="ac"><b>Accept:</b> register→OTP→login→role-scoped /me; refresh rotation tested; admin action writes audit row.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D1.2</span> Core schema v1 <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Alembic migrations: <code>users, students, staff, enquiries, cms_documents, cms_revisions, media_assets, audit_log</code>.</li>
+  <li>Domain enums from prototype: exam tracks (<code>ielts-a, ielts-g, toefl, pte, duolingo, cambridge, oet, general</code>) and IELTS part ids (<code>l1–l4, r1–r3, rgt, w1, w2, s1–s3, gv, strategy</code>) — mirror <code>PARTS</code>/<code>TRACK_PARTS</code> in <code>bloom-data-library.js</code>/<code>bloom-tracks.js</code>.</li>
+  <li>pgvector enabled; <code>kb_chunks</code> reserved for Raja's AI track.</li>
+</ul>
+<div class="ac"><b>Accept:</b> <code>alembic upgrade head</code> clean from empty DB; seed script creates demo data.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D1.3</span> Design system port + app shells <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Port <code>bloom-core.css</code>/<code>bloom-site.css</code> tokens → TS theme; shared primitives (sidebar layout, cards, tables, forms, modal, toast).</li>
+  <li>Shells per role: public layout, authed portal layout (sidebar + router), admin layout.</li>
+</ul>
+<div class="ac"><b>Accept:</b> primitives demo page renders; all three shells route correctly.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D1.4</span> Freeze API contracts <span class="pill p-joint">JOINT</span></div><div class="task-b">
+<ul>
+  <li>With Raja: OpenAPI for <b>platform↔AI</b> (<code>POST /ai/chat</code> streamed; <code>GET /ai/profile/{student_id}</code> = track, CEFR, weak modules, error history), <b>platform↔WAISE</b> (template send, inbound webhook, enquiry alert), <b>mail provisioning</b> (<code>check_username / create_mailbox / suspend / reset / quota</code>).</li>
+  <li>Contracts committed + versioned in <code>platform/contracts/</code>; stubs generated so both sides code independently.</li>
+</ul>
+<div class="ac"><b>Accept:</b> contracts merged; mock servers available for both sides.</div></div></div>
+
+<h3>Weeks 2–4 — Public website + CMS (M1)</h3>
+<div class="task"><div class="task-h"><span class="tid">D2.1</span> CMS backend <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li><code>cms_documents</code> keyed store (page sections, blog, faculty, pricing, testimonials, university lists, settings) — mirrors <code>bloom-cms-data.js</code>.</li>
+  <li>CRUD + draft/publish + revision history; <code>media_assets</code> → S3 + CDN; public reads Redis-cached, admin writes invalidate.</li>
+</ul>
+<div class="ac"><b>Accept:</b> publish/unpublish round-trip; rollback works; public endpoint &lt;50ms.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D2.2</span> Public pages (12) — prerendered <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Home, about, courses, ielts, medical, abroad, blog (+post), results, careers, contact, login, platform — all content from CMS API.</li>
+  <li>SEO carried over exactly: OG/Twitter, JSON-LD <code>EducationalOrganization</code>, canonical, sitemap, robots, manifest, icons.</li>
+</ul>
+<div class="ac"><b>Accept:</b> Lighthouse SEO ≥95; view-source shows prerendered content.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D2.3</span> Enquiry pipeline + WAISE alert <span class="pill p-dev">SAHIN&nbsp;M.</span> <span class="pill p-int">INT</span></div><div class="task-b">
+<ul>
+  <li><code>POST /api/enquiries</code> → DB → admin inbox (replaces <code>bloom_enq_queue</code>).</li>
+  <li><code>app/integrations/waise.py</code>: template alert to staff on new enquiry; webhook for inbound replies → enquiry thread.</li>
+</ul>
+<div class="ac"><b>Accept:</b> form submit → admin inbox row + real WhatsApp alert via WAISE.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D2.4</span> Website CMS admin UI + prod deploy <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>"Website Content" admin section (spec: prototype sitecms); optimistic concurrency on publish (the <code>CMS_VERSION</code> equivalent).</li>
+  <li>Deploy with Raja → <b>website live on bloomielts.com → Month-1 checkpoint.</b></li>
+</ul>
+<div class="ac"><b>Accept:</b> staff edits a page → live without deploy; client accepts Month-1 demo.</div></div></div>
+
+<h3>Weeks 5–8 — Unified Admin Panel (M2)</h3>
+<div class="task"><div class="task-h"><span class="tid">D3.1</span> Admin shell + admissions &amp; student records <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Student record CRUD: profile, enrolment, course/batch, staff-gated exam-track assignment, status lifecycle, documents (spec: <code>bloom-ops.js</code>, <code>bloom-admin.js</code>).</li>
+</ul>
+<div class="ac"><b>Accept:</b> staff creates student + assigns track; track change audited.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D3.2</span> Finance: fees, receipts, subscriptions, reminders <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Fee plans, invoices, receipts (PDF), subscription status, overdue reminders → WAISE template; receipts → WhatsApp + email.</li>
+</ul>
+<div class="ac"><b>Accept:</b> record payment → receipt PDF + WhatsApp receipt; overdue list + reminder send.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D3.3</span> Comms, academic, personnel/HR, ops, analytics + CMS merge <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Announcements; academic setup (courses/batches/tracks); personnel + printable HR docs (<code>bloom-hr.js</code>, <code>bloom-hr-docs.js</code>); ops + analytics dashboards.</li>
+  <li>Fold the M1 Website Content UI into the same admin shell — one panel, role-gated.</li>
+</ul>
+<div class="ac"><b>Accept:</b> every admin section in the prototype has a real-data equivalent; single admin login reaches everything.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D3.4</span> Admin mailbox controls <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul><li>Admin UI calling Raja's provisioning API: mailbox list, suspend, reset password, quota per student.</li></ul>
+<div class="ac"><b>Accept:</b> suspend/reset/quota from admin panel reflects on the mail server.</div></div></div>
+
+<h3>Weeks 8–9 — Teachers Panel (M3)</h3>
+<div class="task"><div class="task-h"><span class="tid">D4.1</span> Planner + roster + live console <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Teaching planner (schedule CRUD, batch/calendar), class roster w/ tracks, live teaching console (spec: <code>bloom-faculty.js</code>, <code>bloom-live.js</code>).</li>
+  <li>Zoom/Google Meet link integration; schedule → student timetable → WhatsApp reminder.</li>
+</ul>
+<div class="ac"><b>Accept:</b> teacher schedules class → appears on student schedule → reminder fires.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D4.2</span> Content manager + exam builder <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Upload/tag materials → object storage → library feed by IELTS part (<code>bloom-content.js</code>).</li>
+  <li>Exam builder: passages/sections/questions + per-exam blueprints (<code>bloom-exambuilder.js</code>, <code>bloom-data-exams.js</code>) → publishes into the student exam engine.</li>
+</ul>
+<div class="ac"><b>Accept:</b> teacher-authored section mock → student takes it → score recorded.</div></div></div>
+
+<h3>Weeks 10–12 — Student Panel + go-live (M4/M5)</h3>
+<div class="task"><div class="task-h"><span class="tid">D5.1</span> Registration + student email-ID provisioning <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Sign-up: username with <b>live availability check</b> (debounced → <code>check_username</code> → taken/available + suggestions); confirm → <code>create_mailbox</code> → <code>name@bloomielts.com</code> + credentials shown once + welcome mail/WhatsApp.</li>
+  <li>Webmail (SOGo) link + IMAP/SMTP settings in student profile.</li>
+</ul>
+<div class="ac"><b>Accept:</b> register → usable mailbox in SOGo within 30s; duplicate handled gracefully.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D5.2</span> Placement + dashboard + progress <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul><li>Placement → CEFR estimate; dashboard: weakest-module detection, band trajectory, streaks/badges; English Profile with IELTS↔TOEFL↔PTE↔DET↔Cambridge↔OET concordance (<code>bloom-progress.js</code>).</li></ul>
+<div class="ac"><b>Accept:</b> new student → placement → dashboard shows level + weakest module.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D5.3</span> Exam engine + mocks <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Blueprint engine: IELTS band 0–9, TOEFL iBT (120/116min), PTE (90/120min), Duolingo (160/60min adaptive) — port <code>bloom-data-exams.js</code>.</li>
+  <li>Attempt lifecycle: start → timed sections → autosave → submit → scoring + band report; error-bank capture (<code>bloom-mocks.js</code>, <code>bloom-exams.js</code>); Redis attempt state, safe under exam-day spikes.</li>
+</ul>
+<div class="ac"><b>Accept:</b> full IELTS mock end-to-end → band report; multi-exam engines verified.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D5.4</span> Skill labs (15-part map) <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul><li>Listening P1–4 (audio + answer sheets), Reading P1–3 + GT, Writing T1–2, Speaking P1–3 (record/upload), Grammar &amp; Vocab, Exam Strategy — spec: <code>bloom-reading/writing/speaking/vocab/grammar.js</code>, <code>bloom-data-*.js</code>.</li></ul>
+<div class="ac"><b>Accept:</b> every part in <code>PARTS</code> has working practice UI + saved attempts.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D5.5</span> Planner + library + booking + payments <span class="pill p-dev">SAHIN&nbsp;M.</span> <span class="pill p-int">INT</span></div><div class="task-b">
+<ul>
+  <li>Weighted day-by-day study plan + PDF export (jsPDF); library; 1-on-1 tutor booking (<code>bloom-tutoring.js</code>, <code>bloom-library.js</code>).</li>
+  <li>Razorpay/Cashfree checkout (UPI/cards/EMI); idempotent webhook → ledger + receipt + WhatsApp.</li>
+</ul>
+<div class="ac"><b>Accept:</b> test payment → receipt → finance reflects; duplicate webhook safe.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">D5.6</span> AI tutor chat UI + WhatsApp set + UAT → go-live <span class="pill p-dev">SAHIN&nbsp;M.</span></div><div class="task-b">
+<ul>
+  <li>Chat UI wired to <code>POST /ai/chat</code> (SSE streaming) — replaces simulated <code>bloom-tutor.js</code>.</li>
+  <li>All WAISE templates live: enquiry follow-up, admission confirmation, class reminders, fee receipts, results, document nudges.</li>
+  <li>Client UAT fixes → production cutover with Raja → <b>Month-3 go-live.</b></li>
+</ul>
+<div class="ac"><b>Accept:</b> tutor streams real answers in portal; every WhatsApp trigger verified; client sign-off.</div></div></div>
+
+<h2>3. Raja Sahin track A — DevOps, hosting &amp; mail (what, when)</h2>
+<div class="task"><div class="task-h"><span class="tid">S1 (W1)</span> Environments + CI/CD <span class="pill p-inf">RAJA·OPS</span></div><div class="task-b">
+<ul>
+  <li>App VPS (≥8GB, 16GB recommended): Docker stack (Postgres+pgvector, PgBouncer, Redis, api, web), nginx reverse proxy, TLS, <code>staging.*</code> subdomain.</li>
+  <li>CI: PR → ruff+mypy+pytest (api/ai-tutor), eslint+tsc+vitest (web), docker build; auto-deploy to staging on merge to main.</li>
+  <li>Daily pg_dump backups + uptime probe from day one.</li>
+</ul>
+<div class="ac"><b>Accept:</b> merge → live on staging; backup restores verified once.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">S2 (W3–W6)</span> Mail server — dedicated VPS <span class="pill p-inf">RAJA·OPS</span></div><div class="task-b">
+<ul>
+  <li>Dedicated mail VPS (isolated from app VPS): Postfix + Dovecot + Rspamd + SOGo, dockerised (mailcow-style); mailbox DB + per-mailbox quota.</li>
+  <li>DNS: MX, SPF, DKIM, DMARC, PTR/rDNS · <b>IP warm-up starts W3</b> — deliverability needs weeks of lead time.</li>
+  <li>Provisioning API (per W1 contract): <code>check_username / create_mailbox / suspend / reset / set_quota</code> — token auth + IP allowlist; live by W6.</li>
+  <li>Deliverability monitoring + rate limits; mail-tester score ≥9/10.</li>
+</ul>
+<div class="ac"><b>Accept:</b> mailbox created via API → usable in SOGo/IMAP in seconds; SPF/DKIM/DMARC pass.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">S3 (W4)</span> Production cutover — website <span class="pill p-inf">RAJA·OPS</span></div><div class="task-b">
+<ul><li>Prod VPS, bloomielts.com domain + TLS, CDN, brotli, uptime probe → website live for Month-1 demo.</li></ul></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">S4 (W11–W12)</span> Hardening + go-live <span class="pill p-inf">RAJA·OPS</span></div><div class="task-b">
+<ul>
+  <li>Load test with Sahin M.: hundreds of simultaneous timed mock attempts; PgBouncer/Redis tuning.</li>
+  <li>Security pass (RBAC audit, rate limits, dependency scan); backup restore drill; monitoring + alert routing.</li>
+  <li>Production cutover runbook; ops + handover docs for academy staff.</li>
+</ul>
+<div class="ac"><b>Accept:</b> load report meets target; restore drill done; platform live on prod.</div></div></div>
+
+<h2>4. Raja Sahin track B — Bloom AI Tutor engine (horizontally scalable)</h2>
+<p class="small">Concept: independent deployment, own scaling group. Capacity = number of stateless workers behind the Redis queue — add workers, add capacity. AI down ≠ platform down.</p>
+<div class="task"><div class="task-h"><span class="tid">A1 (W1–W4)</span> Skeleton + knowledge base <span class="pill p-ai">RAJA·AI</span></div><div class="task-b">
+<ul>
+  <li><code>ai-tutor/</code>: FastAPI gateway (auth, rate limits, SSE streaming) → Redis queue → stateless Python worker pool.</li>
+  <li>LangGraph agent graph: <b>profile node</b> (student context from Postgres) → <b>retrieval node</b> (pgvector) → <b>LLM node</b> (streamed).</li>
+  <li>Ingestion: Bloom curriculum → chunking → embeddings → pgvector <code>kb_chunks</code>; re-indexable.</li>
+</ul>
+<div class="ac"><b>Accept:</b> chat request → retrieved-context streamed answer; KB re-index job runs.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">A2 (W5–W8)</span> Quality + personalisation + guardrails <span class="pill p-ai">RAJA·AI</span></div><div class="task-b">
+<ul>
+  <li>RAG quality pass on Bloom material; agent profiles per module (Listening tutor ≠ Writing tutor); guardrails + escalation to a human teacher for off-scope questions.</li>
+  <li>Student-profile context node live (track, CEFR, weak modules, error history); curated eval set + regression harness before any model update.</li>
+</ul>
+<div class="ac"><b>Accept:</b> eval set green; answers cite Bloom KB; student context measurably changes responses.</div></div></div>
+
+<div class="task"><div class="task-h"><span class="tid">A3 (W9–W12)</span> Harden + integrate + meter <span class="pill p-ai">RAJA·AI</span></div><div class="task-b">
+<ul>
+  <li>Harden <code>/ai/chat</code> (rate limits, streaming, fallbacks); per-student usage metering (~₹30–80/student/mo target); single-worker prod deploy (Essentials scope — multi-worker load test + scale-out runbook = post-launch phase).</li>
+  <li>Hand the frozen <code>/ai/chat</code> to Sahin M. for the portal chat UI; isolated production deployment.</li>
+</ul>
+<div class="ac"><b>Accept:</b> tutor live in portal under expected launch load; metering report exists.</div></div></div>
+
+<h2>5. Handoffs &amp; hard dependencies</h2>
+<ul>
+  <li><b>W1 contracts</b> (D1.4) gate everything cross-side: AI, WAISE, mail — freeze in Week 1, no exceptions.</li>
+  <li><b>Mail:</b> Raja's provisioning API (S2, by W6) → gates Sahin M.'s admin mailbox controls (D3.4) and student registration (D5.1, W10). IP warm-up cannot be compressed — start W3.</li>
+  <li><b>AI:</b> Raja's <code>/ai/chat</code> (A3, by W11) → gates Sahin M.'s chat UI (D5.6, W12). Sahin M. builds against the W1 contract stub, never waits for the real service.</li>
+  <li><b>Exam engine:</b> teacher exam builder (D4.2, W9) publishes into the same engine the student mocks use (D5.3, W11) — same codebase, same tables.</li>
+  <li><b>Environments:</b> Raja keeps staging/prod ahead of the build; Sahin M. should never be blocked waiting for a server — escalate same-day if that ever happens.</li>
+</ul>
+
+<h3>Client dependencies (chase early — they gate real work)</h3>
+<table>
+  <tr><th>Item</th><th>Needed by</th><th>Gates</th></tr>
+  <tr><td>Domain + DNS access (bloomielts.com)</td><td>W1</td><td>Deploys, SSL, mail DNS records</td></tr>
+  <tr><td>WAISE.in Professional + API credentials</td><td>W1–2</td><td>Every WhatsApp feature</td></tr>
+  <tr><td>VPS purchases (app ~₹4–8k/mo, mail ~₹3–5k/mo)</td><td>W1</td><td>Staging/prod + mail</td></tr>
+  <tr><td>Razorpay/Cashfree merchant KYC</td><td>W6</td><td>Payments (D5.5)</td></tr>
+  <tr><td>Curriculum content — notes, model answers, question banks, audio</td><td>Rolling; bulk by W4</td><td>AI knowledge base + library</td></tr>
+</table>
+
+<h3>Risk watchlist</h3>
+<ul>
+  <li><b>Single-dev bandwidth</b> — the whole app on one pair of hands; W10–12 is the densest stretch. Weekly demos catch slippage early; scope changes never absorbed silently.</li>
+  <li><b>Mail deliverability</b> — new IP/domain lands in spam without warm-up; that's why DNS auth + warm-up start W3, not later.</li>
+  <li><b>Content dependency</b> — AI tutor and library need curriculum; escalate if the Week-4 bulk handover slips.</li>
+  <li><b>Exam-day load</b> — mock engine load-tested in W11 before go-live, not discovered in production.</li>
+</ul>
+
+<div class="footer">
+  Techfly Engineering — internal developer roadmap · Bloom Academy IELTS Platform · v2.2 · 16 September 2026<br>
+  Companion documents: Proposal v5.0 · Development Roadmap &amp; Milestones (client copy) · Bloom-External-Costs annexure · FMAHTML prototype = functional spec.<br>
+  v2.2 — supersedes v2.1. Restructured to the client&#8217;s &#8377;2.5L package: AI Tutor = Essentials scope, WhatsApp = core template set, external costs in separate annexure. Team unchanged: <b>Raja Sahin</b> owns DevOps + AI engine + email engine + hosting server setup; <b>Sahin Mehbub Sarkar</b> owns all remaining application/feature development.
+</div>
+
+</div></body>
+</html>
