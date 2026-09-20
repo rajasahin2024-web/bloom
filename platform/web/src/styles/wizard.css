@@ -144,6 +144,15 @@
   flex-direction: column;
   position: relative;
   overflow: hidden auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 207, 143, 0.35) transparent;
+}
+.wiz-guide::-webkit-scrollbar {
+  width: 8px;
+}
+.wiz-guide::-webkit-scrollbar-thumb {
+  background: rgba(168, 207, 143, 0.35);
+  border-radius: 0;
 }
 .wiz-guide .fma-crest {
   margin-bottom: 26px;
@@ -281,6 +290,18 @@
   background: var(--surface);
   overflow-y: auto;
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--wz-ink-4) var(--wz-rule);
+}
+.wiz-main::-webkit-scrollbar {
+  width: 8px;
+}
+.wiz-main::-webkit-scrollbar-track {
+  background: var(--wz-rule);
+}
+.wiz-main::-webkit-scrollbar-thumb {
+  background: var(--wz-ink-4);
+  border-radius: 0;
 }
 .wiz-main-inner {
   width: 100%;
