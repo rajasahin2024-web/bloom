@@ -6,7 +6,7 @@ Project: **Bloom Academy IELTS Learning Platform** (Techfly client engagement, p
 
 - `docs/` — all project documents (proposals, architecture, roadmaps, cost annexure) + `docs/tools/` render scripts
 - `platform/` — the actual product code (`api`, `web`, `ai-tutor`, `docker`, `scripts`, `docker-compose.yml`)
-- `prototype/` — client's original FMAHTML front-end prototype bundle (functional spec)
+- `prototype/` — client's original front-end prototype bundle (functional spec). Bloom pages only — the FMA/iMet admin bundle was removed per TEC-78.
 - `misc/` — agent scratch space, **gitignored**
 - `.gitignore` — covers `misc/`, `.scratch/`, env files, build artifacts
 
