@@ -1,19 +1,29 @@
 /**
  * /admin — dedicated admin sign-in.
  *
- * Visual port of prototype/FMA Admin.html's login screen: two-column layout,
- * hero side panel, floating-label inputs, show/hide password eye, same error
- * box — re-branded for Bloom and flattened to zero border-radius.
- * No register/create-account pane: admin self-registration is a security hole.
+ * Visual port of prototype/login.html (the client's green Bloom sign-in):
+ * leaf-green gradient side panel with brand, feature cards and testimonial;
+ * white form panel with label-above fields and a show/hide password eye.
+ * Admin-only — a static role tile instead of the student/teacher/admin
+ * picker, and no self-registration (that would be a security hole).
  */
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError } from "@/lib/api";
 import { useBranding } from "@/lib/branding";
 import { fetchMe, login, saveSession } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
-import { FloatField } from "@/components/FloatField";
-import { ExternalIcon, SignInIcon } from "@/components/icons";
+import {
+  ArrowLeftIcon,
+  ChartLineIcon,
+  EyeIcon,
+  EyeOffIcon,
+  LockIcon,
+  QuoteLeftIcon,
+  ShieldIcon,
+  SignInIcon,
+  UserPlusIcon,
+} from "@/components/icons";
 
 interface AdminLoginProps {
   onSuccess: (session: AdminSession) => void;
@@ -21,8 +31,11 @@ interface AdminLoginProps {
 
 export function AdminLogin({ onSuccess }: AdminLoginProps) {
   const branding = useBranding();
+  const emailId = useId();
+  const pwId = useId();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -57,108 +70,155 @@ export function AdminLogin({ onSuccess }: AdminLoginProps) {
     }
   }
 
-  return (
-    <div className="fma-login">
-      <div className="fma-login-side">
-        <div className="fma-crest">
-          <img
-            src={branding.logo_url ?? "/assets/bloom-mark.png"}
-            alt={branding.name}
-          />
-          <div>
-            <strong>{branding.name}</strong>
-            <span>Admin Portal</span>
-          </div>
-        </div>
-        <div className="fma-ls-min-body">
-          <div className="fma-ls-eyebrow">IELTS 2026 · Enrolments open</div>
-          <h1>
-            The school for <em>English</em>, accepted all over the globe.
-          </h1>
-          <p>
-            Reach your band with teachers who know the exam — structured IELTS
-            preparation, writing &amp; speaking labs, and a study plan weighted
-            to your weakest skill.
-          </p>
-          <div className="fma-hero-stats">
-            <div>
-              <b>2,840</b>
-              <span>Students taught</span>
-            </div>
-            <div>
-              <b>+1.4</b>
-              <span>Avg band gain</span>
-            </div>
-            <div>
-              <b>92%</b>
-              <span>Hit target band</span>
-            </div>
-          </div>
-          <div className="fma-ls-actions">
-            <a className="fma-ls-site-link" href="/">
-              {branding.name} — home <ExternalIcon size={11} />
-            </a>
-          </div>
-        </div>
-      </div>
+  const logo = branding.logo_url ?? "/assets/bloom-mark.png";
 
-      <div className="fma-login-form">
-        <div className="fma-login-form-inner">
-          <div className="fma-eyebrow">Secure sign-in</div>
-          <h2>Welcome back.</h2>
-          <p className="fma-sub">
-            Authenticate to continue to the admin console.
+  return (
+    <div className="blm-auth">
+      {/* ── left panel ── */}
+      <aside className="blm-aside">
+        <a className="blm-aside-brand" href="/">
+          <img src={logo} alt={branding.name} />
+          <div>
+            <b>{branding.name}</b>
+            <span>IELTS Academy</span>
+          </div>
+        </a>
+
+        <div className="blm-aside-body">
+          <div className="blm-eb">Welcome back</div>
+          <h2>
+            Every class, every student, <em>one console</em>.
+          </h2>
+          <p className="blm-aside-lead">
+            Sign in to run {branding.name} — admissions, faculty, finance and
+            the website, all from the same administration panel.
           </p>
+
+          <div className="blm-feats">
+            <div className="blm-feat">
+              <div className="blm-feat-ic">
+                <UserPlusIcon size={15} />
+              </div>
+              <div>
+                <b>Admissions &amp; enrolments</b>
+                <span>Every enquiry lands in one inbox</span>
+              </div>
+            </div>
+            <div className="blm-feat">
+              <div className="blm-feat-ic">
+                <ShieldIcon size={15} />
+              </div>
+              <div>
+                <b>Faculty &amp; live classes</b>
+                <span>Teachers, rosters and the timetable</span>
+              </div>
+            </div>
+            <div className="blm-feat">
+              <div className="blm-feat-ic">
+                <ChartLineIcon size={15} />
+              </div>
+              <div>
+                <b>Reports &amp; operations</b>
+                <span>Attendance, revenue and results</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="blm-aside-quote">
+          <QuoteLeftIcon size={12} />
+          Eleven weeks from Band 6.0 to 7.5. Having a real number instead of
+          encouragement was what kept me going.
+          <div className="blm-aside-quote-by">Priya Sharma · IELTS 7.5</div>
+        </div>
+      </aside>
+
+      {/* ── form panel ── */}
+      <main className="blm-panel">
+        <div className="blm-aform">
+          <div className="blm-aform-top">
+            <a className="blm-back" href="/">
+              <ArrowLeftIcon size={12} />
+              Back to site
+            </a>
+            <img src={logo} alt={branding.name} />
+          </div>
 
           <div
-            className={`fma-err${error ? " show" : ""}`}
+            className={`blm-err${error ? " show" : ""}`}
             role="alert"
             aria-live="polite"
           >
             {error ?? ""}
           </div>
 
-          <form onSubmit={handleSubmit} noValidate>
-            <FloatField
-              label="Email"
-              type="email"
-              autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <FloatField
-              label="Password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+          <h1>Sign in</h1>
+          <p className="blm-sub">
+            This console is restricted to {branding.name} administrators.
+          </p>
 
-            <button
-              className="fma-btn fma-btn-primary fma-login-cta"
-              type="submit"
-              disabled={busy}
-            >
+          <div className="blm-rolecard">
+            <ShieldIcon size={17} />
+            <b>Admin</b>
+            <span>Run the school</span>
+          </div>
+
+          <form onSubmit={handleSubmit} noValidate>
+            <div className="blm-fg">
+              <label htmlFor={emailId}>Email address</label>
+              <input
+                id={emailId}
+                type="email"
+                autoComplete="username"
+                placeholder="you@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="blm-fg">
+              <label htmlFor={pwId}>Password</label>
+              <div className="blm-pw">
+                <input
+                  id={pwId}
+                  type={showPw ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="blm-pw-eye"
+                  onClick={() => setShowPw((s) => !s)}
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                  aria-pressed={showPw}
+                >
+                  {showPw ? <EyeOffIcon size={15} /> : <EyeIcon size={15} />}
+                </button>
+              </div>
+            </div>
+
+            <button className="blm-btn" type="submit" disabled={busy}>
               {busy ? (
                 <>
-                  <span className="wiz-spinner" /> Signing in…
+                  <span className="blm-spinner" /> Signing in…
                 </>
               ) : (
                 <>
-                  <SignInIcon size={13} /> Sign In
+                  <SignInIcon size={14} /> Sign in as admin
                 </>
               )}
             </button>
           </form>
 
-          <div className="fma-login-foot">
-            <span>{branding.name} · admin portal</span>
-            <span>Restricted to administrators</span>
+          <div className="blm-foot">
+            <LockIcon size={11} /> {branding.name} · admin portal — restricted
+            to administrators
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

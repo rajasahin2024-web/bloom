@@ -1,0 +1,420 @@
+/* ═══════════════════════════════════════════════════════════════════
+   BLOOM LOGIN — visual port of prototype/login.html (bloom-site.css).
+   Leaf-green palette + Outfit/Plus Jakarta Sans. Tokens are scoped under
+   .blm-auth so the FMA-themed admin shell elsewhere is unaffected.
+═══════════════════════════════════════════════════════════════════ */
+.blm-auth {
+  --leaf-900: #14351d;
+  --leaf-800: #1f5230;
+  --leaf-700: #2f6b3a;
+  --leaf-600: #3d7a44;
+  --leaf-500: #5da35f;
+  --leaf-400: #7fba7c;
+  --leaf-300: #a3d199;
+  --leaf-200: #c9e5be;
+  --leaf-100: #e4f1dc;
+  --leaf-50: #f2f8ee;
+  --blm-ink: #12211a;
+  --blm-ink-2: #31463b;
+  --blm-ink-3: #5d7266;
+  --blm-ink-4: #647569;
+  --blm-line: #e3ebe4;
+  --blm-line-2: #cfdcd2;
+  --blm-paper: #f6f9f5;
+  --blm-surface: #fff;
+  --blm-display: "Outfit", "Plus Jakarta Sans", system-ui, sans-serif;
+  --blm-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  background: var(--blm-surface);
+  font-family: var(--blm-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--blm-ink);
+}
+
+/* ── left panel ── */
+.blm-aside {
+  background: linear-gradient(
+    160deg,
+    var(--leaf-900),
+    var(--leaf-800) 55%,
+    var(--leaf-700)
+  );
+  color: #fff;
+  padding: 52px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+.blm-aside::before {
+  content: "";
+  position: absolute;
+  right: -160px;
+  top: -140px;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+}
+.blm-aside::after {
+  content: "";
+  position: absolute;
+  left: -120px;
+  bottom: -190px;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+}
+.blm-aside > * {
+  position: relative;
+  z-index: 1;
+}
+
+.blm-aside-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: auto;
+  text-decoration: none;
+}
+.blm-aside-brand img {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+.blm-aside-brand b {
+  font-family: var(--blm-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  display: block;
+  color: #fff;
+}
+.blm-aside-brand span {
+  display: block;
+  font-size: 7.5px;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: var(--leaf-300);
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.blm-aside-body {
+  max-width: 420px;
+}
+.blm-eb {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 9.5px;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: var(--leaf-300);
+  font-weight: 800;
+  margin-bottom: 15px;
+}
+.blm-eb::before {
+  content: "";
+  width: 20px;
+  height: 2px;
+  background: var(--leaf-400);
+  border-radius: 2px;
+}
+.blm-aside-body h2 {
+  font-family: var(--blm-display);
+  font-size: clamp(27px, 3.6vw, 42px);
+  font-weight: 700;
+  letter-spacing: -1.3px;
+  line-height: 1.08;
+  color: #fff;
+  margin: 0;
+}
+.blm-aside-body h2 em {
+  font-style: normal;
+  color: var(--leaf-300);
+}
+.blm-aside-lead {
+  font-size: clamp(15px, 1.5vw, 18px);
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.65;
+  margin-top: 16px;
+}
+
+.blm-feats {
+  display: grid;
+  gap: 14px;
+  margin-top: 34px;
+}
+.blm-feat {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 14px;
+  padding: 15px 17px;
+}
+.blm-feat-ic {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--leaf-300);
+  display: grid;
+  place-items: center;
+}
+.blm-feat b {
+  font-size: 13.5px;
+  display: block;
+  color: #fff;
+}
+.blm-feat span {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.blm-aside-quote {
+  margin-top: auto;
+  padding-top: 34px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.5);
+}
+.blm-aside-quote svg {
+  color: var(--leaf-300);
+  margin-right: 8px;
+}
+.blm-aside-quote-by {
+  margin-top: 9px;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 700;
+}
+
+/* ── form panel ── */
+.blm-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 44px 26px;
+  background: var(--blm-surface);
+}
+.blm-aform {
+  width: 100%;
+  max-width: 400px;
+}
+.blm-aform-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 26px;
+}
+.blm-back {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blm-ink-4);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.blm-back:hover {
+  color: var(--leaf-600);
+}
+.blm-aform-top img {
+  width: 26px;
+  height: 26px;
+}
+
+.blm-err {
+  display: none;
+  background: #fde3df;
+  color: #b73f31;
+  border-radius: 11px;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  gap: 9px;
+  align-items: center;
+}
+.blm-err.show {
+  display: flex;
+}
+
+.blm-aform h1 {
+  font-family: var(--blm-display);
+  font-size: 31px;
+  letter-spacing: -1.3px;
+  font-weight: 700;
+  margin: 0;
+}
+.blm-aform .blm-sub {
+  font-size: 14.5px;
+  color: var(--blm-ink-3);
+  margin-top: 9px;
+  margin-bottom: 26px;
+}
+
+/* Single static role tile — admin-only page keeps the prototype's
+   role-card visual but with no picker. */
+.blm-rolecard {
+  border: 1.5px solid var(--leaf-600);
+  background: var(--leaf-50);
+  border-radius: 13px;
+  padding: 15px 10px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.blm-rolecard svg {
+  display: block;
+  margin: 0 auto 8px;
+  color: var(--leaf-600);
+}
+.blm-rolecard b {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+}
+.blm-rolecard span {
+  display: block;
+  font-size: 10.5px;
+  color: var(--blm-ink-4);
+  margin-top: 2px;
+}
+
+/* Label-above field groups (Bloom .fg) */
+.blm-fg {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.blm-fg label {
+  font-size: 9.5px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--blm-ink-4);
+  font-weight: 800;
+}
+.blm-fg input {
+  border: 1.5px solid var(--blm-line-2);
+  background: var(--blm-surface);
+  border-radius: 12px;
+  padding: 13px 15px;
+  font-family: inherit;
+  font-size: 14.5px;
+  color: var(--blm-ink);
+  outline: none;
+  transition: 0.14s;
+  width: 100%;
+}
+.blm-fg input:focus {
+  border-color: var(--leaf-500);
+  box-shadow: 0 0 0 4px var(--leaf-100);
+}
+.blm-pw {
+  position: relative;
+}
+.blm-pw input {
+  padding-right: 46px;
+}
+.blm-pw-eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: var(--blm-ink-4);
+  cursor: pointer;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+.blm-pw-eye:hover {
+  color: var(--blm-ink-2);
+  background: var(--blm-paper);
+}
+
+/* Primary CTA — Bloom .btn-p .btn-lg */
+.blm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding: 15px 28px;
+  border-radius: 14px;
+  border: 1.5px solid transparent;
+  font-family: inherit;
+  font-size: 15.5px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--leaf-700);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(47, 107, 58, 0.26);
+  transition:
+    transform 0.14s,
+    box-shadow 0.14s,
+    background 0.14s;
+  white-space: nowrap;
+}
+.blm-btn:hover:not(:disabled) {
+  background: var(--leaf-600);
+  box-shadow: 0 10px 26px rgba(47, 107, 58, 0.32);
+  transform: translateY(-1px);
+}
+.blm-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.blm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.blm-foot {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 13.5px;
+  color: var(--blm-ink-3);
+}
+.blm-foot svg {
+  color: var(--leaf-600);
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
+/* Spinner (matches wiz-spinner behaviour) */
+.blm-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: blm-spin 0.7s linear infinite;
+}
+@keyframes blm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive — prototype hides the side panel under 940px */
+@media (max-width: 940px) {
+  .blm-auth {
+    grid-template-columns: 1fr;
+  }
+  .blm-aside {
+    display: none;
+  }
+}

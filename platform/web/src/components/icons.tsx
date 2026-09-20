@@ -123,6 +123,38 @@ export function GradCapIcon(props: IconProps) {
   );
 }
 
+export function ShieldIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M8 0 1 2.8v4.7C1 12 3.9 15.1 8 16c4.1-.9 7-4 7-8.5V2.8L8 0zm0 2.3v11.3c-2.8-.9-4.8-3.3-4.8-6.4V4.5L8 2.3z",
+  );
+}
+
+export function UserPlusIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M5.5 7a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM0 14.6C0 11.6 2.5 9.4 5.5 9.4s5.5 2.2 5.5 5.2c0 .2-.2.4-.4.4H.4c-.2 0-.4-.2-.4-.4zM13 4h1.6v2H17v1.6h-2.4V10H13V7.6h-2.4V6H13V4z",
+  );
+}
+
+export function ChartLineIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M1 1h1.6V13H15v1.6H1V1zm3.4 9.9 2.8-3.7 2.2 2.1L13.6 5l1.1 1.1-5.3 5.4-2.2-2.1-1.8 2.4-1-1z",
+  );
+}
+
+export function QuoteLeftIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M3.5 3C1.9 4.6 1 6.3 1 8.7V13h4.8V8.3H3.6c0-1.5.7-2.6 2-3.4L3.5 3zm7.2 0C9.1 4.6 8.2 6.3 8.2 8.7V13H13V8.3h-2.2c0-1.5.7-2.6 2-3.4L10.7 3z",
+  );
+}
+
 export function ServerIcon(props: IconProps) {
   return svg(
     props.size,
