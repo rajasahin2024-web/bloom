@@ -96,9 +96,13 @@ services:
       REDIS_URL: redis://redis:6379/0
       API_ENV: ${API_ENV:-development}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      # Wizard apply writes .env inside the container; keep it on a volume
+      # so SETUP_COMPLETE / SEED_ADMIN_* survive rebuilds.
+      BLOOM_ENV_FILE: /app/config/.env
     volumes:
       # Wizard-uploaded branding (institute logo) survives rebuilds.
       - api_uploads:/app/uploads
+      - api_config:/app/config
     ports:
       - "8000:8000"
     healthcheck:
@@ -130,6 +134,7 @@ volumes:
   postgres_data:
   redis_data:
   api_uploads:
+  api_config:
 
 networks:
   bloom:

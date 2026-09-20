@@ -101,7 +101,8 @@ database. To initialize the schema (and seed the first admin when the wizard
 collected credentials as `SEED_ADMIN_*`), run once:
 
 ```bash
-./scripts/init-db.sh
+./scripts/init-db.sh            # host venv
+./scripts/init-db.sh --docker   # Docker stack — runs inside the api container
 ```
 
 Manual control when needed:
