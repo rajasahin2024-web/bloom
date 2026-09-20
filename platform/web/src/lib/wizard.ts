@@ -62,6 +62,8 @@ export interface WizardData {
   redisTestedTarget: RedisTarget | null;
   redisResult: RedisTestResult | null;
   admin: AdminForm;
+  /** First-admin registration deferred to the later DB bootstrap. */
+  adminSkipped: boolean;
 }
 
 export const initialWizardData: WizardData = {
@@ -82,6 +84,7 @@ export const initialWizardData: WizardData = {
   redisTestedTarget: null,
   redisResult: null,
   admin: { name: "", email: "", password: "" },
+  adminSkipped: false,
 };
 
 export type FieldErrors<T> = Partial<Record<keyof T, string>>;
@@ -199,7 +202,9 @@ export function instituteStepComplete(data: WizardData): boolean {
   return Object.keys(validateInstituteForm(data.institute)).length === 0;
 }
 
+/** Admin registration is satisfied by an explicit skip or a valid form. */
 export function adminStepComplete(data: WizardData): boolean {
+  if (data.adminSkipped) return true;
   return Object.keys(validateAdminForm(data.admin)).length === 0;
 }
 

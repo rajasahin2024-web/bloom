@@ -1,8 +1,11 @@
 """First-run setup wizard service.
 
 Implements the real work behind `/api/setup/*`: connectivity checks against
-the candidate Postgres/PgBouncer and Redis endpoints, atomic `.env` writes,
-alembic migrations, and first-admin seeding.
+the candidate Postgres/PgBouncer and Redis endpoints, and atomic `.env`
+writes. Apply only stores configuration — it never touches the database.
+Migrations and first-admin seeding run later via `python -m app.bootstrap`
+(`platform/scripts/init-db.sh`), which consumes the SEED_ADMIN_* keys this
+module writes.
 
 The `configured` flag is the commit marker: it is only flipped (in `.env` and
 in-process) after every apply stage has succeeded, so a failed apply leaves
@@ -485,7 +488,12 @@ def _restore_environ(saved: dict[str, str | None]) -> None:
 
 
 def apply_setup(payload: SetupApplyIn) -> SetupApplyOut:
-    """Re-test, write `.env`, migrate, and seed the first admin.
+    """Re-test connectivity, then write `.env` — nothing touches the database.
+
+    Schema migrations and the first-admin seed are deliberately NOT part of
+    apply: the operator runs `platform/scripts/init-db.sh` once, when the
+    database should be initialized. When the wizard collected admin
+    credentials they are stored as SEED_ADMIN_* for that bootstrap.
 
     Failure-safe: `.env` is the last thing written, so a failure at any stage
     leaves the wizard unconfigured and retryable.
@@ -528,6 +536,12 @@ def apply_setup(payload: SetupApplyIn) -> SetupApplyOut:
         }
         if payload.redis is not None:
             updates["REDIS_URL"] = _redis_url(payload.redis)
+        if payload.admin_email is not None:
+            # Deferred admin registration — `app.bootstrap` consumes these
+            # after `alembic upgrade head` and strips them from the env file.
+            updates["SEED_ADMIN_EMAIL"] = str(payload.admin_email)
+            updates["SEED_ADMIN_NAME"] = payload.admin_name or ""
+            updates["SEED_ADMIN_PASSWORD"] = payload.admin_password or ""
 
         # Stage env vars so alembic env.py / settings resolve the new URLs
         # before the file lands on disk. INSTITUTE_LOGO_URL is included so a
@@ -539,19 +553,6 @@ def apply_setup(payload: SetupApplyIn) -> SetupApplyOut:
         try:
             os.environ.update(updates)
             get_settings.cache_clear()
-            try:
-                _run_migrations()
-            except Exception as exc:
-                raise _ApplyStageError(f"Database migrations failed: {exc}") from exc
-            try:
-                _seed_admin(
-                    str(payload.admin_email),
-                    payload.admin_password,
-                    payload.admin_name,
-                    database_url,
-                )
-            except Exception as exc:
-                raise _ApplyStageError(f"Admin user seeding failed: {exc}") from exc
             if payload.institute_logo:
                 try:
                     _save_logo(payload.institute_logo)

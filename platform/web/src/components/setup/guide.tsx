@@ -13,8 +13,10 @@ export function GuideContent({ step }: { step: StepId }) {
           <h3>What this wizard does</h3>
           <p>
             The platform runs on PostgreSQL (with pgvector for the AI tutor)
-            and optionally Redis. This wizard verifies both, runs the
-            database migrations, and creates the first administrator account.
+            and optionally Redis. This wizard verifies both and saves the
+            configuration to <code>platform/.env</code> — it never writes to
+            the database. Schema migrations and the first administrator are
+            created later with <code>platform/scripts/init-db.sh</code>.
           </p>
           <ul>
             <li>
@@ -126,9 +128,10 @@ export function GuideContent({ step }: { step: StepId }) {
             </li>
             <li>
               <b>4 · After apply.</b> App queries use the pooler; migrations
-              need the direct endpoint — edit{" "}
-              <code>DATABASE_URL_DIRECT</code> in <code>.env</code> to the raw
-              Postgres host:port.
+              need the direct endpoint — point{" "}
+              <code>DATABASE_URL_DIRECT</code> in <code>.env</code> at the raw
+              Postgres host:port, then run{" "}
+              <code>platform/scripts/init-db.sh</code>.
             </li>
           </ul>
         </>
@@ -160,19 +163,22 @@ export function GuideContent({ step }: { step: StepId }) {
       return (
         <>
           <div className="wiz-guide-kicker">Final check</div>
-          <h3>Review &amp; create the admin</h3>
+          <h3>Review &amp; apply</h3>
           <ul>
             <li>
               Confirm the endpoints match what you tested — apply re-runs the
               database check before writing anything.
             </li>
             <li>
-              The <b>first administrator</b> is created here. Use a real email
-              and a strong password — this account can do everything.
+              Apply only writes <code>platform/.env</code> — it never touches
+              the database, then locks this wizard for good.
             </li>
             <li>
-              Apply writes <code>platform/.env</code>, runs migrations, seeds
-              the admin, then locks this wizard for good.
+              The <b>first administrator</b> can be registered here (stored as{" "}
+              <code>SEED_ADMIN_*</code>) or skipped entirely. Either way the
+              account is created when you run{" "}
+              <code>platform/scripts/init-db.sh</code>, which also runs the
+              migrations.
             </li>
           </ul>
         </>
@@ -188,12 +194,15 @@ export function GuideContent({ step }: { step: StepId }) {
               endpoint now refuses further calls.
             </li>
             <li>
-              Sign in at <code>/admin</code> with the administrator you just
-              created.
+              Sign in at <code>/admin</code> — you are being redirected there
+              now.
             </li>
             <li>
-              Student and teacher sign-in ships in a later stage — admin is
-              the only entrance today.
+              When the database should be initialized, run{" "}
+              <code>platform/scripts/init-db.sh</code> once — it runs every
+              migration in <code>api/alembic/versions</code> and seeds the
+              admin (from <code>SEED_ADMIN_*</code> if the wizard collected
+              it).
             </li>
           </ul>
         </>

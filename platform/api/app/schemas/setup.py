@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class DatabaseTestIn(BaseModel):
@@ -51,14 +51,28 @@ class RedisTestOut(BaseModel):
 class SetupApplyIn(BaseModel):
     database: DatabaseTestIn
     redis: RedisTestIn | None = None
-    admin_email: EmailStr
-    admin_password: str = Field(min_length=8, max_length=128)
-    admin_name: str = Field(min_length=1, max_length=200)
+    # First-admin registration is optional (the wizard can skip it). Given
+    # together, the trio is stored as SEED_ADMIN_* in .env and consumed by
+    # `python -m app.bootstrap` when the operator initializes the database.
+    admin_email: EmailStr | None = None
+    admin_password: str | None = Field(default=None, min_length=8, max_length=128)
+    admin_name: str | None = Field(default=None, min_length=1, max_length=200)
     # Institute identity — pushed into env-backed core settings on apply.
     institute_name: str = Field(min_length=1, max_length=200)
     institute_tagline: str = Field(default="", max_length=300)
     # Optional logo as a `data:image/{png|jpeg|webp};base64,…` URL.
     institute_logo: str | None = Field(default=None, max_length=750_000)
+
+    @model_validator(mode="after")
+    def _admin_all_or_none(self) -> SetupApplyIn:
+        parts = (self.admin_email, self.admin_password, self.admin_name)
+        if any(p is not None for p in parts) and not all(
+            p is not None for p in parts
+        ):
+            raise ValueError(
+                "admin_email, admin_password and admin_name must be sent together"
+            )
+        return self
 
 
 class BrandingOut(BaseModel):

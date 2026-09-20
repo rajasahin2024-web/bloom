@@ -92,8 +92,19 @@ docker compose ps          # all services healthy
 
 ## Database migrations (Alembic)
 
-Migrations connect **directly** to Postgres (`DATABASE_URL_DIRECT`), bypassing
-PgBouncer, so DDL is safe under session mode.
+All migrations live in one place: `api/alembic/versions`. They connect
+**directly** to Postgres (`DATABASE_URL_DIRECT`), bypassing PgBouncer, so DDL
+is safe under session mode.
+
+The `/setup` wizard's apply step only writes `.env` — it never touches the
+database. To initialize the schema (and seed the first admin when the wizard
+collected credentials as `SEED_ADMIN_*`), run once:
+
+```bash
+./scripts/init-db.sh
+```
+
+Manual control when needed:
 
 ```bash
 cd api
@@ -107,6 +118,10 @@ alembic upgrade head
 
 # Rollback one
 alembic downgrade -1
+
+# Seed/reseed the first admin without a wizard-provided SEED_ADMIN_*
+SEED_ADMIN_EMAIL=admin@example.com SEED_ADMIN_PASSWORD=… \
+  SEED_ADMIN_NAME="Admin" python -m app.bootstrap
 ```
 
 ## Lint / typecheck / test

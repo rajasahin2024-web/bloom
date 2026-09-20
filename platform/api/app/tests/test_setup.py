@@ -16,6 +16,7 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
+from app import bootstrap
 from app.core.config import get_settings
 from app.main import app
 from app.services import setup as setup_service
@@ -40,6 +41,9 @@ _APPLY_ENV_KEYS = (
     "INSTITUTE_NAME",
     "INSTITUTE_TAGLINE",
     "INSTITUTE_LOGO_URL",
+    "SEED_ADMIN_EMAIL",
+    "SEED_ADMIN_NAME",
+    "SEED_ADMIN_PASSWORD",
 )
 
 
@@ -422,7 +426,8 @@ def test_apply_end_to_end(scratch_env: Path, monkeypatch: pytest.MonkeyPatch) ->
     body = response.json()
     try:
         assert body == {"ok": True, "configured": True, "error": None}
-        # env file written with the required keys
+        # env file written with the required keys — including the deferred
+        # SEED_ADMIN_* credentials the bootstrap consumes later
         content = scratch_env.read_text()
         for key in (
             "DATABASE_URL",
@@ -433,6 +438,9 @@ def test_apply_end_to_end(scratch_env: Path, monkeypatch: pytest.MonkeyPatch) ->
             'INSTITUTE_NAME="Test IELTS Institute"',
             'INSTITUTE_TAGLINE="Band 7 or bust"',
             "INSTITUTE_LOGO_URL=/api/branding/logo",
+            f"SEED_ADMIN_EMAIL={email}",
+            'SEED_ADMIN_NAME="Setup Test Admin"',
+            "SEED_ADMIN_PASSWORD=password123",
         ):
             assert key in content
         # uploaded logo landed on disk and is served
@@ -440,7 +448,19 @@ def test_apply_end_to_end(scratch_env: Path, monkeypatch: pytest.MonkeyPatch) ->
         logo_resp = client.get("/api/branding/logo")
         assert logo_resp.status_code == 200
         assert logo_resp.headers["content-type"] == "image/png"
-        # admin row exists with role=admin
+        # apply must not touch the database — no admin row yet
+        conn = psycopg.connect(
+            host=PG_HOST, port=PG_PORT, dbname=PG_DB, user=PG_USER, password=PG_PASSWORD
+        )
+        row = conn.execute(
+            "SELECT role FROM users WHERE email = %s", (email,)
+        ).fetchone()
+        conn.close()
+        assert row is None
+        # wizard is now locked
+        assert client.get("/api/setup/status").status_code == 410
+        # ── later one-shot bootstrap: migrate + seed admin ──
+        assert bootstrap.main() == 0
         conn = psycopg.connect(
             host=PG_HOST, port=PG_PORT, dbname=PG_DB, user=PG_USER, password=PG_PASSWORD
         )
@@ -449,8 +469,8 @@ def test_apply_end_to_end(scratch_env: Path, monkeypatch: pytest.MonkeyPatch) ->
         ).fetchone()
         conn.close()
         assert row is not None and row[0] == "admin"
-        # wizard is now locked
-        assert client.get("/api/setup/status").status_code == 410
+        # seed credentials were stripped from the env file after seeding
+        assert "SEED_ADMIN" not in scratch_env.read_text()
     finally:
         # clean up the seeded admin row from the dev database
         conn = psycopg.connect(
@@ -463,3 +483,44 @@ def test_apply_end_to_end(scratch_env: Path, monkeypatch: pytest.MonkeyPatch) ->
         )
         conn.execute("DELETE FROM users WHERE email = %s", (email,))
         conn.close()
+
+
+@requires_infra
+def test_apply_admin_skipped(scratch_env: Path) -> None:
+    """Apply succeeds with no admin fields and stores no SEED_ADMIN_* keys."""
+    response = client.post(
+        "/api/setup/apply",
+        json={
+            "database": {
+                "host": PG_HOST,
+                "port": PG_PORT,
+                "database": PG_DB,
+                "username": PG_USER,
+                "password": PG_PASSWORD,
+                "connection_type": "direct",
+            },
+            "redis": None,
+            "institute_name": "Test IELTS Institute",
+        },
+    )
+    assert response.json() == {"ok": True, "configured": True, "error": None}
+    assert "SEED_ADMIN" not in scratch_env.read_text()
+
+
+def test_apply_admin_partial_rejected(scratch_env: Path) -> None:
+    """admin_* are all-or-none — a lone email must be a 422."""
+    response = client.post(
+        "/api/setup/apply",
+        json={
+            "database": {
+                "host": "127.0.0.1",
+                "port": 1,
+                "database": "bloom",
+                "username": "bloom",
+                "password": "x",
+            },
+            "admin_email": "admin@techfly.dev",
+            "institute_name": "Test IELTS Institute",
+        },
+    )
+    assert response.status_code == 422

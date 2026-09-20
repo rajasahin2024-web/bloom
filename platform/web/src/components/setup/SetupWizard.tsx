@@ -5,7 +5,7 @@
  * Left guide panel explains where every value lives (aaPanel + docker paths);
  * right panel runs the step forms against the fixed /api/setup/* contract.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError } from "@/lib/api";
 import { applySetup, testDatabase, testRedis } from "@/lib/setup";
@@ -56,6 +56,14 @@ export function SetupWizard() {
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const eyebrow = `Step ${stepIndex + 1} of ${STEPS.length} · ${STEPS[stepIndex].title}`;
+
+  // Setup applied → hand over to the admin sign-in. A full navigation runs
+  // the SetupGate fresh, so the locked wizard can't bounce the user back.
+  useEffect(() => {
+    if (step !== "done") return;
+    const timer = window.setTimeout(() => window.location.assign("/admin"), 1600);
+    return () => window.clearTimeout(timer);
+  }, [step]);
 
   function patch<K extends keyof WizardData>(key: K, value: WizardData[K]) {
     setData((d) => ({ ...d, [key]: value }));
@@ -163,7 +171,7 @@ export function SetupWizard() {
 
   // ── step 4: apply ─────────────────────────────────────────────────
   async function runApply() {
-    const errs = validateAdminForm(data.admin);
+    const errs = data.adminSkipped ? {} : validateAdminForm(data.admin);
     setErrors(errs);
     setStepError(null);
     if (Object.keys(errs).length > 0) return;
@@ -175,9 +183,9 @@ export function SetupWizard() {
       const result = await applySetup({
         database,
         redis,
-        admin_email: data.admin.email.trim(),
-        admin_password: data.admin.password,
-        admin_name: data.admin.name.trim(),
+        admin_email: data.adminSkipped ? null : data.admin.email.trim(),
+        admin_password: data.adminSkipped ? null : data.admin.password,
+        admin_name: data.adminSkipped ? null : data.admin.name.trim(),
         institute_name: data.institute.name.trim(),
         institute_tagline: data.institute.tagline.trim(),
         institute_logo: data.institute.logoDataUrl,
@@ -267,9 +275,11 @@ export function SetupWizard() {
               <div className="fma-eyebrow">{eyebrow}</div>
               <h2>Set up your platform.</h2>
               <p className="fma-sub">
-                This one-time installer names the institute, connects the
-                platform to its database and cache, runs the migrations, and
-                creates the first administrator. It takes about two minutes.
+                This one-time installer names the institute, verifies the
+                database and cache connections, and saves everything to{" "}
+                <code>platform/.env</code>. Database migrations and the first
+                administrator are created later with{" "}
+                <code>scripts/init-db.sh</code>. It takes about two minutes.
               </p>
               <ul className="wiz-list">
                 <li>
@@ -297,7 +307,8 @@ export function SetupWizard() {
                   <LockIcon size={15} />
                   <span>
                     <b>First admin</b> — the email and password you will use to
-                    sign in at <code>/admin</code>.
+                    sign in at <code>/admin</code>. Optional — skip it and seed
+                    the account later.
                   </span>
                 </li>
               </ul>
@@ -739,9 +750,11 @@ export function SetupWizard() {
               <div className="fma-eyebrow">{eyebrow}</div>
               <h2>Review, then apply.</h2>
               <p className="fma-sub">
-                Applying re-tests the database, runs migrations, seeds the
-                first administrator and writes <code>platform/.env</code>. The
-                wizard locks permanently afterwards.
+                Applying re-tests the database and writes{" "}
+                <code>platform/.env</code> — it does not touch the database
+                itself. Run <code>platform/scripts/init-db.sh</code> once to
+                create the schema and seed the first admin. The wizard locks
+                permanently afterwards.
               </p>
 
               <StepError message={stepError} />
@@ -777,54 +790,88 @@ export function SetupWizard() {
                 </dl>
               </div>
 
-              <div className="fma-field">
-                <label htmlFor="ad-name">Administrator name</label>
-                <input
-                  id="ad-name"
-                  value={data.admin.name}
-                  onChange={(e) =>
-                    patch("admin", { ...data.admin, name: e.target.value })
-                  }
-                  placeholder="Full name"
-                  autoComplete="name"
-                  className={errors.name ? "invalid" : ""}
-                />
-                {errors.name && <div className="fma-field-msg">{errors.name}</div>}
-              </div>
-              <div className="wiz-grid-2 even">
-                <div className={`fma-field${errors.email ? " invalid" : ""}`}>
-                  <label htmlFor="ad-email">Admin email</label>
-                  <input
-                    id="ad-email"
-                    type="email"
-                    value={data.admin.email}
-                    onChange={(e) =>
-                      patch("admin", { ...data.admin, email: e.target.value })
-                    }
-                    placeholder="admin@example.com"
-                    autoComplete="email"
-                  />
-                  {errors.email && (
-                    <div className="fma-field-msg">{errors.email}</div>
-                  )}
+              {data.adminSkipped ? (
+                <div className="fma-note info" role="note">
+                  Admin registration skipped — the first administrator is
+                  seeded later by <code>platform/scripts/init-db.sh</code> (set{" "}
+                  <code>SEED_ADMIN_*</code> in <code>.env</code>, or re-run with
+                  them inline).{" "}
+                  <button
+                    type="button"
+                    className="fma-btn fma-btn-ghost wiz-admin-unskip"
+                    onClick={() => patch("adminSkipped", false)}
+                  >
+                    Add admin now
+                  </button>
                 </div>
-                <div className={`fma-field${errors.password ? " invalid" : ""}`}>
-                  <label htmlFor="ad-pass">Admin password</label>
-                  <input
-                    id="ad-pass"
-                    type="password"
-                    value={data.admin.password}
-                    onChange={(e) =>
-                      patch("admin", { ...data.admin, password: e.target.value })
-                    }
-                    placeholder="minimum 8 characters"
-                    autoComplete="new-password"
-                  />
-                  {errors.password && (
-                    <div className="fma-field-msg">{errors.password}</div>
-                  )}
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="fma-field">
+                    <label htmlFor="ad-name">Administrator name</label>
+                    <input
+                      id="ad-name"
+                      value={data.admin.name}
+                      onChange={(e) =>
+                        patch("admin", { ...data.admin, name: e.target.value })
+                      }
+                      placeholder="Full name"
+                      autoComplete="name"
+                      className={errors.name ? "invalid" : ""}
+                    />
+                    {errors.name && (
+                      <div className="fma-field-msg">{errors.name}</div>
+                    )}
+                  </div>
+                  <div className="wiz-grid-2 even">
+                    <div className={`fma-field${errors.email ? " invalid" : ""}`}>
+                      <label htmlFor="ad-email">Admin email</label>
+                      <input
+                        id="ad-email"
+                        type="email"
+                        value={data.admin.email}
+                        onChange={(e) =>
+                          patch("admin", { ...data.admin, email: e.target.value })
+                        }
+                        placeholder="admin@example.com"
+                        autoComplete="email"
+                      />
+                      {errors.email && (
+                        <div className="fma-field-msg">{errors.email}</div>
+                      )}
+                    </div>
+                    <div
+                      className={`fma-field${errors.password ? " invalid" : ""}`}
+                    >
+                      <label htmlFor="ad-pass">Admin password</label>
+                      <input
+                        id="ad-pass"
+                        type="password"
+                        value={data.admin.password}
+                        onChange={(e) =>
+                          patch("admin", {
+                            ...data.admin,
+                            password: e.target.value,
+                          })
+                        }
+                        placeholder="minimum 8 characters"
+                        autoComplete="new-password"
+                      />
+                      {errors.password && (
+                        <div className="fma-field-msg">{errors.password}</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="wiz-actions">
+                    <button
+                      type="button"
+                      className="fma-btn fma-btn-ghost"
+                      onClick={() => patch("adminSkipped", true)}
+                    >
+                      Skip admin for now
+                    </button>
+                  </div>
+                </>
+              )}
 
               <div className="wiz-actions">
                 <button
@@ -859,11 +906,18 @@ export function SetupWizard() {
               <div className="fma-eyebrow">{eyebrow}</div>
               <h2>{data.institute.name.trim() || "Your platform"} is configured.</h2>
               <p className="fma-sub">
-                Migrations ran, the first administrator was created, the
-                institute settings were saved and <code>platform/.env</code>{" "}
-                was written. This wizard is now locked — every setup endpoint
-                refuses further calls.
+                The institute settings were saved and <code>platform/.env</code>{" "}
+                was written — nothing touched the database. This wizard is now
+                locked — every setup endpoint refuses further calls. Taking you
+                to the admin sign-in…
               </p>
+              {data.adminSkipped && (
+                <div className="fma-note info" role="note">
+                  No admin exists yet — run{" "}
+                  <code>platform/scripts/init-db.sh</code> (with{" "}
+                  <code>SEED_ADMIN_*</code> set) to create one before signing in.
+                </div>
+              )}
               <div className="wiz-actions">
                 <Link
                   to="/admin"

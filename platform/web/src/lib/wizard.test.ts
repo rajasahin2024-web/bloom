@@ -200,6 +200,11 @@ describe("step completion gates", () => {
     };
     expect(adminStepComplete(filled)).toBe(true);
   });
+  it("admin step completes on explicit skip", () => {
+    expect(
+      adminStepComplete({ ...initialWizardData, adminSkipped: true }),
+    ).toBe(true);
+  });
 });
 
 describe("checkLabel", () => {

@@ -47,9 +47,10 @@ export interface RedisTestResult {
 export interface SetupApplyPayload {
   database: DatabaseTarget;
   redis: RedisTarget | null;
-  admin_email: string;
-  admin_password: string;
-  admin_name: string;
+  /** First-admin credentials — all three together, or all null when skipped. */
+  admin_email: string | null;
+  admin_password: string | null;
+  admin_name: string | null;
   institute_name: string;
   institute_tagline: string;
   /** `data:image/...;base64,…` URL, or null when no logo was picked. */
