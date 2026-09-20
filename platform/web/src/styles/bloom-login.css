@@ -263,31 +263,25 @@
   margin-bottom: 26px;
 }
 
-/* Single static role tile — admin-only page keeps the prototype's
-   role-card visual but with no picker. */
-.blm-rolecard {
-  border: 1.5px solid var(--leaf-600);
+/* Restricted-access tag — small security pill above the heading,
+   replaces the old big role tile. */
+.blm-sectag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9.5px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--leaf-700);
   background: var(--leaf-50);
-  border-radius: 13px;
-  padding: 15px 10px;
-  text-align: center;
-  margin-bottom: 20px;
+  border: 1px solid var(--leaf-200);
+  border-radius: 999px;
+  padding: 6px 13px;
+  margin-bottom: 18px;
 }
-.blm-rolecard svg {
-  display: block;
-  margin: 0 auto 8px;
+.blm-sectag svg {
   color: var(--leaf-600);
-}
-.blm-rolecard b {
-  display: block;
-  font-size: 13px;
-  font-weight: 700;
-}
-.blm-rolecard span {
-  display: block;
-  font-size: 10.5px;
-  color: var(--blm-ink-4);
-  margin-top: 2px;
 }
 
 /* Label-above field groups (Bloom .fg) */

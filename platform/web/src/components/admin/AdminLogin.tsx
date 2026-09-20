@@ -4,8 +4,9 @@
  * Visual port of prototype/login.html (the client's green Bloom sign-in):
  * leaf-green gradient side panel with brand, feature cards and testimonial;
  * white form panel with label-above fields and a show/hide password eye.
- * Admin-only — a static role tile instead of the student/teacher/admin
- * picker, and no self-registration (that would be a security hole).
+ * Admin-only — a small restricted-access tag instead of the
+ * student/teacher/admin role picker, and no self-registration (that
+ * would be a security hole).
  */
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
@@ -152,16 +153,15 @@ export function AdminLogin({ onSuccess }: AdminLoginProps) {
             {error ?? ""}
           </div>
 
-          <h1>Sign in</h1>
-          <p className="blm-sub">
-            This console is restricted to {branding.name} administrators.
-          </p>
-
-          <div className="blm-rolecard">
-            <ShieldIcon size={17} />
-            <b>Admin</b>
-            <span>Run the school</span>
+          <div className="blm-sectag">
+            <ShieldIcon size={11} />
+            Restricted area · admin access only
           </div>
+
+          <h1>Admin console</h1>
+          <p className="blm-sub">
+            Sign in with your {branding.name} administrator account.
+          </p>
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="blm-fg">
@@ -207,15 +207,15 @@ export function AdminLogin({ onSuccess }: AdminLoginProps) {
                 </>
               ) : (
                 <>
-                  <SignInIcon size={14} /> Sign in as admin
+                  <SignInIcon size={14} /> Sign in to console
                 </>
               )}
             </button>
           </form>
 
           <div className="blm-foot">
-            <LockIcon size={11} /> {branding.name} · admin portal — restricted
-            to administrators
+            <LockIcon size={11} /> Authorized personnel only — access is
+            logged
           </div>
         </div>
       </main>
