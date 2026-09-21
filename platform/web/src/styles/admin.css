@@ -66,6 +66,7 @@
   place-items: center;
   width: 44px;
   height: 44px;
+  flex: 0 0 44px;
   border: none;
   background: transparent;
   color: var(--blm-ink-2);
@@ -83,6 +84,7 @@
   gap: 9px;
   text-decoration: none;
   min-width: 0;
+  min-height: 44px;
 }
 .adm-brand img {
   width: 30px;
@@ -233,13 +235,15 @@
   align-items: center;
   gap: 4px;
   margin-left: auto;
+  flex: 0 0 auto;
 }
 .adm-icbtn {
   position: relative;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
   border: none;
   background: transparent;
   color: var(--blm-ink-3);
@@ -276,6 +280,7 @@
   padding: 4px;
   border-radius: 10px;
   cursor: pointer;
+  min-height: 44px;
 }
 .adm-avatar:hover {
   background: var(--blm-paper-2);
@@ -930,6 +935,11 @@
   }
   .adm-nav {
     display: flex;
+  }
+  .adm-icbtn {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
   }
   .adm-main {
     padding: 22px 24px 48px;
