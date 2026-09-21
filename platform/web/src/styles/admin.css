@@ -507,8 +507,6 @@
   padding: 18px 14px 40px;
 }
 .adm-dash {
-  max-width: 1180px;
-  margin: 0 auto;
   display: grid;
   gap: 14px;
 }
@@ -942,7 +940,7 @@
     flex-basis: 34px;
   }
   .adm-main {
-    padding: 22px 24px 48px;
+    padding: 22px 18px 48px;
   }
   .adm-phead {
     flex-direction: row;
