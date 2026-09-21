@@ -6,6 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { AdminLogin } from "@/components/admin/AdminLogin";
+import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import {
   clearSession,
@@ -47,7 +48,9 @@ export function AdminPage() {
 
   if (session) {
     return (
-      <AdminDashboard session={session} onSignOut={() => setSession(null)} />
+      <AdminShell session={session} onSignOut={() => setSession(null)}>
+        <AdminDashboard session={session} />
+      </AdminShell>
     );
   }
   return <AdminLogin onSuccess={setSession} />;
