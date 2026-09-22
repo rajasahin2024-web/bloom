@@ -1,15 +1,17 @@
 /**
  * General Settings — the admin settings page (Settings → General Settings).
  *
- * Full-width like the dashboard: a slim left section-nav (sticky on
- * desktop, a horizontal chip row on mobile) beside grouped setting cards.
- * Every row carries a one-line "what it controls / where it's used" note
- * and a source chip — `env` for installer/prototype defaults, `db` for
- * admin overrides. Edits collect in a draft; a sticky bottom bar offers
- * Save / Discard, and "Reset to defaults" sits behind a confirm dialog.
+ * Wizard layout matching the setup installer: a numbered step rail (dark
+ * leaf panel on desktop, a horizontal step strip on mobile) walks through
+ * one settings group at a time — Institute → Academic → Finance →
+ * Notifications → Platform Info. Every row carries a one-line "what it
+ * controls / where it's used" note and a source chip — `env` for
+ * installer/prototype defaults, `db` for admin overrides. Edits collect
+ * in a draft; a sticky bottom bar offers Save / Discard, and "Reset to
+ * defaults" sits behind a confirm dialog.
  *
- * Platform Info is read-only: live status chips from the settings payload
- * plus /api/health.
+ * Platform Info is the last step — read-only live status chips from the
+ * settings payload plus /api/health.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
@@ -29,8 +31,9 @@ import type {
   SettingsPayload,
 } from "@/lib/settings";
 import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
   CheckIcon,
-  ClockIcon,
   RotateLeftIcon,
   UploadIcon,
   XIcon,
@@ -60,8 +63,8 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
     text: string;
     kind: "ok" | "err";
   } | null>(null);
-  const [active, setActive] = useState("institute");
-  const sectionsRef = useRef<Record<string, HTMLElement | null>>({});
+  const [step, setStep] = useState(0);
+  const wizRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -89,40 +92,32 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
     return () => window.clearTimeout(t);
   }, [notice]);
 
-  const sections = useMemo(() => {
+  // Wizard steps: one per API group, plus the read-only platform status.
+  const steps = useMemo(() => {
     const fromApi = (payload?.groups ?? []).map((g) => ({
       id: g.id,
       label: g.label,
-      count: g.items.length,
+      meta: `${g.items.length} ${g.items.length === 1 ? "field" : "fields"}`,
+      dirty: g.items.filter((i) => i.key in draft).length,
     }));
-    return [...fromApi, { id: "platform", label: "Platform Info", count: 0 }];
-  }, [payload]);
+    return [
+      ...fromApi,
+      { id: "platform", label: "Platform Info", meta: "Read-only", dirty: 0 },
+    ];
+  }, [payload, draft]);
 
-  // Scroll-spy: highlight the section nav entry nearest the viewport top.
-  useEffect(() => {
-    if (!payload) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActive(entry.target.id.replace("set-sec-", ""));
-          }
-        }
-      },
-      { rootMargin: "-90px 0px -65% 0px", threshold: 0 },
-    );
-    for (const el of Object.values(sectionsRef.current)) {
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
-  }, [payload]);
+  const stepCount = steps.length;
+  const current = Math.min(step, Math.max(0, stepCount - 1));
+  const groups = payload?.groups ?? [];
+  const isPlatformStep = current === groups.length;
+  const activeGroup = isPlatformStep ? null : groups[current];
 
-  function scrollTo(id: string) {
-    sectionsRef.current[id]?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-    setActive(id);
+  function goTo(i: number) {
+    const next = Math.min(Math.max(i, 0), stepCount - 1);
+    setStep(next);
+    // Bring the wizard card back to the top so each step reads from its
+    // header — matches installer-style step transitions on small screens.
+    wizRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function setKey(item: SettingItem, value: unknown) {
@@ -388,94 +383,89 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
         </div>
       </div>
 
-      <div className="adm-set-grid">
-        {/* section nav — sticky column on desktop, chip row on mobile */}
-        <nav className="adm-set-nav" aria-label="Settings sections">
-          {sections.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className={`adm-set-nav-i${active === s.id ? " on" : ""}`}
-              onClick={() => scrollTo(s.id)}
-            >
-              {s.label}
-              {s.count > 0 && <span>{s.count}</span>}
-            </button>
-          ))}
-        </nav>
+      {/* wizard card — step rail + current step */}
+      <div className="adm-setwiz" ref={wizRef}>
+        <div className="adm-setwiz-rail">
+          <nav className="adm-setwiz-steps" aria-label="Settings steps">
+            {steps.map((s, i) => (
+              <button
+                key={s.id}
+                type="button"
+                aria-current={current === i ? "step" : undefined}
+                className={`adm-setwiz-step${current === i ? " on" : ""}`}
+                onClick={() => goTo(i)}
+              >
+                <span className="n">{i + 1}</span>
+                <span className="tx">
+                  <span className="lb">{s.label}</span>
+                  <span className="meta">{s.meta}</span>
+                </span>
+                {s.dirty > 0 && <span className="dt">{s.dirty}</span>}
+              </button>
+            ))}
+          </nav>
+          <div className="adm-setwiz-prog">
+            <span className="adm-setwiz-prog-t">
+              Step {current + 1} of {stepCount}
+            </span>
+            <span className="adm-setwiz-prog-bar">
+              <i style={{ width: `${((current + 1) / stepCount) * 100}%` }} />
+            </span>
+          </div>
+        </div>
 
-        <div className="adm-set-body">
-          {payload.groups.map((group) => (
-            <section
-              key={group.id}
-              id={`set-sec-${group.id}`}
-              className="adm-card adm-set-sec"
-              ref={(el) => {
-                sectionsRef.current[group.id] = el;
-              }}
-            >
-              <div className="adm-card-hd">
-                <div style={{ flex: 1 }}>
-                  <h3>
-                    {group.label}
-                    <span className="adm-set-count">{group.items.length}</span>
-                  </h3>
-                  <p>{group.description}</p>
-                </div>
-              </div>
-              <div className="adm-card-bd flush">
-                {group.items.map((item) => {
-                  const fieldError = fieldErrors[item.key];
-                  return (
-                    <div
-                      key={item.key}
-                      className={`adm-set-row${item.key in draft ? " dirty" : ""}`}
-                    >
-                      <div className="adm-set-info">
-                        <div className="adm-set-lb">
-                          <b>{item.label}</b>
-                          <span
-                            className={`adm-src ${item.source}`}
-                            title={
-                              item.source === "db"
-                                ? "Saved in the database — overrides the installer env default"
-                                : "Installer env / prototype default — not yet overridden"
-                            }
-                          >
-                            {item.source === "db" ? "DB override" : "env default"}
-                          </span>
-                        </div>
-                        <p>{item.description}</p>
-                        {fieldError && (
-                          <span className="adm-set-err">{fieldError}</span>
-                        )}
-                      </div>
-                      <div className="adm-set-ctl">
-                        {control(item, Boolean(fieldError))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-
-          {/* platform info — read-only live status */}
-          <section
-            id="set-sec-platform"
-            className="adm-card adm-set-sec"
-            ref={(el) => {
-              sectionsRef.current.platform = el;
-            }}
-          >
-            <div className="adm-card-hd">
-              <div style={{ flex: 1 }}>
-                <h3>Platform Info</h3>
-                <p>Live runtime status — read-only.</p>
-              </div>
-              <ClockIcon size={14} className="adm-hd-ic" />
+        <div className="adm-setwiz-main">
+          <div className="adm-setwiz-head">
+            <div className="adm-eyebrow">
+              Step {current + 1} · {isPlatformStep ? "Status" : "Settings"}
             </div>
-            <div className="adm-card-bd">
+            <h2>{isPlatformStep ? "Platform Info" : activeGroup?.label}</h2>
+            <p>
+              {isPlatformStep
+                ? "Live runtime status — read-only."
+                : activeGroup?.description}
+            </p>
+          </div>
+
+          {activeGroup && (
+            <div className="adm-setwiz-rows">
+              {activeGroup.items.map((item) => {
+                const fieldError = fieldErrors[item.key];
+                return (
+                  <div
+                    key={item.key}
+                    className={`adm-set-row${item.key in draft ? " dirty" : ""}`}
+                  >
+                    <div className="adm-set-info">
+                      <div className="adm-set-lb">
+                        <span className="adm-set-lb-t">{item.label}</span>
+                        <span
+                          className={`adm-src ${item.source}`}
+                          title={
+                            item.source === "db"
+                              ? "Saved in the database — overrides the installer env default"
+                              : "Installer env / prototype default — not yet overridden"
+                          }
+                        >
+                          {item.source === "db" ? "DB override" : "env default"}
+                        </span>
+                      </div>
+                      <p>{item.description}</p>
+                      {fieldError && (
+                        <span className="adm-set-err">{fieldError}</span>
+                      )}
+                    </div>
+                    <div className="adm-set-ctl">
+                      {control(item, Boolean(fieldError))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {isPlatformStep && (
+            <div className="adm-setwiz-rows pad">
               <div className="adm-status-grid">
                 {chips.map((c) => (
                   <div key={c.label} className="adm-status">
@@ -488,7 +478,31 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
                 ))}
               </div>
             </div>
-          </section>
+          )}
+
+          {/* step footer — Back / position / Continue */}
+          <div className="adm-setwiz-foot">
+            <button
+              type="button"
+              className="adm-btn adm-btn-g"
+              onClick={() => goTo(current - 1)}
+              disabled={current === 0}
+            >
+              <ArrowLeftIcon size={12} /> Back
+            </button>
+            <span className="adm-setwiz-pos">
+              {current + 1} / {stepCount}
+            </span>
+            {!isPlatformStep && (
+              <button
+                type="button"
+                className="adm-btn"
+                onClick={() => goTo(current + 1)}
+              >
+                Continue <ArrowRightIcon size={12} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

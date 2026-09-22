@@ -643,6 +643,13 @@
   color: var(--leaf-700);
   border-color: var(--leaf-400);
 }
+.adm-btn:disabled,
+.adm-btn:disabled:hover {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
 .adm-btn .adm-soon {
   margin-left: 2px;
 }
@@ -1039,93 +1046,200 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   GENERAL SETTINGS PAGE (TEC-98) — full width like the dashboard:
-   sticky section nav (left column ≥900px, chip row below), grouped
-   cards of setting rows, sticky unsaved-changes bar, confirm modal.
+   GENERAL SETTINGS PAGE (TEC-98) — wizard layout like the setup
+   installer: numbered step rail (dark leaf panel on desktop, horizontal
+   step strip on mobile), one settings group per step, Back/Continue
+   footer, sticky unsaved-changes bar, confirm modal.
 ═══════════════════════════════════════════════════════════════════ */
 .adm-set {
   display: grid;
   gap: 14px;
   padding-bottom: 76px; /* room for the save bar */
 }
-.adm-set-grid {
+
+/* wizard card */
+.adm-setwiz {
   display: grid;
-  gap: 14px;
-  min-width: 0;
+  grid-template-columns: minmax(0, 1fr); /* cap the auto track — the step
+    strip is scrollable, so its max-content would stretch an auto column */
+  background: var(--blm-surface);
+  border: 1px solid var(--blm-line);
+  border-radius: 14px;
+  box-shadow: var(--adm-sh-1);
+  overflow: hidden;
+  scroll-margin-top: 70px;
 }
 
-/* section nav — horizontal chip row on mobile */
-.adm-set-nav {
+/* step rail — horizontal strip on mobile, dark panel on desktop */
+.adm-setwiz-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden; /* keeps the scrolling step strip out of the grid
+    item's min-content size — otherwise the rail stretches the card */
+  padding: 12px;
+  background:
+    radial-gradient(
+      480px 220px at 90% -20%,
+      rgba(163, 209, 153, 0.16),
+      transparent 60%
+    ),
+    linear-gradient(160deg, var(--leaf-800), var(--leaf-900));
+}
+.adm-setwiz-steps {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  position: sticky;
-  top: 60px;
-  z-index: 40;
-  padding: 6px 2px;
-  background: var(--blm-paper);
   scrollbar-width: none;
 }
-.adm-set-nav::-webkit-scrollbar {
+.adm-setwiz-steps::-webkit-scrollbar {
   display: none;
 }
-.adm-set-nav-i {
+.adm-setwiz-step {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 9px;
   flex: 0 0 auto;
-  border: 1px solid var(--blm-line);
-  background: var(--blm-surface);
-  border-radius: 9px;
-  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: transparent;
+  padding: 8px 10px;
   font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--blm-ink-3);
+  color: rgba(255, 255, 255, 0.62);
   cursor: pointer;
-  white-space: nowrap;
+  text-align: left;
+  transition:
+    background 0.14s,
+    border-color 0.14s,
+    color 0.14s;
 }
-.adm-set-nav-i:hover {
-  border-color: var(--leaf-400);
-  color: var(--leaf-700);
-}
-.adm-set-nav-i.on {
-  background: var(--leaf-700);
-  border-color: var(--leaf-700);
+.adm-setwiz-step:hover {
   color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
 }
-.adm-set-nav-i span {
-  font-size: 9.5px;
-  font-weight: 800;
-  background: var(--blm-paper-2);
-  border-radius: 5px;
-  padding: 1px 6px;
-  color: var(--blm-ink-4);
-}
-.adm-set-nav-i.on span {
-  background: rgba(255, 255, 255, 0.22);
+.adm-setwiz-step.on {
   color: #fff;
+  background: rgba(163, 209, 153, 0.14);
+  border-color: var(--leaf-300);
 }
-
-.adm-set-body {
+.adm-setwiz-step .n {
   display: grid;
-  gap: 14px;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 7px;
+  font-family: var(--adm-display);
+  font-size: 11px;
+  font-weight: 600;
+}
+.adm-setwiz-step.on .n {
+  background: var(--leaf-300);
+  border-color: var(--leaf-300);
+  color: var(--leaf-900);
+}
+.adm-setwiz-step .tx {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
-.adm-set-sec {
-  scroll-margin-top: 118px;
+.adm-setwiz-step .lb {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
 }
-.adm-set-count {
-  display: inline-block;
-  margin-left: 8px;
-  font-family: var(--adm-sans);
+.adm-setwiz-step .meta {
+  display: none; /* desktop rail only */
+}
+.adm-setwiz-step .dt {
+  display: grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--adm-amber);
+  color: #3d2805;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* progress strip under the steps */
+.adm-setwiz-prog {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.adm-setwiz-prog-t {
   font-size: 9.5px;
-  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--leaf-300);
+  white-space: nowrap;
+}
+.adm-setwiz-prog-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+.adm-setwiz-prog-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--leaf-400), var(--leaf-300));
+  transition: width 0.25s;
+}
+
+/* main panel — step head, rows, footer */
+.adm-setwiz-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.adm-setwiz-head {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--blm-line);
+}
+.adm-setwiz-head .adm-eyebrow {
+  margin-bottom: 5px;
+}
+.adm-setwiz-head h2 {
+  font-family: var(--adm-display);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  margin: 0;
+}
+.adm-setwiz-head p {
+  margin: 4px 0 0;
+  font-size: 12px;
   color: var(--blm-ink-4);
-  background: var(--blm-paper-2);
-  border-radius: 5px;
-  padding: 2px 7px;
-  vertical-align: 2px;
+}
+.adm-setwiz-rows.pad {
+  padding: 15px 16px;
+}
+.adm-setwiz-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--blm-line);
+  background: var(--blm-paper);
+}
+.adm-setwiz-foot .adm-btn {
+  min-height: 42px;
+}
+.adm-setwiz-pos {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--blm-ink-4);
+  font-variant-numeric: tabular-nums;
 }
 
 /* setting rows */
@@ -1153,8 +1267,10 @@
   gap: 8px;
   flex-wrap: wrap;
 }
-.adm-set-lb b {
+.adm-set-lb-t {
   font-size: 12.5px;
+  font-weight: 600;
+  color: var(--blm-ink-2);
 }
 .adm-set-info p {
   margin: 3px 0 0;
@@ -1166,7 +1282,7 @@
   display: block;
   margin-top: 5px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: #b73f31;
 }
 .adm-set-ctl {
@@ -1179,7 +1295,7 @@
   font-size: 8px;
   letter-spacing: 0.9px;
   text-transform: uppercase;
-  font-weight: 800;
+  font-weight: 700;
   border-radius: 5px;
   padding: 2px 7px;
   white-space: nowrap;
@@ -1283,7 +1399,7 @@ select.adm-input {
   background: transparent;
   font-family: inherit;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: #b73f31;
   cursor: pointer;
   padding: 6px 4px;
@@ -1310,7 +1426,7 @@ select.adm-input {
 }
 .adm-status-l {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--blm-ink-3);
 }
 .adm-status-v {
@@ -1318,7 +1434,7 @@ select.adm-input {
   align-items: center;
   gap: 6px;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
 }
 .adm-status-v i {
@@ -1487,41 +1603,41 @@ select.adm-input {
   color: var(--leaf-700);
 }
 
-/* ── settings ≥900px ── */
+/* ── settings wizard ≥900px — rail becomes a full-height left panel ── */
 @media (min-width: 900px) {
-  .adm-set-grid {
-    grid-template-columns: 196px minmax(0, 1fr);
-    align-items: start;
-    gap: 18px;
+  .adm-setwiz {
+    grid-template-columns: 248px minmax(0, 1fr);
   }
-  .adm-set-nav {
-    position: sticky;
-    top: 74px;
+  .adm-setwiz-rail {
+    padding: 20px 16px;
+  }
+  .adm-setwiz-steps {
+    flex: 1;
     flex-direction: column;
-    gap: 3px;
-    padding: 0;
-    background: transparent;
+    gap: 4px;
     overflow: visible;
   }
-  .adm-set-nav-i {
+  .adm-setwiz-step {
     width: 100%;
-    justify-content: space-between;
-    border-color: transparent;
-    background: transparent;
-    padding: 8px 11px;
-    font-size: 12.5px;
+    padding: 9px 10px;
   }
-  .adm-set-nav-i.on {
-    background: var(--leaf-50);
-    border-color: var(--leaf-200);
-    color: var(--leaf-700);
+  .adm-setwiz-step .meta {
+    display: block;
+    margin-top: 1px;
+    font-size: 10.5px;
+    color: rgba(255, 255, 255, 0.45);
   }
-  .adm-set-nav-i.on span {
-    background: var(--leaf-100);
-    color: var(--leaf-700);
+  .adm-setwiz-step.on .meta {
+    color: var(--leaf-200);
   }
-  .adm-set-sec {
-    scroll-margin-top: 80px;
+  .adm-setwiz-step .dt {
+    margin-left: auto;
+  }
+  .adm-setwiz-head {
+    padding: 22px 20px 15px;
+  }
+  .adm-setwiz-foot {
+    padding: 13px 20px;
   }
   .adm-set-row {
     flex-direction: row;
