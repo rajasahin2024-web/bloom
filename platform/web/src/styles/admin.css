@@ -218,6 +218,12 @@
   align-items: center;
   gap: 8px;
 }
+.adm-di-ic svg {
+  opacity: 0.72;
+}
+.adm-di:hover .adm-di-ic svg {
+  opacity: 1;
+}
 .adm-di-out {
   color: #b73f31;
   cursor: pointer;
@@ -445,7 +451,7 @@
 }
 .adm-dsub {
   display: none;
-  padding: 2px 0 4px 41px;
+  padding: 2px 0 4px 12px;
 }
 .adm-dsub.show {
   display: block;
@@ -471,6 +477,17 @@
 .adm-dsi:hover {
   background: var(--blm-paper-2);
   color: var(--blm-ink);
+}
+.adm-dsi-ic {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.adm-dsi-ic svg {
+  opacity: 0.72;
+}
+.adm-dsi:hover .adm-dsi-ic svg {
+  opacity: 1;
 }
 .adm-drawer-foot {
   border-top: 1px solid var(--blm-line);

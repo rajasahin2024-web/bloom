@@ -10,6 +10,8 @@
 export interface AdminSubItem {
   id: string;
   label: string;
+  /** Icon key — rendered in the desktop dropdown and the mobile drawer. */
+  icon: AdminNavIcon;
   soon: boolean;
 }
 
@@ -30,11 +32,29 @@ export type AdminNavIcon =
   | "banknote"
   | "users"
   | "spark"
-  | "gear";
+  | "gear"
+  | "layout"
+  | "pen"
+  | "gradcap"
+  | "inbox"
+  | "tasklist"
+  | "userplus"
+  | "chartline"
+  | "envelope"
+  | "quoteleft"
+  | "user"
+  | "file"
+  | "arrowright"
+  | "clock"
+  | "calendarcheck"
+  | "whatsapp"
+  | "search"
+  | "server";
 
-const soon = (id: string, label: string): AdminSubItem => ({
+const soon = (id: string, label: string, icon: AdminNavIcon): AdminSubItem => ({
   id,
   label,
+  icon,
   soon: true,
 });
 
@@ -50,14 +70,14 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Masters",
     icon: "database",
     children: [
-      soon("course-plans", "Course Plans"),
-      soon("modules", "Modules"),
-      soon("content-manager", "Content Manager"),
-      soon("accounts-master", "Accounts Master"),
-      soon("employee-master", "Employee Master"),
-      soon("students-masters", "Students Masters"),
-      soon("enquiries-leads", "Enquiries/Leads"),
-      soon("exam-masters-builder", "Exam Masters / Builder"),
+      soon("course-plans", "Course Plans", "layout"),
+      soon("modules", "Modules", "book"),
+      soon("content-manager", "Content Manager", "pen"),
+      soon("accounts-master", "Accounts Master", "banknote"),
+      soon("employee-master", "Employee Master", "briefcase"),
+      soon("students-masters", "Students Masters", "gradcap"),
+      soon("enquiries-leads", "Enquiries/Leads", "inbox"),
+      soon("exam-masters-builder", "Exam Masters / Builder", "tasklist"),
     ],
   },
   {
@@ -65,9 +85,9 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Academics",
     icon: "book",
     children: [
-      soon("admissions", "Admissions"),
-      soon("track-progress", "Track Progress"),
-      soon("communications", "Communications"),
+      soon("admissions", "Admissions", "userplus"),
+      soon("track-progress", "Track Progress", "chartline"),
+      soon("communications", "Communications", "envelope"),
     ],
   },
   {
@@ -75,9 +95,9 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Admin Operations",
     icon: "briefcase",
     children: [
-      soon("doubt-clear", "Doubt Clear"),
-      soon("one-one-class", "1-1 Class"),
-      soon("school", "School"),
+      soon("doubt-clear", "Doubt Clear", "quoteleft"),
+      soon("one-one-class", "1-1 Class", "user"),
+      soon("school", "School", "gradcap"),
     ],
   },
   {
@@ -85,11 +105,11 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Accounts / Finance",
     icon: "banknote",
     children: [
-      soon("fees-payments", "Fees Payments"),
-      soon("accounts-ledger", "Accounts Ledger"),
-      soon("transfer-payment", "Transfer Payment"),
-      soon("expense-payments", "Expense Payments"),
-      soon("account-overview", "Account Overview"),
+      soon("fees-payments", "Fees Payments", "banknote"),
+      soon("accounts-ledger", "Accounts Ledger", "book"),
+      soon("transfer-payment", "Transfer Payment", "arrowright"),
+      soon("expense-payments", "Expense Payments", "file"),
+      soon("account-overview", "Account Overview", "gauge"),
     ],
   },
   {
@@ -97,13 +117,13 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "HR Management",
     icon: "users",
     children: [
-      soon("onboarding", "Onboarding"),
-      soon("employees", "Employees"),
-      soon("attendance", "Attendance"),
-      soon("payroll", "Payroll"),
-      soon("leaves", "Leaves"),
-      soon("leave-requests", "Leave Requests"),
-      soon("leaves-config", "Leaves Config"),
+      soon("onboarding", "Onboarding", "userplus"),
+      soon("employees", "Employees", "users"),
+      soon("attendance", "Attendance", "clock"),
+      soon("payroll", "Payroll", "banknote"),
+      soon("leaves", "Leaves", "calendarcheck"),
+      soon("leave-requests", "Leave Requests", "tasklist"),
+      soon("leaves-config", "Leaves Config", "gear"),
     ],
   },
   {
@@ -111,10 +131,10 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "AI",
     icon: "spark",
     children: [
-      soon("ai-settings", "AI Settings"),
-      soon("ai-agents", "AI Agents"),
-      soon("credit-log", "Credit Log"),
-      soon("knowledge-graph", "Knowledge Graph"),
+      soon("ai-settings", "AI Settings", "gear"),
+      soon("ai-agents", "AI Agents", "spark"),
+      soon("credit-log", "Credit Log", "tasklist"),
+      soon("knowledge-graph", "Knowledge Graph", "database"),
     ],
   },
   {
@@ -122,14 +142,14 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Settings",
     icon: "gear",
     children: [
-      soon("general-settings", "General Settings"),
-      soon("site-settings", "Site Settings"),
-      soon("email-engine", "Email Engine"),
-      soon("whatsapp-api", "WhatsApp API"),
-      soon("seo-settings", "SEO Settings"),
-      soon("aeo-settings", "AEO Settings"),
-      soon("sitemaps", "Sitemaps"),
-      soon("redis", "Redis"),
+      soon("general-settings", "General Settings", "gear"),
+      soon("site-settings", "Site Settings", "layout"),
+      soon("email-engine", "Email Engine", "envelope"),
+      soon("whatsapp-api", "WhatsApp API", "whatsapp"),
+      soon("seo-settings", "SEO Settings", "search"),
+      soon("aeo-settings", "AEO Settings", "spark"),
+      soon("sitemaps", "Sitemaps", "file"),
+      soon("redis", "Redis", "server"),
     ],
   },
 ];

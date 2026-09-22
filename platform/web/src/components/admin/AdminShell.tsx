@@ -18,20 +18,35 @@ import { clearSession } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
 import {
+  ArrowRightIcon,
   BanknoteIcon,
   BellIcon,
   BookOpenIcon,
   BriefcaseIcon,
+  CalendarCheckIcon,
+  ChartLineIcon,
   ChevronIcon,
+  ClockIcon,
   DatabaseIcon,
+  EnvelopeIcon,
+  FileIcon,
   GaugeIcon,
   GearIcon,
+  GradCapIcon,
+  InboxIcon,
+  LayoutIcon,
   MenuIcon,
+  PenIcon,
+  QuoteLeftIcon,
   SearchIcon,
+  ServerIcon,
   SignOutIcon,
   SparkIcon,
+  TaskListIcon,
   UserIcon,
+  UserPlusIcon,
   UsersIcon,
+  WhatsAppIcon,
   XIcon,
 } from "@/components/icons";
 
@@ -44,6 +59,23 @@ const NAV_ICONS: Record<AdminNavIcon, (p: { size?: number }) => ReactNode> = {
   users: (p) => <UsersIcon {...p} />,
   spark: (p) => <SparkIcon {...p} />,
   gear: (p) => <GearIcon {...p} />,
+  layout: (p) => <LayoutIcon {...p} />,
+  pen: (p) => <PenIcon {...p} />,
+  gradcap: (p) => <GradCapIcon {...p} />,
+  inbox: (p) => <InboxIcon {...p} />,
+  tasklist: (p) => <TaskListIcon {...p} />,
+  userplus: (p) => <UserPlusIcon {...p} />,
+  chartline: (p) => <ChartLineIcon {...p} />,
+  envelope: (p) => <EnvelopeIcon {...p} />,
+  quoteleft: (p) => <QuoteLeftIcon {...p} />,
+  user: (p) => <UserIcon {...p} />,
+  file: (p) => <FileIcon {...p} />,
+  arrowright: (p) => <ArrowRightIcon {...p} />,
+  clock: (p) => <ClockIcon {...p} />,
+  calendarcheck: (p) => <CalendarCheckIcon {...p} />,
+  whatsapp: (p) => <WhatsAppIcon {...p} />,
+  search: (p) => <SearchIcon {...p} />,
+  server: (p) => <ServerIcon {...p} />,
 };
 
 function initials(name: string): string {
@@ -192,7 +224,10 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                         className="adm-di"
                         aria-disabled="true"
                       >
-                        <span>{sub.label}</span>
+                        <span className="adm-di-ic">
+                          {NAV_ICONS[sub.icon]({ size: 12 })}
+                          {sub.label}
+                        </span>
                         {sub.soon && <SoonBadge />}
                       </button>
                     ))}
@@ -317,7 +352,10 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                       className="adm-dsi"
                       aria-disabled="true"
                     >
-                      <span>{sub.label}</span>
+                      <span className="adm-dsi-ic">
+                        {NAV_ICONS[sub.icon]({ size: 13 })}
+                        {sub.label}
+                      </span>
                       {sub.soon && <SoonBadge />}
                     </button>
                   ))}
