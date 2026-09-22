@@ -341,6 +341,22 @@ export function SparkIcon(props: IconProps) {
   );
 }
 
+export function UploadIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M8 1 4.5 4.5l1.1 1.1L7.2 4v8h1.6V4l1.6 1.6 1.1-1.1L8 1zM2 11v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3h-1.6v2.2H3.6V11H2z",
+  );
+}
+
+export function RotateLeftIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M8 3a5 5 0 1 1-4.9 6H1.5A6.5 6.5 0 1 0 8 1.5V0L4.5 3 8 6V3z",
+  );
+}
+
 export function WhatsAppIcon(props: IconProps) {
   return svg(
     props.size,

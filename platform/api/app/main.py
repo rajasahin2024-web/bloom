@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.core.config import get_settings
-from app.routers import auth, branding, cms, content, enquiries, health, setup
+from app.routers import auth, branding, cms, content, enquiries, health, settings, setup
 
 _settings = get_settings()
 
@@ -42,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(enquiries.router)
     app.include_router(cms.router)
     app.include_router(content.router)
+    app.include_router(settings.router)
 
     @app.get("/", include_in_schema=False)
     def root() -> dict[str, Any]:

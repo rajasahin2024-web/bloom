@@ -78,6 +78,17 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+def new_session() -> Session | None:
+    """A session if the DB is configured, else None.
+
+    Unlike `get_db` this never raises — for endpoints (e.g. /api/branding)
+    that must keep serving from env fallbacks before setup completes.
+    """
+    if _session_factory is None:
+        _init_engines()
+    return _session_factory() if _session_factory is not None else None
+
+
 def get_migration_engine() -> Engine:
     """Engine for Alembic migrations — prefers the direct Postgres URL."""
     _init_engines()

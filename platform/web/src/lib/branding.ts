@@ -32,15 +32,27 @@ export function getBranding(): Promise<Branding> {
   return cached;
 }
 
+const BRANDING_EVENT = "bloom:branding-invalidate";
+
+/** Drop the cached branding + notify subscribers (e.g. after a settings save). */
+export function invalidateBranding(): void {
+  cached = null;
+  window.dispatchEvent(new Event(BRANDING_EVENT));
+}
+
 export function useBranding(): Branding {
   const [branding, setBranding] = useState<Branding>(DEFAULT_BRANDING);
   useEffect(() => {
     let live = true;
-    getBranding().then((b) => {
-      if (live) setBranding(b);
-    });
+    const load = () =>
+      getBranding().then((b) => {
+        if (live) setBranding(b);
+      });
+    load();
+    window.addEventListener(BRANDING_EVENT, load);
     return () => {
       live = false;
+      window.removeEventListener(BRANDING_EVENT, load);
     };
   }, []);
   return branding;

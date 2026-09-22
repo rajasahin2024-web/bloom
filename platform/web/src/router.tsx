@@ -10,7 +10,7 @@ export function AppRouter() {
     <Routes>
       <Route element={<SetupGate />}>
         <Route path="/setup" element={<SetupPage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin/*" element={<AdminPage />} />
         <Route element={<BaseLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route

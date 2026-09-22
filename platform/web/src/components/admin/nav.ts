@@ -2,9 +2,10 @@
  * Admin menu config — the single source of truth for the organized
  * main/sub menu system (approved Plan v7, TEC-78 / TEC-97).
  *
- * Only Dashboard is a live destination today. Every other leaf carries a
- * "Soon" badge and never navigates — the menu exists to preview the
- * information architecture, not to route to pages that do not exist yet.
+ * Dashboard and Settings → General Settings are the live destinations.
+ * Every other leaf carries a "Soon" badge and never navigates — the menu
+ * exists to preview the information architecture, not to route to pages
+ * that do not exist yet.
  */
 
 export interface AdminSubItem {
@@ -13,6 +14,8 @@ export interface AdminSubItem {
   /** Icon key — rendered in the desktop dropdown and the mobile drawer. */
   icon: AdminNavIcon;
   soon: boolean;
+  /** Live destination — when set, the leaf navigates instead of showing Soon. */
+  to?: string;
 }
 
 export interface AdminNavItem {
@@ -142,7 +145,13 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Settings",
     icon: "gear",
     children: [
-      soon("general-settings", "General Settings", "gear"),
+      {
+        id: "general-settings",
+        label: "General Settings",
+        icon: "gear",
+        soon: false,
+        to: "/admin/settings/general",
+      },
       soon("site-settings", "Site Settings", "layout"),
       soon("email-engine", "Email Engine", "envelope"),
       soon("whatsapp-api", "WhatsApp API", "whatsapp"),

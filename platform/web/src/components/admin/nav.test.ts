@@ -78,12 +78,23 @@ describe("ADMIN_NAV — approved Plan v7 menu structure", () => {
     ]);
   });
 
-  it("marks every sub-item Soon — nothing navigates except Dashboard", () => {
+  it("marks every sub-item Soon except the live General Settings leaf", () => {
     for (const item of ADMIN_NAV) {
       for (const sub of item.children) {
+        if (sub.id === "general-settings") continue;
         expect(sub.soon).toBe(true);
+        expect(sub.to).toBeUndefined();
       }
     }
+  });
+
+  it("General Settings is a live destination under Settings", () => {
+    const leaf = ADMIN_NAV.find((i) => i.id === "settings")?.children.find(
+      (c) => c.id === "general-settings",
+    );
+    expect(leaf).toBeDefined();
+    expect(leaf?.soon).toBe(false);
+    expect(leaf?.to).toBe("/admin/settings/general");
   });
 
   it("has unique ids across items and sub-items", () => {

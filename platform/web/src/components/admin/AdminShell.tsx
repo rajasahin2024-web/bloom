@@ -7,11 +7,12 @@
  * slide-in drawer with accordion submenus, backdrop overlay and ≥44px
  * tap targets.
  *
- * Only Dashboard is a live destination; every other leaf shows a "Soon"
- * badge and never navigates (approved Plan v7 — menu structure only).
+ * Dashboard and Settings → General Settings are live destinations; every
+ * other leaf shows a "Soon" badge and never navigates (Plan v7/v8).
  */
 import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ADMIN_NAV } from "@/components/admin/nav";
 import type { AdminNavIcon, AdminNavItem } from "@/components/admin/nav";
 import { clearSession } from "@/lib/auth";
@@ -99,6 +100,8 @@ interface AdminShellProps {
 
 export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
   const branding = useBranding();
+  const navigate = useNavigate();
+  const location = useLocation();
   const navId = useId();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -158,6 +161,18 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
     setExpanded((cur) => (cur === id ? null : id));
   }
 
+  function goTo(path: string) {
+    setOpenMenu(null);
+    setDrawerOpen(false);
+    navigate(path);
+  }
+
+  /** The section whose leaf matches the current path (for top-nav highlight). */
+  const activeTop =
+    ADMIN_NAV.find((item) =>
+      item.children.some((sub) => sub.to === location.pathname),
+    )?.id ?? (location.pathname === "/admin" ? "dashboard" : null);
+
   const logo = branding.logo_url ?? "/assets/bloom-mark.png";
 
   return (
@@ -175,11 +190,11 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
           <MenuIcon size={17} />
         </button>
 
-        <a className="adm-brand" href="/admin">
+        <Link className="adm-brand" to="/admin">
           <img src={logo} alt={branding.name} />
           <span className="adm-brand-nm">{branding.name}</span>
           <span className="adm-tag">Admin</span>
-        </a>
+        </Link>
 
         {/* main menu — left-aligned beside the brand, desktop only */}
         <nav className="adm-nav" aria-label="Admin sections" ref={navRef}>
@@ -193,8 +208,9 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
               {item.children.length === 0 ? (
                 <button
                   type="button"
-                  className="adm-nl on"
-                  aria-current="page"
+                  className={`adm-nl${activeTop === item.id ? " on" : ""}`}
+                  aria-current={activeTop === item.id ? "page" : undefined}
+                  onClick={() => goTo("/admin")}
                 >
                   <span className="adm-nl-ic">{NAV_ICONS[item.icon]({ size: 13 })}</span>
                   {item.label}
@@ -203,7 +219,7 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                 <>
                   <button
                     type="button"
-                    className={`adm-nl${openMenu === item.id ? " open" : ""}`}
+                    className={`adm-nl${openMenu === item.id ? " open" : ""}${activeTop === item.id ? " on" : ""}`}
                     aria-haspopup="true"
                     aria-expanded={openMenu === item.id}
                     onClick={() => openSub(item.id)}
@@ -221,8 +237,10 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                         key={sub.id}
                         type="button"
                         role="menuitem"
-                        className="adm-di"
-                        aria-disabled="true"
+                        className={`adm-di${sub.to === location.pathname ? " on" : ""}`}
+                        aria-current={sub.to === location.pathname ? "page" : undefined}
+                        aria-disabled={sub.to ? undefined : true}
+                        onClick={sub.to ? () => goTo(sub.to!) : undefined}
                       >
                         <span className="adm-di-ic">
                           {NAV_ICONS[sub.icon]({ size: 14 })}
@@ -325,9 +343,9 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
               <button
                 key={item.id}
                 type="button"
-                className="adm-dl on"
-                aria-current="page"
-                onClick={() => setDrawerOpen(false)}
+                className={`adm-dl${activeTop === item.id ? " on" : ""}`}
+                aria-current={activeTop === item.id ? "page" : undefined}
+                onClick={() => goTo("/admin")}
               >
                 <span className="adm-dl-ic">{NAV_ICONS[item.icon]({ size: 15 })}</span>
                 {item.label}
@@ -349,8 +367,10 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                     <button
                       key={sub.id}
                       type="button"
-                      className="adm-dsi"
-                      aria-disabled="true"
+                      className={`adm-dsi${sub.to === location.pathname ? " on" : ""}`}
+                      aria-current={sub.to === location.pathname ? "page" : undefined}
+                      aria-disabled={sub.to ? undefined : true}
+                      onClick={sub.to ? () => goTo(sub.to!) : undefined}
                     >
                       <span className="adm-dsi-ic">
                         {NAV_ICONS[sub.icon]({ size: 14 })}

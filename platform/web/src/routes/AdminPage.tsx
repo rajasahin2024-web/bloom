@@ -3,11 +3,17 @@
  *
  * Session revalidation: a stored token is re-checked against /api/auth/me on
  * every load; non-admin or expired sessions fall back to the sign-in form.
+ *
+ * Sub-routing: `/admin` renders the dashboard; deeper pages (e.g.
+ * `/admin/settings/general`) render inside the same AdminShell via nested
+ * Routes — the URL is the source of truth for which page is shown.
  */
 import { useEffect, useState } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLogin } from "@/components/admin/AdminLogin";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { GeneralSettings } from "@/components/admin/GeneralSettings";
 import {
   clearSession,
   fetchMe,
@@ -49,7 +55,14 @@ export function AdminPage() {
   if (session) {
     return (
       <AdminShell session={session} onSignOut={() => setSession(null)}>
-        <AdminDashboard session={session} />
+        <Routes>
+          <Route index element={<AdminDashboard session={session} />} />
+          <Route
+            path="settings/general"
+            element={<GeneralSettings session={session} />}
+          />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
       </AdminShell>
     );
   }
