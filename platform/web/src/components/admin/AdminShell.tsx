@@ -225,7 +225,7 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                         aria-disabled="true"
                       >
                         <span className="adm-di-ic">
-                          {NAV_ICONS[sub.icon]({ size: 12 })}
+                          {NAV_ICONS[sub.icon]({ size: 14 })}
                           {sub.label}
                         </span>
                         {sub.soon && <SoonBadge />}
@@ -353,7 +353,7 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                       aria-disabled="true"
                     >
                       <span className="adm-dsi-ic">
-                        {NAV_ICONS[sub.icon]({ size: 13 })}
+                        {NAV_ICONS[sub.icon]({ size: 14 })}
                         {sub.label}
                       </span>
                       {sub.soon && <SoonBadge />}

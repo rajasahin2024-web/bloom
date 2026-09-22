@@ -202,12 +202,13 @@
   background: transparent;
   font-family: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--blm-ink-2);
   padding: 8px 10px;
   border-radius: 7px;
   cursor: default;
   text-align: left;
+  white-space: nowrap;
 }
 .adm-di:hover {
   background: var(--blm-paper-2);
@@ -219,10 +220,10 @@
   gap: 8px;
 }
 .adm-di-ic svg {
-  opacity: 0.72;
+  color: var(--blm-ink-3);
 }
 .adm-di:hover .adm-di-ic svg {
-  opacity: 1;
+  color: var(--leaf-700);
 }
 .adm-di-out {
   color: #b73f31;
@@ -413,7 +414,7 @@
   background: transparent;
   font-family: inherit;
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--blm-ink-2);
   padding: 10px 11px;
   border-radius: 10px;
@@ -467,7 +468,7 @@
   background: transparent;
   font-family: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--blm-ink-3);
   padding: 8px 11px;
   border-radius: 8px;
@@ -482,12 +483,14 @@
   display: inline-flex;
   align-items: center;
   gap: 9px;
+  white-space: nowrap;
 }
 .adm-dsi-ic svg {
-  opacity: 0.72;
+  color: var(--blm-ink-3);
+  flex: 0 0 auto;
 }
 .adm-dsi:hover .adm-dsi-ic svg {
-  opacity: 1;
+  color: var(--leaf-700);
 }
 .adm-drawer-foot {
   border-top: 1px solid var(--blm-line);
