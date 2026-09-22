@@ -2,12 +2,13 @@
  * AdminShell — the organized menu chrome around the admin dashboard.
  *
  * Desktop (≥900px): slim sticky navbar — logo + "Admin" tag on the left,
- * main-menu items with slim dropdowns in the center, search/bell/avatar
- * on the right. Mobile (<900px): hamburger opens a slide-in drawer with
- * accordion submenus, backdrop overlay and ≥44px tap targets.
+ * main-menu items with slim dropdowns immediately right of the brand,
+ * search/bell/avatar on the right. Mobile (<900px): hamburger opens a
+ * slide-in drawer with accordion submenus, backdrop overlay and ≥44px
+ * tap targets.
  *
  * Only Dashboard is a live destination; every other leaf shows a "Soon"
- * badge and never navigates (approved Plan v5 — menu structure only).
+ * badge and never navigates (approved Plan v7 — menu structure only).
  */
 import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -17,17 +18,18 @@ import { clearSession } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
 import {
+  BanknoteIcon,
   BellIcon,
   BookOpenIcon,
   BriefcaseIcon,
   ChevronIcon,
-  EnvelopeIcon,
+  DatabaseIcon,
   GaugeIcon,
   GearIcon,
-  LayoutIcon,
   MenuIcon,
   SearchIcon,
   SignOutIcon,
+  SparkIcon,
   UserIcon,
   UsersIcon,
   XIcon,
@@ -35,11 +37,12 @@ import {
 
 const NAV_ICONS: Record<AdminNavIcon, (p: { size?: number }) => ReactNode> = {
   gauge: (p) => <GaugeIcon {...p} />,
+  database: (p) => <DatabaseIcon {...p} />,
   book: (p) => <BookOpenIcon {...p} />,
-  users: (p) => <UsersIcon {...p} />,
-  envelope: (p) => <EnvelopeIcon {...p} />,
   briefcase: (p) => <BriefcaseIcon {...p} />,
-  cms: (p) => <LayoutIcon {...p} />,
+  banknote: (p) => <BanknoteIcon {...p} />,
+  users: (p) => <UsersIcon {...p} />,
+  spark: (p) => <SparkIcon {...p} />,
   gear: (p) => <GearIcon {...p} />,
 };
 
@@ -146,7 +149,7 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
           <span className="adm-tag">Admin</span>
         </a>
 
-        {/* center main menu — desktop only */}
+        {/* main menu — left-aligned beside the brand, desktop only */}
         <nav className="adm-nav" aria-label="Admin sections" ref={navRef}>
           {ADMIN_NAV.map((item) => (
             <div

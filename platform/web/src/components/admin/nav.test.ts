@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { ADMIN_NAV } from "@/components/admin/nav";
 
-describe("ADMIN_NAV — approved Plan v5 menu structure", () => {
+describe("ADMIN_NAV — approved Plan v7 menu structure", () => {
   it("has the exact approved main-menu order", () => {
     expect(ADMIN_NAV.map((i) => i.label)).toEqual([
       "Dashboard",
+      "Masters",
       "Academics",
-      "People",
-      "Communication",
-      "Business",
-      "CMS",
+      "Admin Operations",
+      "Accounts / Finance",
+      "HR Management",
+      "AI",
       "Settings",
     ]);
   });
@@ -23,37 +24,57 @@ describe("ADMIN_NAV — approved Plan v5 menu structure", () => {
   it("matches the approved sub-menu grouping", () => {
     const subs = (id: string) =>
       ADMIN_NAV.find((i) => i.id === id)?.children.map((c) => c.label);
-    expect(subs("academics")).toEqual([
-      "Academic",
-      "Exam Builder",
-      "Exam Tracks",
+    expect(subs("masters")).toEqual([
+      "Course Plans",
+      "Modules",
       "Content Manager",
+      "Accounts Master",
+      "Employee Master",
+      "Students Masters",
+      "Enquiries/Leads",
+      "Exam Masters / Builder",
     ]);
-    expect(subs("people")).toEqual([
+    expect(subs("academics")).toEqual([
       "Admissions",
-      "Personnel",
-      "Human Resources",
-    ]);
-    expect(subs("communication")).toEqual([
+      "Track Progress",
       "Communications",
-      "Enquiries",
-      "WhatsApp Alerts",
     ]);
-    expect(subs("business")).toEqual([
-      "Finance",
-      "Operations",
-      "Analytics",
-      "Admin Planner",
+    expect(subs("admin-operations")).toEqual([
+      "Doubt Clear",
+      "1-1 Class",
+      "School",
     ]);
-    expect(subs("cms")).toEqual([
-      "Website Page Creation",
-      "Blogs Creation",
+    expect(subs("accounts-finance")).toEqual([
+      "Fees Payments",
+      "Accounts Ledger",
+      "Transfer Payment",
+      "Expense Payments",
+      "Account Overview",
+    ]);
+    expect(subs("hr-management")).toEqual([
+      "Onboarding",
+      "Employees",
+      "Attendance",
+      "Payroll",
+      "Leaves",
+      "Leave Requests",
+      "Leaves Config",
+    ]);
+    expect(subs("ai")).toEqual([
+      "AI Settings",
+      "AI Agents",
+      "Credit Log",
+      "Knowledge Graph",
     ]);
     expect(subs("settings")).toEqual([
-      "Site Settings",
-      "SEO Settings",
-      "AI Settings",
       "General Settings",
+      "Site Settings",
+      "Email Engine",
+      "WhatsApp API",
+      "SEO Settings",
+      "AEO Settings",
+      "Sitemaps",
+      "Redis",
     ]);
   });
 

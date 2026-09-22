@@ -113,12 +113,13 @@
   padding: 3px 7px;
 }
 
-/* center menu — hidden on mobile */
+/* main menu — left-aligned beside the brand, hidden on mobile */
 .adm-nav {
   display: none;
   flex: 1;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 2px;
+  min-width: 0;
 }
 .adm-ni {
   position: relative;
@@ -924,6 +925,7 @@
 @media (min-width: 900px) {
   .adm-burger,
   .adm-scrim,
+  .adm-scrim.show,
   .adm-drawer {
     display: none;
   }
@@ -959,5 +961,28 @@
   }
   .adm-qa {
     grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* narrower desktops — slim the 8-item menu so it stays on one line */
+@media (min-width: 900px) and (max-width: 1240px) {
+  .adm-top {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .adm-nl {
+    padding: 8px 7px;
+    font-size: 12.5px;
+    gap: 4px;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1060px) {
+  .adm-brand-nm {
+    display: none;
+  }
+  .adm-nl {
+    padding: 8px 5px;
+    font-size: 12px;
   }
 }

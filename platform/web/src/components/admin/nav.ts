@@ -1,6 +1,6 @@
 /**
  * Admin menu config — the single source of truth for the organized
- * main/sub menu system (approved Plan v5, TEC-78 rev 74e3bb4e).
+ * main/sub menu system (approved Plan v7, TEC-78 / TEC-97).
  *
  * Only Dashboard is a live destination today. Every other leaf carries a
  * "Soon" badge and never navigates — the menu exists to preview the
@@ -24,11 +24,12 @@ export interface AdminNavItem {
 
 export type AdminNavIcon =
   | "gauge"
+  | "database"
   | "book"
-  | "users"
-  | "envelope"
   | "briefcase"
-  | "cms"
+  | "banknote"
+  | "users"
+  | "spark"
   | "gear";
 
 const soon = (id: string, label: string): AdminSubItem => ({
@@ -45,54 +46,75 @@ export const ADMIN_NAV: AdminNavItem[] = [
     children: [],
   },
   {
+    id: "masters",
+    label: "Masters",
+    icon: "database",
+    children: [
+      soon("course-plans", "Course Plans"),
+      soon("modules", "Modules"),
+      soon("content-manager", "Content Manager"),
+      soon("accounts-master", "Accounts Master"),
+      soon("employee-master", "Employee Master"),
+      soon("students-masters", "Students Masters"),
+      soon("enquiries-leads", "Enquiries/Leads"),
+      soon("exam-masters-builder", "Exam Masters / Builder"),
+    ],
+  },
+  {
     id: "academics",
     label: "Academics",
     icon: "book",
     children: [
-      soon("academic", "Academic"),
-      soon("exam-builder", "Exam Builder"),
-      soon("exam-tracks", "Exam Tracks"),
-      soon("content-manager", "Content Manager"),
-    ],
-  },
-  {
-    id: "people",
-    label: "People",
-    icon: "users",
-    children: [
       soon("admissions", "Admissions"),
-      soon("personnel", "Personnel"),
-      soon("human-resources", "Human Resources"),
-    ],
-  },
-  {
-    id: "communication",
-    label: "Communication",
-    icon: "envelope",
-    children: [
+      soon("track-progress", "Track Progress"),
       soon("communications", "Communications"),
-      soon("enquiries", "Enquiries"),
-      soon("whatsapp-alerts", "WhatsApp Alerts"),
     ],
   },
   {
-    id: "business",
-    label: "Business",
+    id: "admin-operations",
+    label: "Admin Operations",
     icon: "briefcase",
     children: [
-      soon("finance", "Finance"),
-      soon("operations", "Operations"),
-      soon("analytics", "Analytics"),
-      soon("admin-planner", "Admin Planner"),
+      soon("doubt-clear", "Doubt Clear"),
+      soon("one-one-class", "1-1 Class"),
+      soon("school", "School"),
     ],
   },
   {
-    id: "cms",
-    label: "CMS",
-    icon: "cms",
+    id: "accounts-finance",
+    label: "Accounts / Finance",
+    icon: "banknote",
     children: [
-      soon("website-page-creation", "Website Page Creation"),
-      soon("blogs-creation", "Blogs Creation"),
+      soon("fees-payments", "Fees Payments"),
+      soon("accounts-ledger", "Accounts Ledger"),
+      soon("transfer-payment", "Transfer Payment"),
+      soon("expense-payments", "Expense Payments"),
+      soon("account-overview", "Account Overview"),
+    ],
+  },
+  {
+    id: "hr-management",
+    label: "HR Management",
+    icon: "users",
+    children: [
+      soon("onboarding", "Onboarding"),
+      soon("employees", "Employees"),
+      soon("attendance", "Attendance"),
+      soon("payroll", "Payroll"),
+      soon("leaves", "Leaves"),
+      soon("leave-requests", "Leave Requests"),
+      soon("leaves-config", "Leaves Config"),
+    ],
+  },
+  {
+    id: "ai",
+    label: "AI",
+    icon: "spark",
+    children: [
+      soon("ai-settings", "AI Settings"),
+      soon("ai-agents", "AI Agents"),
+      soon("credit-log", "Credit Log"),
+      soon("knowledge-graph", "Knowledge Graph"),
     ],
   },
   {
@@ -100,10 +122,14 @@ export const ADMIN_NAV: AdminNavItem[] = [
     label: "Settings",
     icon: "gear",
     children: [
-      soon("site-settings", "Site Settings"),
-      soon("seo-settings", "SEO Settings"),
-      soon("ai-settings", "AI Settings"),
       soon("general-settings", "General Settings"),
+      soon("site-settings", "Site Settings"),
+      soon("email-engine", "Email Engine"),
+      soon("whatsapp-api", "WhatsApp API"),
+      soon("seo-settings", "SEO Settings"),
+      soon("aeo-settings", "AEO Settings"),
+      soon("sitemaps", "Sitemaps"),
+      soon("redis", "Redis"),
     ],
   },
 ];

@@ -325,6 +325,22 @@ export function BanknoteIcon(props: IconProps) {
   );
 }
 
+export function DatabaseIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M8 1C4.1 1 1 2.5 1 4.5v7C1 13.5 4.1 15 8 15s7-1.5 7-3.5v-7C15 2.5 11.9 1 8 1zm5.5 10.6c-.7.9-2.9 1.7-5.5 1.7s-4.8-.8-5.5-1.7V9.9c1.4.8 3.4 1.3 5.5 1.3s4.1-.5 5.5-1.3v1.7zm0-3.8c-.7.9-2.9 1.7-5.5 1.7s-4.8-.8-5.5-1.7V6.1C3.9 6.9 5.9 7.4 8 7.4s4.1-.5 5.5-1.3v1.7z",
+  );
+}
+
+export function SparkIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M7 1l1.6 4.4L13 7l-4.4 1.6L7 13l-1.6-4.4L1 7l4.4-1.6L7 1zm5.5 8 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z",
+  );
+}
+
 export function WhatsAppIcon(props: IconProps) {
   return svg(
     props.size,
