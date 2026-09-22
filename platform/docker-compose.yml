@@ -124,7 +124,11 @@ services:
       api:
         condition: service_healthy
     environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+      # Empty → same-origin /api calls through the Vite proxy, so the dev
+      # server works over LAN/public IP without exposing :8000 to browsers.
+      # (.env's VITE_API_BASE_URL is for host-run vite; don't inherit it here.)
+      VITE_API_BASE_URL: ""
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://api:8000}
     ports:
       - "5173:5173"
     networks:

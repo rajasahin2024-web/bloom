@@ -18,7 +18,9 @@ export default defineConfig({
     // so the dev server works over LAN/public IP without exposing :8000.
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        // Inside docker-compose the API is reached by service name; on the
+        // host it's localhost:8000.
+        target: process.env.API_PROXY_TARGET ?? "http://localhost:8000",
         changeOrigin: true,
       },
     },
