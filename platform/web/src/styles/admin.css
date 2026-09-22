@@ -1388,6 +1388,14 @@ select.adm-input {
   padding: 10px 14px;
   box-shadow: var(--adm-sh-2);
 }
+.adm-toast.err {
+  background: #b73f31;
+  color: #fdf1ef;
+}
+/* lift the toast clear of the sticky save bar when both are visible */
+.adm-toast.raised {
+  bottom: 80px;
+}
 
 /* confirm modal */
 .adm-modal-scrim {

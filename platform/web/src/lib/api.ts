@@ -38,6 +38,31 @@ function errorMessage(status: number, payload: unknown): string {
   return `Request failed (HTTP ${status})`;
 }
 
+/**
+ * Pull per-field validation messages out of an API error body.
+ * FastAPI wraps dict `detail` as {detail: {errors: {key: msg}}}; accept a
+ * top-level {errors: {...}} too. Returns null when no usable map exists.
+ */
+export function apiFieldErrors(err: unknown): Record<string, string> | null {
+  if (!(err instanceof ApiError)) return null;
+  const body = err.detail;
+  if (!body || typeof body !== "object") return null;
+  const detail = (body as { detail?: unknown }).detail;
+  const errors =
+    (body as { errors?: unknown }).errors ??
+    (detail && typeof detail === "object"
+      ? (detail as { errors?: unknown }).errors
+      : undefined);
+  if (!errors || typeof errors !== "object" || Array.isArray(errors)) {
+    return null;
+  }
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(errors)) {
+    if (typeof v === "string") out[k] = v;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {},

@@ -13,7 +13,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import { ApiError } from "@/lib/api";
+import { ApiError, apiFieldErrors } from "@/lib/api";
 import { env } from "@/config/env";
 import type { AdminSession } from "@/lib/auth";
 import { invalidateBranding } from "@/lib/branding";
@@ -33,6 +33,7 @@ import {
   ClockIcon,
   RotateLeftIcon,
   UploadIcon,
+  XIcon,
 } from "@/components/icons";
 
 const IMAGE_MAX_BYTES = 512 * 1024;
@@ -55,7 +56,10 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    text: string;
+    kind: "ok" | "err";
+  } | null>(null);
   const [active, setActive] = useState("institute");
   const sectionsRef = useRef<Record<string, HTMLElement | null>>({});
 
@@ -167,13 +171,20 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
     try {
       const next = await saveSettings(token, draft);
       applyServerPayload(next);
-      setNotice("Settings saved.");
+      setNotice({ text: "Settings saved.", kind: "ok" });
     } catch (err) {
-      if (err instanceof ApiError && err.detail && typeof err.detail === "object") {
-        const errors = (err.detail as { errors?: Record<string, string> }).errors;
-        if (errors) setFieldErrors(errors);
-      }
-      setNotice(err instanceof ApiError ? err.message : "Save failed.");
+      const errors = apiFieldErrors(err);
+      if (errors) setFieldErrors(errors);
+      const msgs = errors ? Object.values(errors) : [];
+      setNotice({
+        text:
+          msgs.length > 0
+            ? `Save failed — ${msgs[0]}${msgs.length > 1 ? ` (+${msgs.length - 1} more)` : ""}`
+            : err instanceof ApiError
+              ? err.message
+              : "Save failed.",
+        kind: "err",
+      });
     } finally {
       setSaving(false);
     }
@@ -185,16 +196,19 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
     try {
       const next = await resetSettings(token);
       applyServerPayload(next);
-      setNotice("Settings reset to defaults.");
+      setNotice({ text: "Settings reset to defaults.", kind: "ok" });
     } catch (err) {
-      setNotice(err instanceof ApiError ? err.message : "Reset failed.");
+      setNotice({
+        text: err instanceof ApiError ? err.message : "Reset failed.",
+        kind: "err",
+      });
     } finally {
       setResetting(false);
       setConfirmReset(false);
     }
   }
 
-  function control(item: SettingItem) {
+  function control(item: SettingItem, invalid: boolean) {
     const value = displayValue(item, draft);
     const dirty = item.key in draft;
     switch (item.type) {
@@ -204,6 +218,7 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
             type="button"
             role="switch"
             aria-checked={Boolean(value)}
+            aria-invalid={invalid || undefined}
             aria-label={item.label}
             className={`adm-switch${value ? " on" : ""}`}
             onClick={() => setKey(item, !value)}
@@ -218,6 +233,7 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
             value={String(value ?? "")}
             onChange={(e) => setKey(item, e.target.value)}
             aria-label={item.label}
+            aria-invalid={invalid || undefined}
           >
             {(item.options ?? []).map((opt) => (
               <option key={opt} value={opt}>
@@ -235,6 +251,7 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
             min={0}
             max={100}
             aria-label={item.label}
+            aria-invalid={invalid || undefined}
             onChange={(e) =>
               setKey(item, e.target.value === "" ? 0 : Number(e.target.value))
             }
@@ -286,6 +303,7 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
             className={`adm-input${dirty ? " dirty" : ""}`}
             value={String(value ?? "")}
             aria-label={item.label}
+            aria-invalid={invalid || undefined}
             onChange={(e) => setKey(item, e.target.value)}
           />
         );
@@ -432,7 +450,9 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
                           <span className="adm-set-err">{fieldError}</span>
                         )}
                       </div>
-                      <div className="adm-set-ctl">{control(item)}</div>
+                      <div className="adm-set-ctl">
+                        {control(item, Boolean(fieldError))}
+                      </div>
                     </div>
                   );
                 })}
@@ -502,10 +522,18 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
         </div>
       )}
 
-      {/* transient notice */}
-      {notice && dirtyCount === 0 && (
-        <div className="adm-toast" role="status">
-          <CheckIcon size={12} /> {notice}
+      {/* transient notice — errors must show even while the draft is dirty */}
+      {notice && (
+        <div
+          className={`adm-toast${notice.kind === "err" ? " err" : ""}${dirtyCount > 0 ? " raised" : ""}`}
+          role={notice.kind === "err" ? "alert" : "status"}
+        >
+          {notice.kind === "err" ? (
+            <XIcon size={12} />
+          ) : (
+            <CheckIcon size={12} />
+          )}{" "}
+          {notice.text}
         </div>
       )}
 
