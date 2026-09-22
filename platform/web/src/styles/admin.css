@@ -155,6 +155,16 @@
   color: var(--leaf-700);
   background: var(--leaf-50);
 }
+.adm-nl-ic {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.72;
+}
+.adm-nl:hover .adm-nl-ic,
+.adm-nl.on .adm-nl-ic,
+.adm-nl.open .adm-nl-ic {
+  opacity: 1;
+}
 .adm-chev {
   transition: transform 0.14s;
 }

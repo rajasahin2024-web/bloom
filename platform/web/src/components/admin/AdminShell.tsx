@@ -164,6 +164,7 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                   className="adm-nl on"
                   aria-current="page"
                 >
+                  <span className="adm-nl-ic">{NAV_ICONS[item.icon]({ size: 13 })}</span>
                   {item.label}
                 </button>
               ) : (
@@ -175,6 +176,7 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                     aria-expanded={openMenu === item.id}
                     onClick={() => openSub(item.id)}
                   >
+                    <span className="adm-nl-ic">{NAV_ICONS[item.icon]({ size: 13 })}</span>
                     {item.label}
                     <ChevronIcon size={9} className="adm-chev" />
                   </button>

@@ -16,7 +16,7 @@ export interface AdminSubItem {
 export interface AdminNavItem {
   id: string;
   label: string;
-  /** Drawer icon key — desktop nav is text-only. */
+  /** Icon key — rendered in the desktop navbar and the mobile drawer. */
   icon: AdminNavIcon;
   /** The main item is a live destination only when it has no children. */
   children: AdminSubItem[];
