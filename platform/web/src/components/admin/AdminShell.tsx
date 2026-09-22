@@ -1,11 +1,12 @@
 /**
  * AdminShell — the organized menu chrome around the admin dashboard.
  *
- * Desktop (≥900px): slim sticky navbar — logo + "Admin" tag on the left,
+ * Desktop (≥1024px): slim sticky navbar — logo + "Admin" tag on the left,
  * main-menu items with slim dropdowns immediately right of the brand,
- * search/bell/avatar on the right. Mobile (<900px): hamburger opens a
+ * search/bell/avatar on the right. Below 1024px: hamburger opens a
  * slide-in drawer with accordion submenus, backdrop overlay and ≥44px
- * tap targets.
+ * tap targets — the 8-item menu does not fit beside the right cluster
+ * at narrower widths, and long labels truncate instead of colliding.
  *
  * Dashboard and Settings → General Settings are live destinations; every
  * other leaf shows a "Soon" badge and never navigates (Plan v7/v8).
@@ -201,7 +202,7 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
           {ADMIN_NAV.map((item) => (
             <div
               key={item.id}
-              className="adm-ni"
+              className={`adm-ni${item.label.length > 10 ? " adm-ni-lg" : ""}`}
               onMouseEnter={() => item.children.length > 0 && setOpenMenu(item.id)}
               onMouseLeave={() => item.children.length > 0 && setOpenMenu(null)}
             >
@@ -210,10 +211,11 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                   type="button"
                   className={`adm-nl${activeTop === item.id ? " on" : ""}`}
                   aria-current={activeTop === item.id ? "page" : undefined}
+                  title={item.label}
                   onClick={() => goTo("/admin")}
                 >
                   <span className="adm-nl-ic">{NAV_ICONS[item.icon]({ size: 13 })}</span>
-                  {item.label}
+                  <span className="adm-nl-tx">{item.label}</span>
                 </button>
               ) : (
                 <>
@@ -222,10 +224,11 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                     className={`adm-nl${openMenu === item.id ? " open" : ""}${activeTop === item.id ? " on" : ""}`}
                     aria-haspopup="true"
                     aria-expanded={openMenu === item.id}
+                    title={item.label}
                     onClick={() => openSub(item.id)}
                   >
                     <span className="adm-nl-ic">{NAV_ICONS[item.icon]({ size: 13 })}</span>
-                    {item.label}
+                    <span className="adm-nl-tx">{item.label}</span>
                     <ChevronIcon size={9} className="adm-chev" />
                   </button>
                   <div

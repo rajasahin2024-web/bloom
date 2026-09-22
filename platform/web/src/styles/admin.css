@@ -123,11 +123,18 @@
 }
 .adm-ni {
   position: relative;
+  flex: 0 0 auto;
+}
+/* long labels absorb horizontal squeeze — short items keep full text */
+.adm-ni-lg {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 .adm-nl {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  max-width: 100%;
   border: none;
   background: transparent;
   font-family: inherit;
@@ -141,6 +148,15 @@
   transition:
     color 0.14s,
     background 0.14s;
+}
+.adm-nl-tx {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.adm-nl-ic,
+.adm-nl .adm-chev {
+  flex: 0 0 auto;
 }
 .adm-nl:hover {
   color: var(--blm-ink);
@@ -953,23 +969,9 @@
 
 /* ── desktop ≥900px ── */
 @media (min-width: 900px) {
-  .adm-burger,
-  .adm-scrim,
-  .adm-scrim.show,
-  .adm-drawer {
-    display: none;
-  }
   .adm-top {
     padding: 0 20px;
     gap: 14px;
-  }
-  .adm-nav {
-    display: flex;
-  }
-  .adm-icbtn {
-    width: 34px;
-    height: 34px;
-    flex-basis: 34px;
   }
   .adm-main {
     padding: 22px 18px 48px;
@@ -994,8 +996,27 @@
   }
 }
 
+/* the 8-item top nav needs ~1024px minimum — below that the mobile
+   drawer takes over so items never collide with the right cluster */
+@media (min-width: 1024px) {
+  .adm-burger,
+  .adm-scrim,
+  .adm-scrim.show,
+  .adm-drawer {
+    display: none;
+  }
+  .adm-nav {
+    display: flex;
+  }
+  .adm-icbtn {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+}
+
 /* narrower desktops — slim the 8-item menu so it stays on one line */
-@media (min-width: 900px) and (max-width: 1240px) {
+@media (min-width: 1024px) and (max-width: 1440px) {
   .adm-top {
     padding: 0 12px;
     gap: 8px;
@@ -1007,7 +1028,7 @@
   }
 }
 
-@media (min-width: 900px) and (max-width: 1060px) {
+@media (min-width: 1024px) and (max-width: 1060px) {
   .adm-brand-nm {
     display: none;
   }
