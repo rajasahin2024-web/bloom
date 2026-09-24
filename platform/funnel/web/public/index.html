@@ -64,14 +64,38 @@
     <span class="eyebrow">IELTS eBook · ₹199</span>
     <h1>Stop making these IELTS mistakes.</h1>
     <p class="hinglish">Band 7 writing, finally samajh mein aayega.</p>
+
+    <div class="quiz" id="quiz" aria-label="Quick IELTS diagnostic">
+      <div class="quiz-head">
+        <span class="quiz-kicker">10-second diagnostic</span>
+        <span class="quiz-progress" id="quiz-progress">1 of 3</span>
+      </div>
+      <div class="quiz-bar" aria-hidden="true"><i id="quiz-bar" style="width:33%"></i></div>
+      <p class="quiz-q" id="quiz-q">What's your weakest IELTS section?</p>
+      <div class="quiz-opts" id="quiz-opts"></div>
+      <div class="quiz-result" id="quiz-result" hidden>
+        <p class="quiz-verdict" id="quiz-verdict"></p>
+        <a class="cta" href="/checkout" data-cta>Fix it with the eBook — ₹199</a>
+        <p class="micro"><b>Instant PDF</b> — start tonight.</p>
+      </div>
+    </div>
+
     <p class="lede">The exact frameworks Indian aspirants use to fix Task 2 essays — the repeated mistakes, the vocab gaps, the structure the examiner is actually scoring.</p>
     <a class="cta" href="/checkout" data-cta>Get the eBook — ₹199</a>
     <p class="micro"><b>Instant PDF</b> after payment · English + Hinglish · Academic &amp; General Training</p>
   </section>
 
+  <div class="proof" aria-label="What's inside, at a glance">
+    <div><b>6</b><span>chapters</span></div>
+    <div><b>12</b><span>mistake fixes</span></div>
+    <div><b>200+</b><span>vocab words</span></div>
+    <div><b>7-day</b><span>study plan</span></div>
+  </div>
+  <p class="proof-note">Written by the Bloom Academy IELTS team — the same frameworks we drill in our classroom batches.</p>
+
   <section aria-labelledby="inside">
     <p class="sec-kicker">What's inside</p>
-    <h2 class="sec-title" id="inside">Built for the Indian IELTS aspirant</h2>
+    <h2 class="sec-title" id="inside">Band 7 isn't luck — it's a checklist</h2>
     <ul class="checklist">
       <li><span class="check">✓</span><span><b>Band 7 writing frameworks</b> — paragraph-by-paragraph structures for every Task 2 essay type.</span></li>
       <li><span class="check">✓</span><span><b>The 12 mistakes Indian test-takers repeat</b> — article errors, translated-from-Hindi phrasing, memorised templates examiners flag.</span></li>
@@ -106,8 +130,13 @@
   </section>
 
   <section aria-labelledby="price">
-    <p class="sec-kicker">Get it now</p>
-    <h2 class="sec-title" id="price">One eBook. One price.</h2>
+    <p class="sec-kicker">Do the math</p>
+    <h2 class="sec-title" id="price">Coaching costs ₹8,000–20,000. Start with the ₹199 playbook first.</h2>
+    <div class="anchor" role="table" aria-label="Price comparison">
+      <div class="anchor-row"><span>IELTS coaching centre</span><b>₹8,000–20,000</b></div>
+      <div class="anchor-row"><span>Online recorded course</span><b>₹2,000–5,000</b></div>
+      <div class="anchor-row hit"><span>This playbook — instant PDF</span><b>₹199</b></div>
+    </div>
     <div class="price-card">
       <div class="price">₹199 <small>one-time · <span class="strike">₹499</span> launch price</small></div>
       <ul>
@@ -117,6 +146,7 @@
         <li>Written for Academic &amp; General Training</li>
       </ul>
       <a class="cta" href="/checkout" data-cta>Get the eBook — ₹199</a>
+      <p class="urgency">Launch price — ₹199 during the launch window, then ₹499.</p>
     </div>
   </section>
 
@@ -146,6 +176,60 @@
 
 <script src="/config.js"></script>
 <script src="/assets/funnel.js"></script>
+<script>
+(function () {
+  var steps = [
+    { q: "What's your weakest IELTS section?",
+      opts: ["Writing", "Reading", "Listening", "Speaking"] },
+    { q: "Where is your band stuck right now?",
+      opts: ["5.5 or below", "6 – 6.5", "7 — need higher"] },
+    { q: "When is your exam?",
+      opts: ["Within 30 days", "1–3 months away", "Still planning"] }
+  ];
+  var answers = [];
+  var qEl = document.getElementById("quiz-q");
+  var optsEl = document.getElementById("quiz-opts");
+  var progEl = document.getElementById("quiz-progress");
+  var barEl = document.getElementById("quiz-bar");
+  var resEl = document.getElementById("quiz-result");
+  var verdictEl = document.getElementById("quiz-verdict");
+
+  function render(i) {
+    var st = steps[i];
+    progEl.textContent = (i + 1) + " of 3";
+    barEl.style.width = Math.round(((i + 1) / 3) * 100) + "%";
+    qEl.textContent = st.q;
+    optsEl.innerHTML = "";
+    st.opts.forEach(function (label) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.addEventListener("click", function () {
+        answers[i] = label;
+        if (i + 1 < steps.length) render(i + 1);
+        else finish();
+      });
+      optsEl.appendChild(b);
+    });
+  }
+  function finish() {
+    var section = answers[0], band = answers[1], when = answers[2];
+    var line = section === "Writing"
+      ? "Writing at " + band + " — the #1 score-killer for Indian aspirants, and exactly what this playbook fixes."
+      : section + " at " + band + " — the playbook's mistake-checklists and vocab bank lift all four sections, and hit writing hardest.";
+    if (when === "Within 30 days") line += " With the exam this close, the 7-day plan is your starting point.";
+    verdictEl.textContent = line;
+    qEl.hidden = true;
+    optsEl.hidden = true;
+    resEl.hidden = false;
+    Funnel.trackCustom("QuizCompleted", {
+      weakest_section: section, band: band, exam_window: when
+    });
+  }
+
+  render(0);
+})();
+</script>
 <script>
   Funnel.captureUtm();
   Funnel.track("ViewContent", {

@@ -45,6 +45,15 @@
     }
   }
 
+  function trackCustom(event, params) {
+    try {
+      window.fbq("trackCustom", event, params || {});
+      if (!pixelReady) console.info("[funnel] fbq(stub) custom " + event, params || {});
+    } catch (e) {
+      console.warn("[funnel] fbq failed", e);
+    }
+  }
+
   /* ---------- ids / utm ---------- */
   function uuid() {
     if (crypto.randomUUID) return crypto.randomUUID();
@@ -187,6 +196,7 @@
     apiBase: API_BASE,
     pixelId: PIXEL_ID,
     track: track,
+    trackCustom: trackCustom,
     uuid: uuid,
     captureUtm: captureUtm,
     getUtm: getUtm,
