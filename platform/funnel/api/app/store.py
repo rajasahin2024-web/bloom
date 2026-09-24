@@ -1,9 +1,14 @@
 """SQLite order/payment store - single-file, boring, per-call connections.
 
 orders   - one row per checkout (email, items JSON, status created->paid)
-payments - one row per payment attempt (kind: base | upsell), tracks the
+payments - one row per payable unit (kind: base | upsell), tracks the
            rail reference (razorpay order id) and the pixel event_id used
-           for CAPI dedup.
+           for CAPI dedup. Status stays 'created' until captured so a
+           failed UPI attempt can be retried on the same checkout.
+
+payment_attempts - one row per rail-reported attempt (captured | failed).
+           Razorpay emits one payment entity per attempt; this makes the
+           UPI success-rate metric (captured / attempts) computable.
 
 Idempotency: orders.event_id is UNIQUE so a retried checkout with the same
 client event_id returns the existing order. payments has UNIQUE(order_id,
@@ -49,6 +54,23 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 CREATE INDEX IF NOT EXISTS idx_payments_rail_ref ON payments(rail_ref);
 CREATE INDEX IF NOT EXISTS idx_orders_email ON orders(email);
+CREATE TABLE IF NOT EXISTS payment_attempts (
+    id              TEXT PRIMARY KEY,
+    payment_id      TEXT NOT NULL REFERENCES payments(id),
+    order_id        TEXT NOT NULL REFERENCES orders(id),
+    rail            TEXT NOT NULL,
+    rail_payment_id TEXT,
+    status          TEXT NOT NULL,
+    method          TEXT,
+    amount_paise    INTEGER,
+    error_code      TEXT,
+    error_reason    TEXT,
+    created_at      TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_attempts_rail_payment
+    ON payment_attempts(rail, rail_payment_id) WHERE rail_payment_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_attempts_payment ON payment_attempts(payment_id);
+CREATE INDEX IF NOT EXISTS idx_attempts_order ON payment_attempts(order_id);
 """
 
 
@@ -258,6 +280,82 @@ def mark_payment_paid(
             "SELECT * FROM orders WHERE id = ?", (pay["order_id"],)
         ).fetchone()
         return _row_to_order(order)
+
+
+def record_attempt(
+    *,
+    payment_id: str,
+    order_id: str,
+    rail: str,
+    status: str,
+    rail_payment_id: str | None = None,
+    method: str | None = None,
+    amount_paise: int | None = None,
+    error_code: str | None = None,
+    error_reason: str | None = None,
+) -> dict[str, Any]:
+    """Record one rail-reported payment attempt.
+
+    Idempotent on (rail, rail_payment_id): webhook retries for the same
+    razorpay payment entity return the existing row.
+    """
+    with connect() as conn:
+        if rail_payment_id:
+            existing = conn.execute(
+                "SELECT * FROM payment_attempts WHERE rail = ? AND rail_payment_id = ?",
+                (rail, rail_payment_id),
+            ).fetchone()
+            if existing:
+                return _row_to_payment(existing)
+        attempt_id = new_id("att")
+        conn.execute(
+            "INSERT INTO payment_attempts (id, payment_id, order_id, rail,"
+            " rail_payment_id, status, method, amount_paise, error_code,"
+            " error_reason, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (attempt_id, payment_id, order_id, rail, rail_payment_id, status,
+             method, amount_paise, error_code, error_reason, _now()),
+        )
+        row = conn.execute(
+            "SELECT * FROM payment_attempts WHERE id = ?", (attempt_id,)
+        ).fetchone()
+        return _row_to_payment(row)
+
+
+def list_attempts(order_id: str) -> list[dict[str, Any]]:
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM payment_attempts WHERE order_id = ? ORDER BY created_at",
+            (order_id,),
+        ).fetchall()
+        return [_row_to_payment(r) for r in rows]
+
+
+def payment_stats() -> dict[str, Any]:
+    """Attempt counts overall + per method - the UPI success-rate input."""
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT COALESCE(method, 'unknown') AS method, status, COUNT(*) AS n"
+            " FROM payment_attempts GROUP BY method, status"
+        ).fetchall()
+    by_method: dict[str, dict[str, int]] = {}
+    for r in rows:
+        m = by_method.setdefault(r["method"], {"captured": 0, "failed": 0})
+        m[r["status"]] = m.get(r["status"], 0) + r["n"]
+    captured = sum(m["captured"] for m in by_method.values())
+    failed = sum(m["failed"] for m in by_method.values())
+    total = captured + failed
+    return {
+        "attempts": total,
+        "captured": captured,
+        "failed": failed,
+        "success_rate": (captured / total) if total else None,
+        "by_method": {
+            k: {**v, "attempts": v["captured"] + v["failed"],
+                "success_rate": (v["captured"] / (v["captured"] + v["failed"]))
+                if (v["captured"] + v["failed"]) else None}
+            for k, v in sorted(by_method.items())
+        },
+    }
 
 
 def list_paid_orders() -> list[dict[str, Any]]:

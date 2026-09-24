@@ -32,7 +32,7 @@ async def razorpay_webhook(request: Request) -> dict[str, str]:
     test_mode = request.headers.get("x-razorpay-test") == "true"
     log.info("razorpay webhook event=%s test=%s", event, test_mode)
 
-    if event != "payment.captured":
+    if event not in ("payment.captured", "payment.failed"):
         return {"status": "ignored"}
 
     entity = (payload.get("payload") or {}).get("payment", {}).get("entity") or {}
@@ -45,6 +45,24 @@ async def razorpay_webhook(request: Request) -> dict[str, str]:
     if not payment:
         log.warning("razorpay webhook: unknown order %s", rz_order_id)
         return {"status": "unknown_order"}
+
+    # Every rail-reported attempt is persisted so the day-18 UPI success-rate
+    # metric (captured / attempts) is computable. Idempotent on the razorpay
+    # payment id; a failed attempt leaves the payment 'created' for retry.
+    store.record_attempt(
+        payment_id=payment["id"],
+        order_id=payment["order_id"],
+        rail="razorpay",
+        status="captured" if event == "payment.captured" else "failed",
+        rail_payment_id=entity.get("id"),
+        method=entity.get("method"),
+        amount_paise=int(amount_paise) if amount_paise is not None else None,
+        error_code=entity.get("error_code"),
+        error_reason=entity.get("error_description"),
+    )
+
+    if event == "payment.failed":
+        return {"status": "attempt_failed"}
 
     if payment["status"] == "paid":
         return {"status": "already_paid"}  # idempotent: webhook retries safe

@@ -131,6 +131,17 @@ def mock_settle(order_id: str, request: Request,
             raise HTTPException(status.HTTP_404_NOT_FOUND, "order not found")
         raise HTTPException(status.HTTP_409_CONFLICT, "no pending payment")
     add = [dict(catalog.UPSELL)] if payment["kind"] == "upsell" else None
+    # Mock settle is itself the payment attempt: record it so attempt-level
+    # metrics (success rate) have the same shape across rails.
+    store.record_attempt(
+        payment_id=payment["id"],
+        order_id=order_id,
+        rail="mock",
+        status="captured",
+        rail_payment_id=f"mock-{payment['id']}",
+        method="mock",
+        amount_paise=payment["amount_paise"],
+    )
     order = store.mark_payment_paid(payment["id"], add_items=add)
     _fire_purchase(order, payment, payment["amount_paise"], _client_ctx(request))
     return OrderStatusResponse(**order, payments=_payments_summary(order_id))

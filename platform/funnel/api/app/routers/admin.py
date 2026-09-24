@@ -28,6 +28,14 @@ def _authorized(request: Request, token: str | None) -> bool:
     )
 
 
+@router.get("/payment-stats")
+def payment_stats(request: Request, token: str | None = Query(default=None)) -> dict:
+    """Attempt-level payment metrics — feeds the day-18 UPI success-rate check."""
+    if not _authorized(request, token):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "admin token required")
+    return store.payment_stats()
+
+
 @router.get("/buyers.csv")
 def buyers_csv(request: Request, token: str | None = Query(default=None)) -> PlainTextResponse:
     if not _authorized(request, token):

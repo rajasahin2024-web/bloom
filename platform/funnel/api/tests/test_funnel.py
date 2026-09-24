@@ -97,6 +97,21 @@ def test_full_funnel_mock_rail(client, caplog):
     assert r.status_code == 200
     assert "buyer@test.com" in r.text and "29800" in r.text
 
+    # attempt logging: mock settle recorded one captured attempt
+    from app import store
+    attempts = store.list_attempts(oid)
+    assert len(attempts) == 1
+    assert attempts[0]["status"] == "captured" and attempts[0]["method"] == "mock"
+
+    r = client.get("/api/funnel/payment-stats")
+    assert r.status_code == 401
+    r = client.get("/api/funnel/payment-stats",
+                   headers={"Authorization": "Bearer test-admin-token"})
+    stats = r.json()
+    assert stats["attempts"] == 1 and stats["captured"] == 1
+    assert stats["success_rate"] == 1.0
+    assert stats["by_method"]["mock"]["captured"] == 1
+
 
 def test_order_create_idempotent(client):
     body = {"email": "a@b.com", "bump": False, "event_id": "dup-1"}
@@ -154,10 +169,25 @@ def test_webhook_signature(tmp_path, monkeypatch):
     )
     store.set_payment_rail_ref(payment["id"], "order_RZP123")
 
+    # failed UPI attempt is logged; payment stays retryable ('created')
+    fail_body = json.dumps({
+        "event": "payment.failed",
+        "payload": {"payment": {"entity": {
+            "id": "pay_FAIL1", "order_id": "order_RZP123", "amount": 19900,
+            "method": "upi", "error_code": "BAD_REQUEST_ERROR",
+            "error_description": "UPI transaction failed"}}},
+    }).encode()
+    fsig = hmac.new(b"whsec", fail_body, hashlib.sha256).hexdigest()
+    fr = c.post("/api/funnel/webhooks/razorpay", content=fail_body,
+                headers={"X-Razorpay-Signature": fsig})
+    assert fr.status_code == 200 and fr.json()["status"] == "attempt_failed"
+    assert store.get_payment(payment["id"])["status"] == "created"
+
     body = json.dumps({
         "event": "payment.captured",
         "payload": {"payment": {"entity": {
-            "order_id": "order_RZP123", "amount": 19900}}},
+            "id": "pay_OK1", "order_id": "order_RZP123", "amount": 19900,
+            "method": "upi"}}},
     }).encode()
     bad = c.post("/api/funnel/webhooks/razorpay", content=body,
                  headers={"X-Razorpay-Signature": "bad"})
@@ -167,8 +197,16 @@ def test_webhook_signature(tmp_path, monkeypatch):
                 headers={"X-Razorpay-Signature": sig})
     assert ok.status_code == 200 and ok.json()["status"] == "paid"
     assert store.get_order(order["id"])["status"] == "paid"
-    # retry is idempotent
+    # retry is idempotent — no duplicate attempt row either
     again = c.post("/api/funnel/webhooks/razorpay", content=body,
                    headers={"X-Razorpay-Signature": sig})
     assert again.json()["status"] == "already_paid"
+
+    attempts = store.list_attempts(order["id"])
+    assert [a["status"] for a in attempts] == ["failed", "captured"]
+    assert attempts[0]["method"] == "upi"
+    assert attempts[0]["error_code"] == "BAD_REQUEST_ERROR"
+    stats = store.payment_stats()
+    assert stats["attempts"] == 2 and stats["captured"] == 1 and stats["failed"] == 1
+    assert stats["by_method"]["upi"]["success_rate"] == 0.5
     get_settings.cache_clear()
