@@ -1334,6 +1334,11 @@
 select.adm-input {
   cursor: pointer;
 }
+textarea.adm-input {
+  resize: vertical;
+  min-height: 84px;
+  line-height: 1.5;
+}
 
 /* toggle switch */
 .adm-switch {

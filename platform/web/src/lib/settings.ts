@@ -14,7 +14,15 @@ export interface SettingItem {
   key: string;
   group: string;
   label: string;
-  type: "text" | "email" | "url" | "select" | "toggle" | "number" | "image";
+  type:
+    | "text"
+    | "email"
+    | "url"
+    | "textarea"
+    | "select"
+    | "toggle"
+    | "number"
+    | "image";
   value: unknown;
   default: unknown;
   source: SettingSource;

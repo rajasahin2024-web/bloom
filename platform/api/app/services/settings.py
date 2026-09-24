@@ -53,10 +53,12 @@ _IMAGE_DATA_URL = re.compile(
 _IMAGE_EXT = {"png": "png", "jpeg": "jpg", "webp": "webp"}
 _IMAGE_MAX_BYTES = 512 * 1024
 
-# Where uploaded image settings are served from.
-_IMAGE_TARGETS: dict[str, tuple[str, str]] = {
-    "institute.logo_url": ("logo", "/api/branding/logo"),
-    "institute.favicon_url": ("favicon", "/api/branding/favicon"),
+# Where uploaded image settings are stored and served from:
+# key → (uploads subdirectory, file stem, public serving path).
+_IMAGE_TARGETS: dict[str, tuple[str, str, str]] = {
+    "institute.logo_url": ("branding", "logo", "/api/branding/logo"),
+    "institute.favicon_url": ("branding", "favicon", "/api/branding/favicon"),
+    "seo.default_og_image": ("seo", "og-image", "/api/seo/og-image"),
 }
 
 
@@ -77,7 +79,7 @@ class SettingSpec:
     key: str
     group: str
     label: str
-    type: str  # text | email | url | select | toggle | number | image
+    type: str  # text | email | url | textarea | select | toggle | number | image
     description: str
     default: Any = None
     options: tuple[str, ...] = ()
@@ -107,6 +109,12 @@ _GROUPS: tuple[tuple[str, str, str], ...] = (
         "notifications",
         "Notification Defaults",
         "Which automated emails and alerts are switched on.",
+    ),
+    (
+        "seo",
+        "SEO Settings",
+        "Search visibility — global meta, indexing controls, verification "
+        "and analytics tags.",
     ),
 )
 
@@ -406,6 +414,181 @@ SPECS: tuple[SettingSpec, ...] = (
         ),
         default=True,
     ),
+    # ── SEO Settings ─────────────────────────────────────────────────────
+    # Global meta
+    SettingSpec(
+        key="seo.site_title",
+        group="seo",
+        label="Site title",
+        type="text",
+        description=(
+            "Default <title> for the public site — the homepage title and "
+            "the template fallback."
+        ),
+        default="Bloom IELTS Academy",
+        env_alias="institute_name",
+        max_length=200,
+    ),
+    SettingSpec(
+        key="seo.title_template",
+        group="seo",
+        label="Title template",
+        type="text",
+        description=(
+            "Pattern for page titles — %page% is replaced with the page "
+            "name, e.g. “%page% | Bloom Academy”."
+        ),
+        default="%page% | Bloom IELTS Academy",
+        max_length=200,
+    ),
+    SettingSpec(
+        key="seo.meta_description",
+        group="seo",
+        label="Meta description",
+        type="textarea",
+        description=(
+            "Default search snippet shown under the title in results — "
+            "keep it near 160 characters."
+        ),
+        default="",
+        max_length=320,
+    ),
+    SettingSpec(
+        key="seo.default_og_image",
+        group="seo",
+        label="Default share image",
+        type="image",
+        description=(
+            "Fallback social-share image (og:image) for pages without "
+            "their own. PNG/JPEG/WebP up to 512KB."
+        ),
+        default=None,
+    ),
+    SettingSpec(
+        key="seo.meta_keywords",
+        group="seo",
+        label="Meta keywords",
+        type="text",
+        description=(
+            "Optional comma-separated keywords — ignored by Google but "
+            "still read by some smaller engines."
+        ),
+        default="",
+        max_length=300,
+    ),
+    # Indexing & crawling
+    SettingSpec(
+        key="seo.indexing_enabled",
+        group="seo",
+        label="Allow search indexing",
+        type="toggle",
+        description=(
+            "Master switch — off serves noindex meta and a disallow-all "
+            "robots.txt. Keep staging off; enable at launch."
+        ),
+        default=True,
+    ),
+    SettingSpec(
+        key="seo.robots_txt",
+        group="seo",
+        label="robots.txt content",
+        type="textarea",
+        description=(
+            "Served live at /robots.txt while indexing is on. A Sitemap "
+            "line is appended automatically when the sitemap is enabled."
+        ),
+        default="User-agent: *\nAllow: /\nDisallow: /admin/\n",
+        max_length=4000,
+    ),
+    SettingSpec(
+        key="seo.sitemap_enabled",
+        group="seo",
+        label="Auto sitemap.xml",
+        type="toggle",
+        description=(
+            "Generate /sitemap.xml from the Website URL plus published "
+            "CMS pages and posts."
+        ),
+        default=True,
+    ),
+    SettingSpec(
+        key="seo.force_https",
+        group="seo",
+        label="Force HTTPS",
+        type="toggle",
+        description=(
+            "Redirect http:// to https:// — switch on once SSL is live on "
+            "the public domain. Enforced by the public site."
+        ),
+        default=False,
+    ),
+    SettingSpec(
+        key="seo.canonical_host",
+        group="seo",
+        label="Canonical host redirect",
+        type="select",
+        description=(
+            "Redirect one host form to the other so www and non-www do "
+            "not split ranking. Uses Website URL as the base."
+        ),
+        default="No redirect",
+        options=("No redirect", "Redirect to www", "Redirect to non-www"),
+    ),
+    # Verification & analytics
+    SettingSpec(
+        key="seo.google_site_verification",
+        group="seo",
+        label="Google site verification",
+        type="text",
+        description="Search Console verification token (meta tag content).",
+        default="",
+        max_length=200,
+    ),
+    SettingSpec(
+        key="seo.bing_verification",
+        group="seo",
+        label="Bing verification",
+        type="text",
+        description="Bing Webmaster Tools token (msvalidate.01 meta tag).",
+        default="",
+        max_length=200,
+    ),
+    SettingSpec(
+        key="seo.ga4_id",
+        group="seo",
+        label="GA4 measurement ID",
+        type="text",
+        description="Google Analytics 4 ID, e.g. G-XXXXXXX.",
+        default="",
+        max_length=50,
+    ),
+    SettingSpec(
+        key="seo.gtm_id",
+        group="seo",
+        label="GTM container ID",
+        type="text",
+        description="Google Tag Manager container, e.g. GTM-XXXXXXX.",
+        default="",
+        max_length=50,
+    ),
+    SettingSpec(
+        key="seo.fb_pixel_id",
+        group="seo",
+        label="Facebook Pixel ID",
+        type="text",
+        description="Meta Pixel numeric ID for ad tracking.",
+        default="",
+        max_length=50,
+    ),
+    SettingSpec(
+        key="seo.ms_clarity_id",
+        group="seo",
+        label="Microsoft Clarity ID",
+        type="text",
+        description="Clarity project ID for session analytics.",
+        default="",
+        max_length=50,
+    ),
 )
 
 SPEC_BY_KEY = {spec.key: spec for spec in SPECS}
@@ -570,7 +753,7 @@ def _validate(spec: SettingSpec, raw: Any, errors: dict[str, str]) -> Any:
             return raw
         _invalid(errors, key, "must be an image upload (PNG/JPEG/WebP) or a URL")
         return None
-    # text | email | url
+    # text | email | url | textarea
     if not isinstance(raw, str):
         _invalid(errors, key, "must be a string")
         return None
@@ -591,15 +774,15 @@ def _validate(spec: SettingSpec, raw: Any, errors: dict[str, str]) -> Any:
 
 
 def _save_image(key: str, data_url: str) -> str:
-    """Persist a data-URL upload under uploads/branding/; return serving path."""
-    name, serving = _IMAGE_TARGETS[key]
+    """Persist a data-URL upload under uploads/; return serving path."""
+    subdir, name, serving = _IMAGE_TARGETS[key]
     match = _IMAGE_DATA_URL.match(data_url)
     if not match:
         raise ValueError("image must be a PNG, JPEG or WebP data URL")
     raw = base64.b64decode(match.group("data"), validate=True)
     if len(raw) > _IMAGE_MAX_BYTES:
         raise ValueError("image must be 512KB or smaller")
-    dest = setup_service.UPLOADS_DIR / "branding"
+    dest = setup_service.UPLOADS_DIR / subdir
     dest.mkdir(parents=True, exist_ok=True)
     for old in dest.glob(f"{name}.*"):
         old.unlink()

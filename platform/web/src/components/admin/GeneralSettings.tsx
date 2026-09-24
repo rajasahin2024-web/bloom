@@ -14,7 +14,7 @@
  * settings payload plus /api/health.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { ApiError, apiFieldErrors } from "@/lib/api";
 import { env } from "@/config/env";
 import type { AdminSession } from "@/lib/auth";
@@ -41,15 +41,33 @@ import {
 
 const IMAGE_MAX_BYTES = 512 * 1024;
 
-interface GeneralSettingsProps {
+/** Groups that make up the General Settings page (SEO lives on its own). */
+const GENERAL_GROUP_IDS = ["institute", "academic", "finance", "notifications"];
+
+interface SettingsWizardProps {
   session: AdminSession;
+  /** Which registry groups render as wizard steps. */
+  groupIds?: readonly string[];
+  eyebrow?: string;
+  title?: ReactNode;
+  lede?: string;
 }
 
 function displayValue(item: SettingItem, draft: Record<string, unknown>) {
   return item.key in draft ? draft[item.key] : item.value;
 }
 
-export function GeneralSettings({ session }: GeneralSettingsProps) {
+export function SettingsWizard({
+  session,
+  groupIds = GENERAL_GROUP_IDS,
+  eyebrow = "Settings",
+  title = (
+    <>
+      General <em>Settings</em>
+    </>
+  ),
+  lede = "Institute identity, academic defaults, finance rules and notifications — DB overrides beat installer env defaults.",
+}: SettingsWizardProps) {
   const token = session.tokens.access_token;
   const [payload, setPayload] = useState<SettingsPayload | null>(null);
   const [health, setHealth] = useState<HealthPayload | null>(null);
@@ -92,9 +110,14 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
     return () => window.clearTimeout(t);
   }, [notice]);
 
-  // Wizard steps: one per API group, plus the read-only platform status.
+  // Wizard steps: one per API group (filtered to this page), plus the
+  // read-only platform status.
+  const groups = useMemo(
+    () => (payload?.groups ?? []).filter((g) => groupIds.includes(g.id)),
+    [payload, groupIds],
+  );
   const steps = useMemo(() => {
-    const fromApi = (payload?.groups ?? []).map((g) => ({
+    const fromApi = groups.map((g) => ({
       id: g.id,
       label: g.label,
       meta: `${g.items.length} ${g.items.length === 1 ? "field" : "fields"}`,
@@ -104,11 +127,10 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
       ...fromApi,
       { id: "platform", label: "Platform Info", meta: "Read-only", dirty: 0 },
     ];
-  }, [payload, draft]);
+  }, [groups, draft]);
 
   const stepCount = steps.length;
   const current = Math.min(step, Math.max(0, stepCount - 1));
-  const groups = payload?.groups ?? [];
   const isPlatformStep = current === groups.length;
   const activeGroup = isPlatformStep ? null : groups[current];
 
@@ -237,6 +259,17 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
             ))}
           </select>
         );
+      case "textarea":
+        return (
+          <textarea
+            className={`adm-input adm-textarea${dirty ? " dirty" : ""}`}
+            rows={item.key === "seo.robots_txt" ? 8 : 3}
+            value={String(value ?? "")}
+            aria-label={item.label}
+            aria-invalid={invalid || undefined}
+            onChange={(e) => setKey(item, e.target.value)}
+          />
+        );
       case "number":
         return (
           <input
@@ -363,14 +396,9 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
       {/* page head */}
       <div className="adm-phead">
         <div>
-          <div className="adm-eyebrow">Settings</div>
-          <h1>
-            General <em>Settings</em>
-          </h1>
-          <p>
-            Institute identity, academic defaults, finance rules and
-            notifications — DB overrides beat installer env defaults.
-          </p>
+          <div className="adm-eyebrow">{eyebrow}</div>
+          <h1>{title}</h1>
+          <p>{lede}</p>
         </div>
         <div className="adm-phead-actions">
           <button
@@ -593,4 +621,9 @@ export function GeneralSettings({ session }: GeneralSettingsProps) {
       )}
     </div>
   );
+}
+
+/** Settings → General Settings — the four core groups in the wizard. */
+export function GeneralSettings({ session }: { session: AdminSession }) {
+  return <SettingsWizard session={session} />;
 }
