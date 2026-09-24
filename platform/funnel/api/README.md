@@ -25,8 +25,9 @@ DB: single-file SQLite at `data/funnel.db` (gitignored). Assets served from
 | `POST /api/funnel/orders/{id}/upsell` | `{event_id}` → new ₹599 payment, same rail flow |
 | `GET /api/funnel/orders/{id}/downloads` | signed 24h links, paid orders only |
 | `GET /api/funnel/assets/{order_id}/{token}` | serves a signed asset |
-| `POST /api/funnel/webhooks/razorpay` | `X-Razorpay-Signature` verified; `payment.captured` → paid |
+| `POST /api/funnel/webhooks/razorpay` | `X-Razorpay-Signature` verified; `payment.captured` → paid, `payment.failed` → attempt logged |
 | `GET /api/funnel/buyers.csv` | `Authorization: Bearer $ADMIN_TOKEN` (or `?token=`) |
+| `GET /api/funnel/payment-stats` | admin-gated; per-method attempt counts + `success_rate` (captured/attempts) |
 
 ## Meta CAPI dedup convention
 
@@ -42,3 +43,10 @@ DB: single-file SQLite at `data/funnel.db` (gitignored). Assets served from
 - `orders.event_id` UNIQUE → retried checkout returns the existing order.
 - `payments` UNIQUE(order_id, kind) → upsell created once.
 - Webhook/settle on already-paid payments → no-op, CAPI not re-fired.
+
+## Payment attempts
+
+`payment_attempts` records every rail-reported attempt (`captured`/`failed`,
+with method + error fields) so the UPI success-rate metric is computable.
+Idempotent on `UNIQUE(rail, rail_payment_id)`; a failed attempt leaves the
+payment `created` so the buyer can retry on the same checkout.
