@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Thank you — your downloads | Bloom Academy</title>
+<meta name="description" content="Your IELTS eBook order is confirmed. Download your files here.">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0f172a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body data-page="thanks">
+
+<header class="appbar">
+  <div class="appbar-in">
+    <a class="brand" href="/"><span class="brand-mark">B</span>Bloom Academy</a>
+    <span class="appbar-tag">Done</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="narrow">
+    <div class="steps" aria-hidden="true"><span class="on"></span><span class="on"></span><span class="on"></span></div>
+
+    <div class="done-badge" aria-hidden="true">✓</div>
+    <h1 style="font-size:22px;margin:0 0 8px">Order confirmed.</h1>
+    <p class="lede" id="confirm-copy">We've sent your download links to your email — check your inbox (and spam folder, just in case).</p>
+
+    <section aria-labelledby="dl">
+      <h2 class="sec-title" id="dl" style="margin-top:20px">Your downloads</h2>
+      <div class="state-box" id="dl-loading"><div class="spin"></div>Fetching your files…</div>
+      <div id="dl-list"></div>
+      <p class="form-err" id="dl-err" hidden role="alert"></p>
+    </section>
+
+    <p class="micro" style="margin-top:16px">Links expire — save the files to your device. Questions? Reply to the confirmation email.</p>
+  </div>
+</main>
+
+<script src="/config.js"></script>
+<script src="/assets/funnel.js"></script>
+<script>
+(function () {
+  var orderId = Funnel.qs("order");
+  var loading = Funnel.el("dl-loading"), list = Funnel.el("dl-list"),
+      err = Funnel.el("dl-err"), copy = Funnel.el("confirm-copy");
+
+  if (!orderId) { location.href = "/"; return; }
+
+  var purchaseFired = false;
+  function firePurchase(order) {
+    if (purchaseFired || !order) return;
+    purchaseFired = true;
+    /* Mirror backend CAPI: one Purchase per paid payment, shared event_id —
+       base -> "purchase_<order_id>", upsell -> "purchase_<order_id>_upsell". */
+    var payments = (order.payments || []).filter(function (p) { return p.status === "paid"; });
+    if (payments.length) {
+      payments.forEach(function (p) {
+        var isUpsell = p.kind === "upsell";
+        Funnel.track("Purchase", {
+          value: (p.amount_paise || 0) / 100, currency: p.currency || "INR",
+          content_name: (isUpsell ? "Band 7 Mini-Course upsell " : "IELTS funnel order ") + orderId
+        }, Funnel.purchaseEventId(orderId, isUpsell));
+      });
+      return;
+    }
+    var items = order.items || [];
+    var paidPaise = items.reduce(function (s, i) { return s + (i.amount_paise || 0); }, 0);
+    if (paidPaise > 0) {
+      Funnel.track("Purchase", {
+        value: paidPaise / 100, currency: "INR",
+        content_name: "IELTS funnel order " + orderId,
+        num_items: items.length
+      }, Funnel.purchaseEventId(orderId, false));
+    }
+  }
+
+  Funnel.api.getOrder(orderId)
+    .then(function (order) {
+      if (order.email) {
+        copy.textContent = "We've sent your download links to " + order.email +
+          " — check your inbox (and spam folder, just in case).";
+      }
+      firePurchase(order);
+    })
+    .catch(function () { /* order fetch failing shouldn't block downloads */ });
+
+  Funnel.api.downloads(orderId)
+    .then(function (res) {
+      loading.hidden = true;
+      var files = res.files || res.downloads || res.items || res;
+      if (!Array.isArray(files) || !files.length) {
+        list.innerHTML = '<div class="state-box">No files yet — your links are on the way to your inbox.</div>';
+        return;
+      }
+      files.forEach(function (f) {
+        var url = f.url || f.link;
+        if (url && url.charAt(0) === "/") url = Funnel.apiBase + url;
+        var row = document.createElement("div");
+        row.className = "dl-item";
+        var n = document.createElement("span");
+        n.className = "n";
+        n.textContent = f.name || f.title || f.file || "Download";
+        if (f.size || f.format) {
+          var s = document.createElement("small");
+          s.textContent = [f.format || "PDF", f.size].filter(Boolean).join(" · ");
+          n.appendChild(s);
+        }
+        var a = document.createElement("a");
+        a.className = "dl-btn";
+        a.href = url;
+        a.textContent = "Download";
+        a.setAttribute("download", "");
+        a.rel = "noopener";
+        row.appendChild(n);
+        row.appendChild(a);
+        list.appendChild(row);
+      });
+    })
+    .catch(function (e2) {
+      loading.hidden = true;
+      Funnel.showError(err, e2.message || "Could not load downloads — your links were also emailed to you.");
+    });
+})();
+</script>
+</body>
+</html>

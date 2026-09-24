@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>One more step — Band 7 Mini-Course | Bloom Academy</title>
+<meta name="description" content="Upgrade your order: the Band 7 mini-course + 3-eBook bundle for ₹599.">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0f172a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body data-page="upsell">
+
+<header class="appbar">
+  <div class="appbar-in">
+    <span class="brand"><span class="brand-mark">B</span>Bloom Academy</span>
+    <span class="appbar-tag">Order confirmed</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="narrow">
+    <div class="steps" aria-hidden="true"><span class="on"></span><span class="on"></span><span></span></div>
+
+    <div class="upsell-hero">
+      <span class="tag">Payment received · one-time upgrade</span>
+      <h1>Add the Band 7 Mini-Course — ₹599</h1>
+      <p>Your eBook order is confirmed. Before you go: the companion mini-course that walks the frameworks live.</p>
+    </div>
+
+    <div class="card">
+      <h3>What you get for ₹599</h3>
+      <ul class="checklist" style="margin-top:8px">
+        <li><span class="check">✓</span><span><b>Band 7 mini-course</b> — 5 guided video walkthroughs: plan, write and self-review a Task 2 essay end-to-end.</span></li>
+        <li><span class="check">✓</span><span><b>3-eBook bundle</b> — Speaking cue-card bank, Reading question-type tactics, Listening trap guide.</span></li>
+        <li><span class="check">✓</span><span><b>Self-review rubric</b> — the same checklist examiners use, so practice essays get honest scores.</span></li>
+      </ul>
+    </div>
+
+    <p class="form-err" id="upsell-err" hidden role="alert"></p>
+    <div class="state-box" id="upsell-state" hidden><div class="spin"></div>Processing…</div>
+
+    <p><button class="cta" id="accept-btn">Yes — add it for ₹599</button></p>
+    <a class="skip-link" id="skip-link" href="#">No thanks — take me to my downloads</a>
+  </div>
+</main>
+
+<script src="/config.js"></script>
+<script src="/assets/funnel.js"></script>
+<script>
+(function () {
+  var orderId = Funnel.qs("order");
+  var err = Funnel.el("upsell-err"), state = Funnel.el("upsell-state"),
+      acceptBtn = Funnel.el("accept-btn"), skip = Funnel.el("skip-link");
+
+  if (!orderId) { location.href = "/"; return; }
+  skip.href = "/thanks?order=" + encodeURIComponent(orderId);
+
+  function go() { location.href = "/thanks?order=" + encodeURIComponent(orderId); }
+
+  acceptBtn.addEventListener("click", function () {
+    Funnel.showError(err, "");
+    acceptBtn.disabled = true;
+    state.hidden = false;
+    var eventId = Funnel.uuid();
+    Funnel.api.upsell(orderId, eventId)
+      .then(function (payment) {
+        payment.order_id = payment.order_id || orderId;
+        Funnel.settle(payment, { description: "Band 7 Mini-Course" },
+          go,
+          function (e2) {
+            state.hidden = true;
+            acceptBtn.disabled = false;
+            Funnel.showError(err, e2.message || "Payment failed — try again or skip.");
+          });
+      })
+      .catch(function (e2) {
+        state.hidden = true;
+        acceptBtn.disabled = false;
+        Funnel.showError(err, e2.message || "Could not start the upgrade — you can skip this.");
+      });
+  });
+})();
+</script>
+</body>
+</html>

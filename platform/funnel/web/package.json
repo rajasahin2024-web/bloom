@@ -1,0 +1,15 @@
+{
+  "name": "bloom-funnel-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "India IELTS eBook funnel - static landing/checkout/upsell/thanks site",
+  "type": "module",
+  "scripts": {
+    "start": "node serve.js",
+    "mock-api": "node mock-api.js",
+    "test": "node --test tests/contract.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
