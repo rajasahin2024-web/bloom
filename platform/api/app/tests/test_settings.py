@@ -12,6 +12,7 @@ import socket
 import uuid
 from collections.abc import Generator
 from datetime import UTC, datetime
+from pathlib import Path
 
 import psycopg
 import pytest
@@ -21,6 +22,7 @@ from app.core.security import create_access_token
 from app.main import app
 from app.models.enums import UserRole
 from app.services import settings as settings_service
+from app.services import setup as setup_service
 
 client = TestClient(app)
 
@@ -105,6 +107,32 @@ def test_registry_covers_all_groups() -> None:
     # every key is unique
     keys = [s.key for s in settings_service.SPECS]
     assert len(keys) == len(set(keys))
+
+
+def test_remove_image_deletes_orphaned_upload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(setup_service, "UPLOADS_DIR", tmp_path)
+    dest = tmp_path / "seo"
+    dest.mkdir()
+    stale = dest / "og-image.png"
+    stale.write_bytes(b"png")
+
+    # cleared value → file removed
+    settings_service._remove_image("seo.default_og_image", None)
+    assert not stale.exists()
+
+    # external URL replacing an upload → file removed
+    stale.write_bytes(b"png")
+    settings_service._remove_image(
+        "seo.default_og_image", "https://cdn.example/og.png"
+    )
+    assert not stale.exists()
+
+    # value still pointing at the serving path → file kept
+    stale.write_bytes(b"png")
+    settings_service._remove_image("seo.default_og_image", "/api/seo/og-image")
+    assert stale.is_file()
 
 
 # ── auth guard ───────────────────────────────────────────────────────────
@@ -232,6 +260,104 @@ def test_patch_validation_errors(admin_token: str) -> None:
         "finance.grace_period",
         "no.such.key",
     }
+
+
+# 1x1 transparent PNG
+_PNG_DATA_URL = (
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+    "AAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+)
+
+
+@requires_infra
+def test_clearing_image_setting_removes_upload(
+    admin_token: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """TEC-109: clearing an image setting deletes the file it uploaded."""
+    monkeypatch.setattr(setup_service, "UPLOADS_DIR", tmp_path)
+    try:
+        # upload → stored under uploads/ and served
+        resp = client.patch(
+            "/api/admin/settings",
+            headers=_auth(admin_token),
+            json={"seo.default_og_image": _PNG_DATA_URL},
+        )
+        assert resp.status_code == 200, resp.text
+        assert (tmp_path / "seo" / "og-image.png").is_file()
+        assert client.get("/api/seo/og-image").status_code == 200
+
+        # clear → file deleted and endpoint 404s
+        resp = client.patch(
+            "/api/admin/settings",
+            headers=_auth(admin_token),
+            json={"seo.default_og_image": None},
+        )
+        assert resp.status_code == 200, resp.text
+        assert not list((tmp_path / "seo").glob("og-image.*"))
+        assert client.get("/api/seo/og-image").status_code == 404
+        assert client.get("/api/seo/meta").json()["og_image"] == ""
+
+        # replacing an upload with an external URL also drops the file
+        client.patch(
+            "/api/admin/settings",
+            headers=_auth(admin_token),
+            json={"seo.default_og_image": _PNG_DATA_URL},
+        )
+        resp = client.patch(
+            "/api/admin/settings",
+            headers=_auth(admin_token),
+            json={"seo.default_og_image": "https://cdn.example/og.png"},
+        )
+        assert resp.status_code == 200, resp.text
+        assert not list((tmp_path / "seo").glob("og-image.*"))
+        assert client.get("/api/seo/og-image").status_code == 404
+
+        # same fix covers the branding images via the shared mechanism
+        client.patch(
+            "/api/admin/settings",
+            headers=_auth(admin_token),
+            json={
+                "institute.logo_url": _PNG_DATA_URL,
+                "institute.favicon_url": _PNG_DATA_URL,
+            },
+        )
+        assert client.get("/api/branding/logo").status_code == 200
+        assert client.get("/api/branding/favicon").status_code == 200
+        resp = client.patch(
+            "/api/admin/settings",
+            headers=_auth(admin_token),
+            json={"institute.logo_url": None, "institute.favicon_url": None},
+        )
+        assert resp.status_code == 200, resp.text
+        assert not list((tmp_path / "branding").glob("logo.*"))
+        assert not list((tmp_path / "branding").glob("favicon.*"))
+        assert client.get("/api/branding/logo").status_code == 404
+        assert client.get("/api/branding/favicon").status_code == 404
+    finally:
+        client.post("/api/admin/settings/reset", headers=_auth(admin_token))
+
+
+@requires_infra
+def test_reset_removes_image_uploads(
+    admin_token: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reset-to-defaults also clears uploads whose default is unset."""
+    monkeypatch.setattr(setup_service, "UPLOADS_DIR", tmp_path)
+    client.patch(
+        "/api/admin/settings",
+        headers=_auth(admin_token),
+        json={
+            "seo.default_og_image": _PNG_DATA_URL,
+            "institute.favicon_url": _PNG_DATA_URL,
+        },
+    )
+    assert (tmp_path / "seo" / "og-image.png").is_file()
+    assert (tmp_path / "branding" / "favicon.png").is_file()
+
+    resp = client.post("/api/admin/settings/reset", headers=_auth(admin_token))
+    assert resp.status_code == 200, resp.text
+    assert not list((tmp_path / "seo").glob("og-image.*"))
+    assert not list((tmp_path / "branding").glob("favicon.*"))
 
 
 @requires_infra

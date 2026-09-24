@@ -957,6 +957,20 @@ def _save_image(key: str, data_url: str) -> str:
     return serving
 
 
+def _remove_image(key: str, value: Any) -> None:
+    """Delete the stored upload once a setting stops pointing at it.
+
+    The file under ``uploads/<subdir>/<name>.*`` is only kept while the
+    stored value is the serving path itself; clears (``None``) and external
+    URLs orphan it, and the serving endpoints must stop returning it.
+    """
+    subdir, name, serving = _IMAGE_TARGETS[key]
+    if value == serving:
+        return
+    for old in (setup_service.UPLOADS_DIR / subdir).glob(f"{name}.*"):
+        old.unlink()
+
+
 def update(
     db: Session, changes: dict[str, Any], user: User
 ) -> dict[str, Any]:
@@ -976,9 +990,11 @@ def update(
 
     now = datetime.now(UTC)
     for key, value in validated.items():
-        if SPEC_BY_KEY[key].type == "image" and isinstance(value, str):
-            if _IMAGE_DATA_URL.match(value):
+        if SPEC_BY_KEY[key].type == "image":
+            if isinstance(value, str) and _IMAGE_DATA_URL.match(value):
                 value = _save_image(key, value)
+            else:
+                _remove_image(key, value)
         row = db.get(Setting, key)
         if row is None:
             row = Setting(key=key, group=SPEC_BY_KEY[key].group)
@@ -1007,6 +1023,8 @@ def reset(db: Session, user: User) -> dict[str, Any]:
             row = Setting(key=spec.key, group=spec.group)
             db.add(row)
         row.value = _default_for(spec, env)
+        if spec.type == "image":
+            _remove_image(spec.key, row.value)
         row.updated_by = None
         row.updated_at = now
     db.commit()
