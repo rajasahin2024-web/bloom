@@ -73,6 +73,17 @@ def test_seo_registry_keys_exist() -> None:
         "seo.gtm_id",
         "seo.fb_pixel_id",
         "seo.ms_clarity_id",
+        # Phase 2 — social sharing + structured data
+        "seo.og_title",
+        "seo.og_description",
+        "seo.twitter_card",
+        "seo.twitter_handle",
+        "seo.fb_app_id",
+        "seo.schema_type",
+        "seo.geo_lat",
+        "seo.geo_lng",
+        "seo.opening_hours",
+        "seo.faq_schema_enabled",
     }
     assert expected <= set(_SPEC)
     assert all(_SPEC[k].group == "seo" for k in expected)
@@ -102,6 +113,45 @@ def test_seo_analytics_ids_are_plain_text() -> None:
     assert _validate("seo.ga4_id", 123)
 
 
+def test_seo_social_keys_validate() -> None:
+    assert _validate("seo.twitter_card", "summary") == {}
+    assert _validate("seo.twitter_card", "summary_large_image") == {}
+    assert _validate("seo.twitter_card", "large")
+    assert _validate("seo.twitter_handle", "@bloomielts") == {}
+    assert _validate("seo.twitter_handle", "bloomielts") == {}
+    assert _validate("seo.twitter_handle", "") == {}
+    assert _validate("seo.twitter_handle", "not a handle!")
+    assert _validate("seo.fb_app_id", "123456789012345") == {}
+    assert _validate("seo.fb_app_id", "") == {}
+    assert _validate("seo.fb_app_id", "abc123")
+    assert _validate("seo.og_title", "Bloom — IELTS prep") == {}
+    assert _validate("seo.og_description", "x" * 321)  # over max_length
+
+
+def test_seo_schema_keys_validate() -> None:
+    assert _validate("seo.schema_type", "EducationalOrganization") == {}
+    assert _validate("seo.schema_type", "LocalBusiness") == {}
+    assert _validate("seo.schema_type", "Organization")
+    assert _validate("seo.faq_schema_enabled", False) == {}
+    assert _validate("seo.faq_schema_enabled", "yes")
+
+
+def test_seo_localbusiness_fields_validate() -> None:
+    assert _validate("seo.geo_lat", "51.5074") == {}
+    assert _validate("seo.geo_lat", "-33.86") == {}
+    assert _validate("seo.geo_lat", "") == {}
+    assert _validate("seo.geo_lat", "91")
+    assert _validate("seo.geo_lat", "abc")
+    assert _validate("seo.geo_lat", "nan")
+    assert _validate("seo.geo_lng", "-0.1278") == {}
+    assert _validate("seo.geo_lng", "181")
+    assert _validate("seo.opening_hours", "Mo-Fr 09:00-18:00") == {}
+    assert _validate("seo.opening_hours", "Mo-Fr 09:00-18:00; Sa 10:00-14:00") == {}
+    assert _validate("seo.opening_hours", "") == {}
+    assert _validate("seo.opening_hours", "9 to 6 weekdays")
+    assert _validate("seo.opening_hours", "Mo-Fr 25:00-26:00")
+
+
 # ── public endpoints (hermetic — defaults hold with or without the DB) ────
 
 
@@ -122,6 +172,39 @@ def test_seo_meta_resolves_global_values() -> None:
     assert isinstance(body["head_tags"], list)
     assert set(body["verification"]) == {"google", "bing"}
     assert set(body["analytics"]) == {"ga4", "gtm", "fb_pixel", "ms_clarity"}
+
+
+def test_seo_meta_includes_social_and_schema() -> None:
+    body = client.get("/api/seo/meta?path=/").json()
+    assert set(body["og"]) == {
+        "type",
+        "title",
+        "description",
+        "url",
+        "site_name",
+        "image",
+    }
+    assert set(body["twitter"]) == {"card", "site", "title", "description", "image"}
+    assert body["twitter"]["card"] in {"summary", "summary_large_image"}
+    assert body["og"]["title"] == body["title"]  # og_title falls back
+    schemas = body["json_ld"]
+    assert isinstance(schemas, list) and schemas
+    org = schemas[0]
+    assert org["@type"] in {"EducationalOrganization", "LocalBusiness"}
+    assert org["name"]
+    tags = "\n".join(body["head_tags"])
+    assert 'property="og:title"' in tags
+    assert 'name="twitter:card"' in tags
+    assert 'type="application/ld+json"' in tags
+
+
+def test_seo_meta_course_path_gets_course_schema() -> None:
+    body = client.get("/api/seo/meta?path=/courses/ielts-foundation").json()
+    types = [s.get("@type") for s in body["json_ld"]]
+    assert "Course" in types
+    course = body["json_ld"][types.index("Course")]
+    assert course["name"] == "Ielts Foundation"
+    assert course["provider"]["name"]
 
 
 def test_og_image_404_when_unset() -> None:
@@ -273,3 +356,119 @@ def test_seo_group_round_trip_via_admin_api(admin_token: str) -> None:
         assert items["seo.site_title"]["source"] == "db"
     finally:
         client.post("/api/admin/settings/reset", headers=_auth(admin_token))
+
+
+# ── Phase 2: social sharing + structured data ────────────────────────────
+
+
+@requires_infra
+def test_social_meta_round_trip(admin_token: str) -> None:
+    try:
+        _patch(
+            admin_token,
+            {
+                "institute.website_url": "https://bloom.example",
+                "seo.og_title": "OG Title",
+                "seo.og_description": "OG share description",
+                "seo.twitter_card": "summary",
+                "seo.twitter_handle": "@bloomtest",
+                "seo.fb_app_id": "123456789012345",
+            },
+        )
+        meta = client.get("/api/seo/meta?path=/about").json()
+        assert meta["og"]["title"] == "OG Title"
+        assert meta["og"]["description"] == "OG share description"
+        assert meta["og"]["url"] == "https://bloom.example/about"
+        assert meta["twitter"]["card"] == "summary"
+        assert meta["twitter"]["site"] == "@bloomtest"
+        assert meta["twitter"]["title"] == "OG Title"
+        assert meta["fb_app_id"] == "123456789012345"
+        tags = "\n".join(meta["head_tags"])
+        assert 'property="og:title" content="OG Title"' in tags
+        assert 'name="twitter:site" content="@bloomtest"' in tags
+        assert 'property="fb:app_id" content="123456789012345"' in tags
+
+        # Overrides fall back to the page title / meta description.
+        _patch(admin_token, {"seo.og_title": "", "seo.og_description": ""})
+        meta = client.get("/api/seo/meta?path=/about").json()
+        assert meta["og"]["title"] == meta["title"]
+        assert meta["og"]["description"] == meta["description"]
+    finally:
+        client.post("/api/admin/settings/reset", headers=_auth(admin_token))
+
+
+@requires_infra
+def test_localbusiness_schema_round_trip(admin_token: str) -> None:
+    try:
+        _patch(
+            admin_token,
+            {
+                "institute.website_url": "https://bloom.example",
+                "institute.address": "1 Test Street, London",
+                "institute.phone": "+44 20 0000 0000",
+                "seo.schema_type": "LocalBusiness",
+                "seo.geo_lat": "51.5074",
+                "seo.geo_lng": "-0.1278",
+                "seo.opening_hours": "Mo-Fr 09:00-18:00; Sa 10:00-14:00",
+            },
+        )
+        meta = client.get("/api/seo/meta").json()
+        org = meta["json_ld"][0]
+        assert org["@type"] == "LocalBusiness"
+        assert org["url"] == "https://bloom.example"
+        assert org["address"] == {
+            "@type": "PostalAddress",
+            "streetAddress": "1 Test Street, London",
+        }
+        assert org["telephone"] == "+44 20 0000 0000"
+        assert org["geo"] == {
+            "@type": "GeoCoordinates",
+            "latitude": 51.5074,
+            "longitude": -0.1278,
+        }
+        assert org["openingHours"] == [
+            "Mo-Fr 09:00-18:00",
+            "Sa 10:00-14:00",
+        ]
+        tags = "\n".join(meta["head_tags"])
+        assert '"@type":"LocalBusiness"' in tags
+
+        # LocalBusiness-only fields are validated server-side.
+        resp = client.patch(
+            "/api/admin/settings",
+            headers=_auth(admin_token),
+            json={"seo.geo_lat": "north"},
+        )
+        assert resp.status_code == 422
+        assert "seo.geo_lat" in resp.json()["detail"]["errors"]
+    finally:
+        client.post("/api/admin/settings/reset", headers=_auth(admin_token))
+
+
+@requires_infra
+def test_faqpage_schema_behind_toggle(admin_token: str) -> None:
+    conn = _pg()
+    conn.execute(
+        "INSERT INTO cms_pages (id, slug, title, body, status, json_ld,"
+        " created_at, updated_at) VALUES (%s, 'faq', 'FAQ', '', 'published',"
+        " %s::jsonb, %s, %s)",
+        (
+            str(uuid.uuid4()),
+            '{"@type": "FAQPage", "mainEntity": []}',
+            datetime.now(UTC),
+            datetime.now(UTC),
+        ),
+    )
+    conn.close()
+    try:
+        meta = client.get("/api/seo/meta?path=/faq").json()
+        assert "FAQPage" in [s.get("@type") for s in meta["json_ld"]]
+
+        _patch(admin_token, {"seo.faq_schema_enabled": False})
+        meta = client.get("/api/seo/meta?path=/faq").json()
+        assert "FAQPage" not in [s.get("@type") for s in meta["json_ld"]]
+    finally:
+        client.post("/api/admin/settings/reset", headers=_auth(admin_token))
+        conn = _pg()
+        conn.execute("DELETE FROM cms_pages WHERE slug = 'faq'")
+        conn.close()

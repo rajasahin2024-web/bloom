@@ -6,13 +6,16 @@ defaults otherwise); when the database is unreachable the env/default values
 are served so a fresh deploy still answers crawlers.
 
 `GET /api/seo/meta?path=` also emits `head_tags` — ready-to-inject HTML for
-verification and analytics IDs. Per-page meta, OG/Twitter cards and actual
-`<head>` injection wire up in SEO phases 2–3 when public pages exist.
+verification, analytics, Open Graph/Twitter cards and JSON-LD structured
+data. Per-page meta overrides and actual `<head>` injection wire up in SEO
+phase 3 when public pages exist.
 """
 
 from __future__ import annotations
 
 import html
+import json
+import math
 import re
 from typing import Any
 from xml.sax.saxutils import escape as xml_escape
@@ -38,6 +41,10 @@ _GA4_RE = re.compile(r"^G-[A-Z0-9]+$", re.I)
 _GTM_RE = re.compile(r"^GTM-[A-Z0-9]+$", re.I)
 _FB_PIXEL_RE = re.compile(r"^\d{5,20}$")
 _CLARITY_RE = re.compile(r"^[a-z0-9]{6,20}$", re.I)
+_FB_APP_ID_RE = re.compile(r"^\d{5,20}$")
+_TWITTER_HANDLE_RE = re.compile(r"^@?[A-Za-z0-9_]{1,15}$")
+
+_SCHEMA_TYPES = ("EducationalOrganization", "LocalBusiness")
 
 _IMAGE_MEDIA = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}
 
@@ -130,6 +137,125 @@ def sitemap_xml() -> Response:
     return Response(content=xml, media_type="application/xml")
 
 
+# ── structured data (Schema.org JSON-LD) ─────────────────────────────────
+
+
+def _abs_url(base: str, url: str) -> str:
+    """Make a site-relative serving path absolute when a base is known."""
+    return f"{base}{url}" if url.startswith("/") and base else url
+
+
+def _org_schema(values: dict[str, Any], base: str) -> dict[str, Any]:
+    """Organization JSON-LD built from the institute profile group."""
+    schema_type = str(values.get("seo.schema_type") or "")
+    if schema_type not in _SCHEMA_TYPES:
+        schema_type = _SCHEMA_TYPES[0]
+    schema: dict[str, Any] = {
+        "@context": "https://schema.org",
+        "@type": schema_type,
+        "name": str(values.get("institute.name") or ""),
+    }
+    if base:
+        schema["url"] = base
+        schema["@id"] = f"{base}/#organization"
+    logo = str(values.get("institute.logo_url") or "")
+    if logo:
+        schema["logo"] = _abs_url(base, logo)
+    tagline = str(values.get("institute.tagline") or "").strip()
+    if tagline:
+        schema["description"] = tagline
+    address = str(values.get("institute.address") or "").strip()
+    if address:
+        schema["address"] = {"@type": "PostalAddress", "streetAddress": address}
+    phone = str(values.get("institute.phone") or "").strip()
+    if phone:
+        schema["telephone"] = phone
+    email = str(values.get("institute.contact_email") or "").strip()
+    if email:
+        schema["email"] = email
+    if schema_type == "LocalBusiness":
+        try:
+            lat = float(str(values.get("seo.geo_lat") or ""))
+            lng = float(str(values.get("seo.geo_lng") or ""))
+        except ValueError:
+            lat = lng = float("nan")
+        if math.isfinite(lat) and math.isfinite(lng):
+            schema["geo"] = {
+                "@type": "GeoCoordinates",
+                "latitude": lat,
+                "longitude": lng,
+            }
+        hours = str(values.get("seo.opening_hours") or "").strip()
+        if hours:
+            schema["openingHours"] = [s.strip() for s in hours.split(";") if s.strip()]
+    return schema
+
+
+def _cms_page(path: str) -> tuple[str, dict[str, Any] | None] | None:
+    """(title, json_ld) of the published CMS page at `path`, if any."""
+    slug = path.strip("/")
+    if not slug:
+        return None
+    db = new_session()
+    if db is None:
+        return None
+    try:
+        row = db.execute(
+            select(CmsPage.title, CmsPage.json_ld).where(
+                CmsPage.slug == slug, CmsPage.status == CmsStatus.published
+            )
+        ).first()
+        return (row[0], row[1]) if row else None
+    except Exception:  # noqa: BLE001 - table may not exist pre-migration
+        return None
+    finally:
+        db.close()
+
+
+def _course_schema(
+    values: dict[str, Any], base: str, path: str, page_title: str | None
+) -> dict[str, Any] | None:
+    """Minimal Course JSON-LD for `/courses/{slug}` paths."""
+    slug = path[len("/courses/") :].strip("/")
+    if not slug:
+        return None
+    name = page_title or slug.rsplit("/", 1)[-1].replace("-", " ").replace("_", " ").title()
+    schema: dict[str, Any] = {
+        "@context": "https://schema.org",
+        "@type": "Course",
+        "name": name,
+        "provider": {
+            "@type": str(values.get("seo.schema_type") or _SCHEMA_TYPES[0]),
+            "name": str(values.get("institute.name") or ""),
+            **({"sameAs": base} if base else {}),
+        },
+    }
+    if base:
+        schema["url"] = f"{base}{path}"
+    description = str(values.get("seo.meta_description") or "").strip()
+    if description:
+        schema["description"] = description
+    return schema
+
+
+def _json_ld(values: dict[str, Any], base: str, path: str) -> list[dict[str, Any]]:
+    """All JSON-LD blocks for a path: org schema + page/course schemas."""
+    schemas = [_org_schema(values, base)]
+    page = _cms_page(path)
+    page_ld = page[1] if page else None
+    emitted_page_ld = False
+    if isinstance(page_ld, dict):
+        is_faq = page_ld.get("@type") == "FAQPage"
+        if not is_faq or values.get("seo.faq_schema_enabled"):
+            schemas.append(page_ld)
+            emitted_page_ld = True
+    if not emitted_page_ld and path.startswith("/courses/"):
+        course = _course_schema(values, base, path, page[0] if page else None)
+        if course:
+            schemas.append(course)
+    return schemas
+
+
 # ── meta resolution + injectable head tags ───────────────────────────────
 
 
@@ -150,7 +276,12 @@ def _esc(value: Any) -> str:
     return html.escape(str(value), quote=True)
 
 
-def _head_tags(values: dict[str, Any], canonical: str) -> list[str]:
+def _head_tags(
+    values: dict[str, Any],
+    canonical: str,
+    social: dict[str, Any],
+    schemas: list[dict[str, Any]],
+) -> list[str]:
     """Ready-to-inject HTML tags from the resolved settings."""
     e = _esc
     tags: list[str] = []
@@ -162,6 +293,34 @@ def _head_tags(values: dict[str, Any], canonical: str) -> list[str]:
         tags.append('<meta name="robots" content="noindex,nofollow">')
     if canonical:
         tags.append(f'<link rel="canonical" href="{e(canonical)}">')
+    og = social["og"]
+    tw = social["twitter"]
+    for prop, val in (
+        ("og:type", og["type"]),
+        ("og:title", og["title"]),
+        ("og:description", og["description"]),
+        ("og:url", og["url"]),
+        ("og:site_name", og["site_name"]),
+        ("og:image", og["image"]),
+        ("fb:app_id", social["fb_app_id"]),
+    ):
+        if val:
+            tags.append(f'<meta property="{prop}" content="{e(val)}">')
+    for name, val in (
+        ("twitter:card", tw["card"]),
+        ("twitter:site", tw["site"]),
+        ("twitter:title", tw["title"]),
+        ("twitter:description", tw["description"]),
+        ("twitter:image", tw["image"]),
+    ):
+        if val:
+            tags.append(f'<meta name="{name}" content="{e(val)}">')
+    for schema in schemas:
+        # "</" is escaped so JSON-LD can never break out of the script tag.
+        payload = json.dumps(schema, ensure_ascii=False, separators=(",", ":")).replace(
+            "</", "<\\/"
+        )
+        tags.append(f'<script type="application/ld+json">{payload}</script>')
     if values.get("seo.google_site_verification"):
         tags.append(
             '<meta name="google-site-verification" '
@@ -215,27 +374,63 @@ def _head_tags(values: dict[str, Any], canonical: str) -> list[str]:
 
 @router.get("/api/seo/meta")
 def seo_meta(path: str = Query(default="/", max_length=500)) -> dict[str, Any]:
-    """Resolve global meta for a public path — consumed by the site <head>.
+    """Resolve meta for a public path — consumed by the site <head>.
 
-    Phase 3 adds per-page overrides; for now every path gets the global
-    values plus a path-derived title and canonical URL.
+    Returns the global values plus a path-derived title/canonical, the
+    Open Graph/Twitter card payload, and the JSON-LD schemas for the path
+    (organization profile always; CMS-authored page schema when present;
+    synthesized Course schema on `/courses/*`; FAQPage gated by
+    `seo.faq_schema_enabled`). Phase 3 adds per-page meta overrides.
     """
     values = _resolved()
     base = _canonical_base(values)
     safe_path = path if path.startswith("/") else f"/{path}"
     canonical = f"{base}{safe_path}" if base else ""
+    title = _page_title(values, safe_path)
+    description = str(values.get("seo.meta_description") or "")
     og_raw = str(values.get("seo.default_og_image") or "")
-    og_image = f"{base}{og_raw}" if og_raw.startswith("/") and base else og_raw
+    og_image = _abs_url(base, og_raw)
+    handle_raw = str(values.get("seo.twitter_handle") or "").strip()
+    handle = handle_raw.lstrip("@") if _TWITTER_HANDLE_RE.match(handle_raw) else ""
+    og_title = str(values.get("seo.og_title") or "") or title
+    og_description = str(values.get("seo.og_description") or "") or description
+    card = str(values.get("seo.twitter_card") or "")
+    if card not in ("summary", "summary_large_image"):
+        card = "summary_large_image"
+    fb_app_id_raw = str(values.get("seo.fb_app_id") or "").strip()
+    social = {
+        "og": {
+            "type": "website",
+            "title": og_title,
+            "description": og_description,
+            "url": canonical,
+            "site_name": str(values.get("institute.name") or ""),
+            "image": og_image,
+        },
+        "twitter": {
+            "card": card,
+            "site": f"@{handle}" if handle else "",
+            "title": og_title,
+            "description": og_description,
+            "image": og_image,
+        },
+        "fb_app_id": fb_app_id_raw if _FB_APP_ID_RE.match(fb_app_id_raw) else "",
+    }
+    schemas = _json_ld(values, base, safe_path)
     indexing = bool(values.get("seo.indexing_enabled"))
     return {
         "path": safe_path,
-        "title": _page_title(values, safe_path),
-        "description": values.get("seo.meta_description") or "",
+        "title": title,
+        "description": description,
         "keywords": values.get("seo.meta_keywords") or "",
         "robots": "index,follow" if indexing else "noindex,nofollow",
         "canonical_url": canonical,
         "og_image": og_image,
         "site_name": values.get("institute.name") or "",
+        "og": social["og"],
+        "twitter": social["twitter"],
+        "fb_app_id": social["fb_app_id"],
+        "json_ld": schemas,
         "verification": {
             "google": values.get("seo.google_site_verification") or "",
             "bing": values.get("seo.bing_verification") or "",
@@ -246,7 +441,7 @@ def seo_meta(path: str = Query(default="/", max_length=500)) -> dict[str, Any]:
             "fb_pixel": values.get("seo.fb_pixel_id") or "",
             "ms_clarity": values.get("seo.ms_clarity_id") or "",
         },
-        "head_tags": _head_tags(values, canonical),
+        "head_tags": _head_tags(values, canonical, social, schemas),
     }
 
 

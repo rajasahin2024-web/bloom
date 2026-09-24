@@ -45,6 +45,13 @@ CACHE_TTL_SECONDS = 120
 
 _email_adapter: TypeAdapter[str] = TypeAdapter(EmailStr)
 _URL_RE = re.compile(r"^https?://[^\s]+$", re.I)
+_TWITTER_HANDLE_RE = re.compile(r"^@?[A-Za-z0-9_]{1,15}$")
+_FB_APP_ID_RE = re.compile(r"^\d{5,20}$")
+# schema.org openingHours segment: optional day list, then HH:MM-HH:MM
+_OH_SEGMENT_RE = re.compile(
+    r"^(?:[MTWFS][a-z](?:[-,][MTWFS][a-z])*\s+)?"
+    r"(?:[01]?\d|2[0-3]):[0-5]\d-(?:[01]?\d|2[0-3]):[0-5]\d$"
+)
 
 # data:image/{png,jpeg,webp};base64,… uploads (same rules as the setup wizard)
 _IMAGE_DATA_URL = re.compile(
@@ -87,6 +94,8 @@ class SettingSpec:
     max_length: int = 300
     number_min: float = 0
     number_max: float = 100
+    # extra string check: geo_lat | geo_lng | opening_hours | twitter_handle | fb_app_id
+    format: str | None = None
 
 
 _GROUPS: tuple[tuple[str, str, str], ...] = (
@@ -476,6 +485,67 @@ SPECS: tuple[SettingSpec, ...] = (
         default="",
         max_length=300,
     ),
+    # Social sharing / Open Graph
+    SettingSpec(
+        key="seo.og_title",
+        group="seo",
+        label="OG title override",
+        type="text",
+        description=(
+            "Title used in social-share cards — falls back to the resolved "
+            "page title when empty."
+        ),
+        default="",
+        max_length=200,
+    ),
+    SettingSpec(
+        key="seo.og_description",
+        group="seo",
+        label="OG description override",
+        type="textarea",
+        description=(
+            "Share-card description on Facebook/LinkedIn/WhatsApp — falls "
+            "back to the meta description when empty."
+        ),
+        default="",
+        max_length=320,
+    ),
+    SettingSpec(
+        key="seo.twitter_card",
+        group="seo",
+        label="Twitter/X card type",
+        type="select",
+        description=(
+            "Card layout on Twitter/X — summary_large_image renders the "
+            "share image full-width."
+        ),
+        default="summary_large_image",
+        options=("summary", "summary_large_image"),
+    ),
+    SettingSpec(
+        key="seo.twitter_handle",
+        group="seo",
+        label="Twitter/X handle",
+        type="text",
+        description=(
+            "Site handle for the twitter:site tag, e.g. @bloomielts."
+        ),
+        default="",
+        max_length=20,
+        format="twitter_handle",
+    ),
+    SettingSpec(
+        key="seo.fb_app_id",
+        group="seo",
+        label="Facebook app ID",
+        type="text",
+        description=(
+            "Numeric fb:app_id — only needed for Facebook domain insights."
+        ),
+        default="",
+        max_length=30,
+        format="fb_app_id",
+    ),
     # Indexing & crawling
     SettingSpec(
         key="seo.indexing_enabled",
@@ -588,6 +658,70 @@ SPECS: tuple[SettingSpec, ...] = (
         description="Clarity project ID for session analytics.",
         default="",
         max_length=50,
+    ),
+    # Structured data (Schema.org)
+    SettingSpec(
+        key="seo.schema_type",
+        group="seo",
+        label="Organization schema type",
+        type="select",
+        description=(
+            "Schema.org @type emitted site-wide from the institute profile. "
+            "LocalBusiness additionally emits geo coordinates and opening "
+            "hours."
+        ),
+        default="EducationalOrganization",
+        options=("EducationalOrganization", "LocalBusiness"),
+    ),
+    SettingSpec(
+        key="seo.geo_lat",
+        group="seo",
+        label="Latitude",
+        type="text",
+        description=(
+            "Premises latitude in decimal degrees (LocalBusiness schema "
+            "only), e.g. 51.5074."
+        ),
+        default="",
+        max_length=20,
+        format="geo_lat",
+    ),
+    SettingSpec(
+        key="seo.geo_lng",
+        group="seo",
+        label="Longitude",
+        type="text",
+        description=(
+            "Premises longitude in decimal degrees (LocalBusiness schema "
+            "only), e.g. -0.1278."
+        ),
+        default="",
+        max_length=20,
+        format="geo_lng",
+    ),
+    SettingSpec(
+        key="seo.opening_hours",
+        group="seo",
+        label="Opening hours",
+        type="text",
+        description=(
+            "Opening hours in schema.org format (LocalBusiness only), e.g. "
+            "Mo-Fr 09:00-18:00; Sa 10:00-14:00."
+        ),
+        default="",
+        max_length=200,
+        format="opening_hours",
+    ),
+    SettingSpec(
+        key="seo.faq_schema_enabled",
+        group="seo",
+        label="Emit FAQPage schema",
+        type="toggle",
+        description=(
+            "When on, pages whose CMS content defines FAQPage JSON-LD "
+            "include it in the resolved schema payload."
+        ),
+        default=True,
     ),
 )
 
@@ -716,6 +850,37 @@ def _invalid(errors: dict[str, str], key: str, message: str) -> None:
     errors[key] = message
 
 
+def _check_format(spec: SettingSpec, value: str, errors: dict[str, str]) -> None:
+    """Extra per-format checks for string settings (``spec.format``)."""
+    fmt = spec.format
+    if fmt in ("geo_lat", "geo_lng"):
+        limit = 90 if fmt == "geo_lat" else 180
+        try:
+            num = float(value)
+        except ValueError:
+            num = float("nan")
+        if not -limit <= num <= limit:
+            _invalid(
+                errors, spec.key, f"must be a number between -{limit} and {limit}"
+            )
+    elif fmt == "opening_hours":
+        segments = [s.strip() for s in value.split(";") if s.strip()]
+        if not segments or any(not _OH_SEGMENT_RE.match(s) for s in segments):
+            _invalid(
+                errors,
+                spec.key,
+                "use schema.org format, e.g. Mo-Fr 09:00-18:00; Sa 10:00-14:00",
+            )
+    elif fmt == "twitter_handle":
+        if not _TWITTER_HANDLE_RE.match(value):
+            _invalid(
+                errors, spec.key, "must be a handle like @bloomielts (letters, digits, _)"
+            )
+    elif fmt == "fb_app_id":
+        if not _FB_APP_ID_RE.match(value):
+            _invalid(errors, spec.key, "must be a numeric app ID")
+
+
 def _validate(spec: SettingSpec, raw: Any, errors: dict[str, str]) -> Any:
     """Coerce/validate one PATCHed value; returns the stored value."""
     key = spec.key
@@ -770,6 +935,8 @@ def _validate(spec: SettingSpec, raw: Any, errors: dict[str, str]) -> Any:
     if spec.type == "url" and value and not _URL_RE.match(value):
         _invalid(errors, key, "must be a valid http(s) URL")
         return None
+    if spec.format and value:
+        _check_format(spec, value, errors)
     return value
 
 
