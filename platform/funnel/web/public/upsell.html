@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>One more step — Band 7 Mini-Course | Bloom Academy</title>
-<meta name="description" content="Upgrade your order: the Band 7 mini-course + 3-eBook bundle for ₹599.">
+<title>One more step — AI Course Bundle | Bloom Academy</title>
+<meta name="description" content="Upgrade your order: add the second AI course to your bundle for ₹599.">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0f172a">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -25,16 +25,16 @@
 
     <div class="upsell-hero">
       <span class="tag">Payment received · one-time upgrade</span>
-      <h1>Add the Band 7 Mini-Course — ₹599</h1>
-      <p>Your eBook order is confirmed. Before you go: the companion mini-course that walks the frameworks live.</p>
+      <h1>Add the second course — ₹599</h1>
+      <p>Your order is confirmed. Before you go: unlock the next course in the AI skills series — beyond the basics into real workflows.</p>
     </div>
 
     <div class="card">
       <h3>What you get for ₹599</h3>
       <ul class="checklist" style="margin-top:8px">
-        <li><span class="check">✓</span><span><b>Band 7 mini-course</b> — 5 guided video walkthroughs: plan, write and self-review a Task 2 essay end-to-end.</span></li>
-        <li><span class="check">✓</span><span><b>3-eBook bundle</b> — Speaking cue-card bank, Reading question-type tactics, Listening trap guide.</span></li>
-        <li><span class="check">✓</span><span><b>Self-review rubric</b> — the same checklist examiners use, so practice essays get honest scores.</span></li>
+        <li><span class="check">✓</span><span><b>Second course slot</b> — the next micro-course in the AI skills series, added straight to your portal.</span></li>
+        <li><span class="check">✓</span><span><b>Advanced prompt workflows</b> — multi-step prompts for bigger tasks: full reports, data summaries, client-ready decks.</span></li>
+        <li><span class="check">✓</span><span><b>Priority access + certificate track</b> — new course releases land in your portal first, with its own quizzes and completion certificate.</span></li>
       </ul>
     </div>
 
@@ -67,7 +67,7 @@
     Funnel.api.upsell(orderId, eventId)
       .then(function (payment) {
         payment.order_id = payment.order_id || orderId;
-        Funnel.settle(payment, { description: "Band 7 Mini-Course" },
+        Funnel.settle(payment, { description: "AI Course Bundle" },
           go,
           function (e2) {
             state.hidden = true;

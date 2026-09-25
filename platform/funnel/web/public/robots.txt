@@ -4,6 +4,8 @@ Allow: /index.html
 Disallow: /checkout
 Disallow: /upsell
 Disallow: /thanks
+Disallow: /login
+Disallow: /portal
 Disallow: /config.js
 
 Sitemap: http://82.112.226.111:8081/sitemap.xml

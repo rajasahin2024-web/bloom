@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Checkout — IELTS Writing Band 7 eBook | Bloom Academy</title>
-<meta name="description" content="Secure checkout for the IELTS Writing Band 7 eBook. ₹199 one-time, instant PDF download.">
+<title>Checkout — AI for Office Work Micro-Course | Bloom Academy</title>
+<meta name="description" content="Secure checkout for the AI for Office Work micro-course. ₹199 one-time, instant portal access.">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0f172a">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -27,11 +27,11 @@
 
     <div class="summary" role="table" aria-label="Order summary">
       <div class="summary-row">
-        <span class="lbl">IELTS Writing Band 7 eBook<small>PDF · instant download</small></span>
+        <span class="lbl">AI for Office Work — Micro-Course<small>learner portal · instant access</small></span>
         <span class="val">₹199</span>
       </div>
       <div class="summary-row" id="bump-row" hidden>
-        <span class="lbl">Mock-Test Workbook<small>order bump · PDF</small></span>
+        <span class="lbl">Prompt Library &amp; Office-Template Pack<small>order bump · PDF pack</small></span>
         <span class="val">+₹99</span>
       </div>
       <div class="summary-row summary-total">
@@ -45,13 +45,13 @@
       <input type="email" id="email" name="email" autocomplete="email" inputmode="email"
              placeholder="you@example.com" required aria-describedby="email-err">
       <p class="field-err" id="email-err" hidden></p>
-      <p class="micro" style="margin-top:6px">Your download links go here — double-check spelling.</p>
+      <p class="micro" style="margin-top:6px">Your login details and links go here — double-check spelling.</p>
 
       <label class="bump" for="bump">
         <input type="checkbox" id="bump" name="bump">
         <span>
-          <span class="t">Add the Mock-Test Workbook — +₹99</span>
-          <span class="d">Like a predictor test — but it actually grades your writing. 10 full-length mocks, Band 7+ model answers and a self-scoring rubric.</span>
+          <span class="t">Add the Prompt Library &amp; Office-Template Pack — +₹99</span>
+          <span class="d">The shortcut pack: 60+ copy-paste prompts for reports, email, Excel &amp; decks — plus ready-made office templates you can use today.</span>
           <span class="p">One-time offer · +₹99</span>
         </span>
       </label>
@@ -103,13 +103,13 @@
     /* Browser + server fire InitiateCheckout with the SAME event_id (dedup). */
     Funnel.track("InitiateCheckout", {
       value: amount / 100, currency: "INR",
-      content_name: "IELTS Writing Band 7 eBook",
+      content_name: "AI for Office Work micro-course",
       num_items: bumpEl.checked ? 2 : 1
     }, eventId);
 
     Funnel.api.createOrder(email, bumpEl.checked, eventId, Funnel.getUtm())
       .then(function (order) {
-        Funnel.settle(order, { email: email, description: "IELTS Writing Band 7 eBook" },
+        Funnel.settle(order, { email: email, description: "AI for Office Work micro-course" },
           function () {
             location.href = "/upsell?order=" + encodeURIComponent(order.order_id);
           },

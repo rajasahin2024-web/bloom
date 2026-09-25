@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learner login — AI for Office Work | Bloom Academy</title>
+<meta name="description" content="Sign in to your AI for Office Work learner portal — modules, videos, quizzes, certificate and downloads.">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0f172a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body data-page="login">
+<header class="appbar">
+  <div class="appbar-in">
+    <a class="brand" href="/"><span class="brand-mark">B</span>Bloom Academy</a>
+    <span class="appbar-tag">Learner login</span>
+  </div>
+</header>
+<main class="wrap">
+  <div class="narrow">
+    <h1 style="font-size:22px;margin:18px 0 6px">Sign in to your course</h1>
+    <p class="lede" style="margin-bottom:14px">Use the email you bought with + your order ID — both are in your confirmation email.</p>
+    <div class="state-box" id="magic-state" hidden><div class="spin"></div>Signing you in…</div>
+    <form id="login-form" novalidate>
+      <label class="fld" for="email">Email address <span aria-hidden="true" style="color:var(--err)">*</span></label>
+      <input type="email" id="email" name="email" autocomplete="email" inputmode="email"
+             placeholder="you@example.com" required aria-describedby="email-err">
+      <p class="field-err" id="email-err" hidden></p>
+      <label class="fld" for="order">Order ID <span aria-hidden="true" style="color:var(--err)">*</span></label>
+      <input type="text" id="order" name="order" autocomplete="off" inputmode="text"
+             placeholder="ord_xxxxxxxxxxxx" required aria-describedby="order-err order-hint">
+      <p class="field-err" id="order-err" hidden></p>
+      <p class="micro" id="order-hint" style="margin-top:6px">Starts with <b>ord_</b> — it's on your thank-you page link and in the confirmation email.</p>
+      <p style="margin-top:16px"><button class="cta" type="submit" id="login-btn">Sign in to my portal</button></p>
+      <p class="form-err" id="form-err" hidden role="alert"></p>
+    </form>
+    <p class="micro" style="margin-top:18px">Haven't bought yet? <a href="/">See the course →</a></p>
+  </div>
+</main>
+<script src="/config.js"></script>
+<script src="/assets/funnel.js"></script>
+<script>
+(function () {
+  var form = Funnel.el("login-form"), btn = Funnel.el("login-btn"),
+      emailEl = Funnel.el("email"), orderEl = Funnel.el("order"),
+      emailErr = Funnel.el("email-err"), orderErr = Funnel.el("order-err"),
+      formErr = Funnel.el("form-err"), magicState = Funnel.el("magic-state");
+
+  function dest() {
+    var next = Funnel.qs("next");
+    return next && next.charAt(0) === "/" ? next : "/portal";
+  }
+  function go(sess) {
+    Funnel.saveSession(sess);
+    location.href = dest();
+  }
+  function fail(msg) {
+    if (magicState) magicState.hidden = true;
+    if (form) form.hidden = false;
+    Funnel.showError(formErr, msg);
+  }
+
+  /* Magic-link path: /login?token=… — backend (TEC-121) mints these in the
+   * purchase confirmation email; one shot, then the session token takes over. */
+  var magic = Funnel.qs("token");
+  if (magic) {
+    form.hidden = true;
+    magicState.hidden = false;
+    Funnel.portal.loginToken(magic)
+      .then(go)
+      .catch(function (e) {
+        fail(e.status === 401
+          ? "That sign-in link has expired or was already used — sign in with email + order ID below."
+          : e.message || "Could not sign you in — try email + order ID.");
+      });
+  }
+
+  var prefill = Funnel.qs("order");
+  if (prefill) orderEl.value = prefill;
+
+  function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    Funnel.showError(formErr, "");
+    var email = emailEl.value.trim(), order = orderEl.value.trim();
+    var bad = false;
+    if (!validEmail(email)) {
+      Funnel.showError(emailErr, "Enter the email you used at checkout.");
+      bad = true;
+    } else Funnel.showError(emailErr, "");
+    if (!/^ord_[A-Za-z0-9-]+$/.test(order)) {
+      Funnel.showError(orderErr, "Order IDs start with ord_ — copy it from your confirmation email.");
+      bad = true;
+    } else Funnel.showError(orderErr, "");
+    if (bad) return;
+
+    btn.disabled = true;
+    btn.textContent = "Signing in…";
+    Funnel.portal.login(email, order)
+      .then(go)
+      .catch(function (e2) {
+        btn.disabled = false;
+        btn.textContent = "Sign in to my portal";
+        Funnel.showError(formErr,
+          e2.status === 401 || e2.status === 404
+            ? "We couldn't match that email + order ID — check the confirmation email and try again."
+            : e2.message || "Sign-in failed — try again.");
+      });
+  });
+})();
+</script>
+</body>
+</html>

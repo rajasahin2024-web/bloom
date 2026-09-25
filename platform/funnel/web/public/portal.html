@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My course — AI for Office Work | Bloom Academy</title>
+<meta name="description" content="Your AI for Office Work learner portal — module map, curated videos, quizzes, certificate and downloads.">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0f172a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body data-page="portal">
+
+<header class="appbar">
+  <div class="appbar-in">
+    <a class="brand" href="/portal"><span class="brand-mark">B</span>Bloom Academy</a>
+    <button class="logout-btn" id="logout-btn" type="button">Sign out</button>
+  </div>
+</header>
+
+<div class="state-box" id="boot"><div class="spin"></div>Loading your course…</div>
+<p class="form-err wrap" id="boot-err" hidden role="alert"></p>
+
+<div id="portal" hidden>
+
+  <div class="course-head wrap">
+    <p class="sec-kicker">AI for Office Work</p>
+    <h1 style="font-size:22px;margin:0 0 4px">Your learner portal</h1>
+    <p class="micro" id="who"></p>
+    <div class="prog" role="progressbar" aria-label="Course progress" aria-valuemin="0" aria-valuemax="100" id="prog-bar-wrap">
+      <div class="prog-fill" id="prog-fill" style="width:0%"></div>
+    </div>
+    <p class="micro" id="prog-label">0 of 6 modules passed</p>
+  </div>
+
+  <nav class="tabbar" aria-label="Portal sections">
+    <button class="tab on" data-tab="modules" type="button">Modules</button>
+    <button class="tab" data-tab="downloads" type="button">Downloads</button>
+    <button class="tab" data-tab="certificate" type="button">Certificate</button>
+  </nav>
+
+  <main class="wrap">
+    <section id="sec-modules" aria-label="Course modules">
+      <p class="note" id="bonus-note">🎁 The videos in each module are a <b>free curated-videos bonus</b> — the best YouTube lessons organised for you. Your paid course is the guide, quizzes, templates and certificate.</p>
+      <div id="mod-list"></div>
+    </section>
+
+    <section id="sec-downloads" hidden aria-label="Downloads">
+      <h2 class="sec-title" style="margin-top:18px">Your downloads</h2>
+      <div class="state-box" id="dl-loading"><div class="spin"></div>Fetching files…</div>
+      <div id="dl-list"></div>
+      <p class="form-err" id="dl-err" hidden role="alert"></p>
+    </section>
+
+    <section id="sec-certificate" hidden aria-label="Certificate">
+      <h2 class="sec-title" style="margin-top:18px">Certificate of completion</h2>
+      <div id="cert-box"></div>
+    </section>
+  </main>
+</div>
+<script src="/config.js"></script>
+<script src="/assets/funnel.js"></script>
+<script>
+(function () {
+  "use strict";
+  if (!Funnel.requireSession()) return; // redirected to /login
+
+  var boot = Funnel.el("boot"), bootErr = Funnel.el("boot-err"),
+      portal = Funnel.el("portal"), modList = Funnel.el("mod-list"),
+      progFill = Funnel.el("prog-fill"), progLabel = Funnel.el("prog-label"),
+      whoEl = Funnel.el("who"), certBox = Funnel.el("cert-box"),
+      dlLoading = Funnel.el("dl-loading"), dlList = Funnel.el("dl-list"),
+      dlErr = Funnel.el("dl-err");
+
+  var modules = [];
+  var openId = null;
+  var quizAnswers = {};   // moduleId -> {qid: optionIndex}
+  var quizResult = {};    // moduleId -> submit result
+  var certUrl = null;
+
+  function expired(e) {
+    if (e && e.status === 401) {
+      Funnel.clearSession();
+      location.href = "/login?next=/portal&expired=1";
+      return true;
+    }
+    return false;
+  }
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* ---------- tabs ---------- */
+  var tabs = document.querySelectorAll(".tab");
+  function showTab(name) {
+    tabs.forEach(function (t) { t.classList.toggle("on", t.dataset.tab === name); });
+    ["modules", "downloads", "certificate"].forEach(function (n) {
+      Funnel.el("sec-" + n).hidden = n !== name;
+    });
+    if (name === "downloads") loadDownloads();
+    if (name === "certificate") loadCertificate();
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener("click", function () { showTab(t.dataset.tab); });
+  });
+
+  /* ---------- progress ---------- */
+  function renderProgress(p) {
+    if (!p) return;
+    var total = p.modules_total || modules.length || 6;
+    var passed = p.modules_passed || 0;
+    var pct = typeof p.percent === "number" ? p.percent : Math.round((passed / total) * 100);
+    progFill.style.width = pct + "%";
+    progLabel.textContent = passed + " of " + total + " modules passed" +
+      (p.certificate_ready ? " — certificate unlocked" : "");
+    Funnel.el("prog-bar-wrap").setAttribute("aria-valuenow", String(pct));
+  }
+
+  /* ---------- module map ---------- */
+  function statusOf(m) {
+    var pr = m.progress || {};
+    return pr.status || (pr.passed ? "passed" : "not_started");
+  }
+  function pill(m) {
+    var st = statusOf(m), pr = m.progress || {};
+    if (st === "passed")
+      return '<span class="pill ok">Passed' + (pr.best_score_pct != null ? " · " + pr.best_score_pct + "%" : "") + "</span>";
+    if (st === "in_progress")
+      return '<span class="pill mid">In progress' + (pr.best_score_pct != null ? " · " + pr.best_score_pct + "%" : "") + "</span>";
+    if (st === "locked") return '<span class="pill lock">Locked</span>';
+    return '<span class="pill">Not started</span>';
+  }
+  function renderModules() {
+    modList.innerHTML = "";
+    modules.forEach(function (m, i) {
+      var card = document.createElement("div");
+      card.className = "mod-card" + (openId === m.id ? " open" : "");
+      var head = document.createElement("button");
+      head.type = "button";
+      head.className = "mod-head";
+      head.setAttribute("aria-expanded", openId === m.id ? "true" : "false");
+      head.innerHTML =
+        '<span class="mod-num">' + (i + 1) + "</span>" +
+        '<span class="mod-meta"><b>' + esc(m.title) + "</b>" +
+        "<small>" + esc(m.summary || "") + "</small></span>" + pill(m);
+      head.addEventListener("click", function () { toggleModule(m); });
+      card.appendChild(head);
+      var body = document.createElement("div");
+      body.className = "mod-body";
+      body.id = "mod-body-" + m.id;
+      if (openId === m.id) body.innerHTML = '<div class="state-box"><div class="spin"></div>Opening module…</div>';
+      else body.hidden = true;
+      card.appendChild(body);
+      modList.appendChild(card);
+    });
+    if (openId) fillModuleBody(openId);
+  }
+
+  var moduleCache = {};
+  function toggleModule(m) {
+    if (statusOf(m) === "locked") return;
+    openId = openId === m.id ? null : m.id;
+    renderModules();
+  }
+
+  function fillModuleBody(id) {
+    var body = Funnel.el("mod-body-" + id);
+    if (!body) return;
+    var cached = moduleCache[id];
+    if (cached) { renderModuleDetail(body, cached); return; }
+    Funnel.portal.module(id)
+      .then(function (d) {
+        moduleCache[id] = d;
+        renderModuleDetail(body, d);
+      })
+      .catch(function (e) {
+        if (expired(e)) return;
+        body.innerHTML = '<p class="form-err" role="alert">' + esc(e.message || "Could not load this module.") + "</p>";
+      });
+  }
+
+  function renderModuleDetail(body, d) {
+    var m = d.module || d;
+    var html = "";
+    if (m.lesson_text) html += '<div class="lesson">' + m.lesson_text + "</div>";
+
+    var vids = m.videos || m.youtube || [];
+    if (vids.length) {
+      html += '<p class="sec-kicker" style="margin-top:10px">Free bonus · curated YouTube lessons</p>';
+      vids.forEach(function (v) {
+        var vid = v.video_id || v.id;
+        html += '<div class="vid-wrap"><div class="vid">' +
+          '<iframe src="https://www.youtube-nocookie.com/embed/' + encodeURIComponent(vid) +
+          '" title="' + esc(v.title || "Curated YouTube lesson") +
+          '" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>' +
+          '<p class="vid-cap">' + esc(v.title || "Video lesson") +
+          (v.duration ? " <small>" + esc(v.duration) + "</small>" : "") + "</p></div>";
+      });
+      html += '<p class="micro">Free bonus content — hosted by YouTube, organised for you by Bloom Academy.</p>';
+    }
+
+    var qs = m.questions || (m.quiz && m.quiz.questions) || [];
+    if (qs.length) html += quizHtml(m.id, qs);
+    else html += '<p class="micro" style="margin-top:12px">Quiz for this module is being finalised — check back soon.</p>';
+
+    body.innerHTML = html;
+    wireQuiz(body, m.id, qs);
+    /* A quiz submit triggers refreshProgress() -> renderModules(), which
+     * rebuilds this body — re-apply the last result so it isn't wiped. */
+    var last = quizResult[m.id];
+    if (last) {
+      var mqBox = body.querySelector(".mq");
+      if (mqBox) renderQuizResult(mqBox, last);
+    }
+  }
+
+  /* ---------- quiz ---------- */
+  function quizHtml(mid, qs) {
+    var h = '<div class="mq" data-mid="' + esc(mid) + '">' +
+      '<p class="sec-kicker" style="margin-top:14px">Module quiz</p>' +
+      '<p class="mq-pass">Pass mark: 70% — retake any time.</p>';
+    qs.forEach(function (q, qi) {
+      var qid = q.id || "q" + qi;
+      h += '<div class="mq-q" data-qid="' + esc(qid) + '">' +
+        '<p class="mq-t">' + (qi + 1) + ". " + esc(q.q || q.question) + "</p>" +
+        '<div class="mq-opts">';
+      (q.options || []).forEach(function (opt, oi) {
+        h += '<button type="button" class="mq-opt" data-oi="' + oi + '">' + esc(opt) + "</button>";
+      });
+      h += "</div></div>";
+    });
+    h += '<p class="form-err mq-err" hidden role="alert"></p>' +
+      '<button type="button" class="cta mq-submit">Submit answers</button>' +
+      '<div class="mq-result" hidden></div></div>';
+    return h;
+  }
+
+  function wireQuiz(body, mid, qs) {
+    var box = body.querySelector(".mq");
+    if (!box) return;
+    var answers = quizAnswers[mid] = quizAnswers[mid] || {};
+    var submit = box.querySelector(".mq-submit");
+    var err = box.querySelector(".mq-err");
+
+    function refreshSel() {
+      box.querySelectorAll(".mq-q").forEach(function (qEl) {
+        var qid = qEl.dataset.qid;
+        qEl.querySelectorAll(".mq-opt").forEach(function (o) {
+          o.classList.toggle("sel", answers[qid] === Number(o.dataset.oi));
+        });
+      });
+      submit.disabled = Object.keys(answers).length < qs.length;
+    }
+    box.querySelectorAll(".mq-opt").forEach(function (o) {
+      o.addEventListener("click", function () {
+        if (submit.dataset.done === "1") return;
+        var qEl = o.closest(".mq-q");
+        answers[qEl.dataset.qid] = Number(o.dataset.oi);
+        refreshSel();
+      });
+    });
+    refreshSel();
+
+    submit.addEventListener("click", function () {
+      err.hidden = true;
+      submit.disabled = true;
+      submit.textContent = "Scoring…";
+      Funnel.portal.submitQuiz(mid, answers)
+        .then(function (r) {
+          quizResult[mid] = r;
+          submit.dataset.done = "1";
+          renderQuizResult(box, r);
+          refreshProgress();
+        })
+        .catch(function (e) {
+          if (expired(e)) return;
+          submit.disabled = false;
+          submit.textContent = "Submit answers";
+          err.textContent = e.message || "Could not score the quiz — try again.";
+          err.hidden = false;
+        });
+    });
+  }
+
+  function renderQuizResult(box, r) {
+    var resBox = box.querySelector(".mq-result");
+    var passed = !!r.passed;
+    var pct = r.score_pct != null ? r.score_pct :
+      (r.total ? Math.round((r.correct_count / r.total) * 100) : 0);
+    resBox.hidden = false;
+    resBox.innerHTML =
+      '<div class="score ' + (passed ? "ok" : "fail") + '">' +
+      '<b>' + pct + "%</b><span>" +
+      (passed ? "Module passed — nice work." : "Not yet — you need 70% to pass.") + "</span></div>" +
+      '<p class="micro">' + (r.correct_count != null && r.total != null
+        ? r.correct_count + " of " + r.total + " correct. " : "") +
+      (passed ? "Move to the next module — or grab your certificate when all are done."
+              : "Review the lesson, then retake.") + "</p>";
+
+    var per = r.results || r.correct || null;
+    if (per) {
+      box.querySelectorAll(".mq-q").forEach(function (qEl) {
+        var qid = qEl.dataset.qid;
+        var want = per[qid];
+        qEl.querySelectorAll(".mq-opt").forEach(function (o) {
+          var oi = Number(o.dataset.oi);
+          if (oi === want) o.classList.add("right");
+          else if (quizAnswers[box.dataset.mid][qid] === oi) o.classList.add("wrong");
+        });
+      });
+    }
+
+    var submit = box.querySelector(".mq-submit");
+    if (!passed) {
+      submit.dataset.done = "0";
+      submit.disabled = false;
+      submit.textContent = "Retake quiz";
+      quizAnswers[box.dataset.mid] = {};
+      box.querySelectorAll(".mq-opt").forEach(function (o) { o.classList.remove("sel"); });
+    } else {
+      submit.hidden = true;
+    }
+  }
+
+  function refreshProgress() {
+    Funnel.portal.progress()
+      .then(function (p) {
+        renderProgress(p);
+        var byId = {};
+        (p.modules || []).forEach(function (pm) { byId[pm.id] = pm; });
+        modules.forEach(function (m) {
+          if (byId[m.id]) m.progress = byId[m.id].progress || m.progress;
+        });
+        renderModules();
+      })
+      .catch(function () {});
+  }
+
+  /* ---------- downloads ---------- */
+  var dlLoaded = false;
+  function loadDownloads() {
+    if (dlLoaded) return;
+    dlLoaded = true;
+    Funnel.portal.downloads()
+      .then(function (res) {
+        dlLoading.hidden = true;
+        var files = res.downloads || res.files || res.items || [];
+        if (!files.length) {
+          dlList.innerHTML = '<div class="state-box">Nothing here yet — files land as the course content drops.</div>';
+          return;
+        }
+        files.forEach(function (f) {
+          var row = document.createElement("div");
+          row.className = "dl-item";
+          var n = document.createElement("span");
+          n.className = "n";
+          n.textContent = f.name || f.title || "Download";
+          var meta = [f.format || "PDF", f.size].filter(Boolean).join(" · ");
+          if (meta || f.note) {
+            var s = document.createElement("small");
+            s.textContent = f.note ? (meta ? meta + " — " + f.note : f.note) : meta;
+            n.appendChild(s);
+          }
+          row.appendChild(n);
+          if (f.locked) {
+            var lock = document.createElement("span");
+            lock.className = "pill lock";
+            lock.textContent = f.lock_note || "Add-on";
+            row.appendChild(lock);
+          } else {
+            var url = f.url || f.link || "";
+            if (url && url.charAt(0) === "/") url = Funnel.apiBase + url;
+            var a = document.createElement("a");
+            a.className = "dl-btn";
+            a.href = url;
+            a.textContent = "Download";
+            a.setAttribute("download", "");
+            a.rel = "noopener";
+            row.appendChild(a);
+          }
+          dlList.appendChild(row);
+        });
+      })
+      .catch(function (e) {
+        if (expired(e)) return;
+        dlLoading.hidden = true;
+        dlLoaded = false;
+        Funnel.showError(dlErr, e.message || "Could not load downloads — try again.");
+      });
+  }
+
+  /* ---------- certificate ---------- */
+  var certLoaded = false;
+  function certBlob(path) {
+    var sess = Funnel.getSession() || {};
+    var url = /^https?:/.test(path) ? path : Funnel.apiBase + path;
+    return fetch(url, { headers: { Authorization: "Bearer " + (sess.token || "") } })
+      .then(function (r) {
+        if (!r.ok) throw new Error("Certificate fetch failed (" + r.status + ")");
+        return r.blob();
+      });
+  }
+  function loadCertificate() {
+    if (certLoaded) return;
+    certLoaded = true;
+    certBox.innerHTML = '<div class="state-box"><div class="spin"></div>Checking your certificate…</div>';
+    Funnel.portal.certificate()
+      .then(function (c) {
+        if (!c || !c.ready) {
+          certBox.innerHTML =
+            '<div class="card"><h3>Almost there</h3><p>' +
+            esc((c && c.message) || "Pass all module quizzes and your certificate of completion unlocks here.") +
+            "</p></div>";
+          return;
+        }
+        var card = document.createElement("div");
+        card.className = "cert-card";
+        card.innerHTML =
+          '<div class="cert-badge" aria-hidden="true">★</div>' +
+          '<h3>' + esc(c.course_name || "AI for Office Work") + "</h3>" +
+          '<p class="cert-meta">Certificate of completion' +
+          (c.serial ? " · serial " + esc(c.serial) : "") +
+          (c.issued_at ? " · " + esc(String(c.issued_at).slice(0, 10)) : "") + "</p>";
+        var view = document.createElement("button");
+        view.className = "cta";
+        view.type = "button";
+        view.textContent = "View certificate";
+        var dl = document.createElement("a");
+        dl.className = "cta cta-ghost";
+        dl.textContent = "Download PDF";
+        dl.href = "#";
+        card.appendChild(view);
+        var p = document.createElement("p");
+        p.appendChild(dl);
+        card.appendChild(p);
+        certBox.innerHTML = "";
+        certBox.appendChild(card);
+
+        var path = c.pdf_url || c.url || "/api/funnel/portal/certificate.pdf";
+        function withBlob(cb) {
+          view.disabled = true;
+          certBlob(path)
+            .then(function (b) { view.disabled = false; cb(URL.createObjectURL(b)); })
+            .catch(function (e) { view.disabled = false; alert(e.message); });
+        }
+        view.addEventListener("click", function () {
+          withBlob(function (u) { window.open(u, "_blank", "noopener"); });
+        });
+        dl.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          withBlob(function (u) {
+            var a = document.createElement("a");
+            a.href = u;
+            a.download = "bloom-academy-certificate.pdf";
+            a.click();
+          });
+        });
+      })
+      .catch(function (e) {
+        if (expired(e)) return;
+        certLoaded = false;
+        certBox.innerHTML = '<p class="form-err" role="alert">' + esc(e.message || "Could not load certificate status.") + "</p>";
+      });
+  }
+
+  /* ---------- boot ---------- */
+  Funnel.el("logout-btn").addEventListener("click", function () {
+    Funnel.clearSession();
+    location.href = "/login";
+  });
+
+  var meP = Funnel.portal.me()
+    .then(function (me) {
+      if (me && (me.email || me.order_id)) {
+        whoEl.textContent = [me.email, me.order_id ? "order " + me.order_id : null]
+          .filter(Boolean).join(" · ");
+      }
+    })
+    .catch(function (e) { if (!expired(e)) throw e; });
+
+  var modsP = Funnel.portal.modules()
+    .then(function (res) {
+      modules = res.modules || res.items || res || [];
+      renderModules();
+    })
+    .catch(function (e) { if (!expired(e)) throw e; });
+
+  var progP = Funnel.portal.progress()
+    .then(renderProgress)
+    .catch(function () { /* progress is best-effort on first paint */ });
+
+  Promise.allSettled([meP, modsP, progP]).then(function (rs) {
+    boot.hidden = true;
+    var failed = rs.some(function (r) { return r.status === "rejected"; });
+    if (failed && !modules.length) {
+      bootErr.textContent = "Could not load your course — check your connection and refresh, or sign in again.";
+      bootErr.hidden = false;
+      return;
+    }
+    portal.hidden = false;
+  });
+})();
+</script>
+</body>
+</html>

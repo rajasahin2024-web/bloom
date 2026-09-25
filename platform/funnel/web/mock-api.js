@@ -151,6 +151,98 @@ function verifyDl(q) {
   try { return timingSafeEqual(Buffer.from(want), Buffer.from(String(s))); } catch { return false; }
 }
 
+/* ============ learner portal mock (TEC-122 contract; real impl = TEC-121) ============
+ * Auth: POST /portal/login {email, order_id} | {token: "magic_<order_id>"} on a
+ * PAID order -> {token}. /portal/* routes take `Authorization: Bearer <token>`
+ * except signed /portal/dl/* asset URLs (same HMAC scheme as /dl/*). */
+const sessions = new Map();   // portal token -> order_id
+const quizState = new Map();  // order_id -> {moduleId: {best_pct, passed, attempts}}
+const PASS_PCT = 70;
+
+// Placeholder course structure until TEC-119 delivers real modules/quizzes.
+const PORTAL_MODULES = [
+  { id: "m1", title: "ChatGPT basics for office work",
+    summary: "Set up free tools, prompt anatomy, checking output before it reaches your boss.",
+    videos: [{ video_id: "jNQXAC9IVRw", title: "Getting started with AI chat tools (placeholder)", duration: "--:--" }],
+    questions: [
+      { id: "m1q1", q: "Which AI tool can you start with for free?", options: ["ChatGPT free tier", "Only paid Copilot", "None — AI needs a subscription"], answer: 0 },
+      { id: "m1q2", q: "A good office prompt should include…", options: ["Task + context + format", "Just 'write something'", "Your password for context"], answer: 0 },
+      { id: "m1q3", q: "Before sending AI output to your boss you should…", options: ["Review and edit it", "Send it as-is", "Delete it"], answer: 0 },
+    ] },
+  { id: "m2", title: "Reports & documents with AI",
+    summary: "Structure, draft and polish reports — prompts built for Indian office formats.",
+    videos: [{ video_id: "jNQXAC9IVRw", title: "AI-assisted report drafting (placeholder)", duration: "--:--" }],
+    questions: [
+      { id: "m2q1", q: "The fastest way to a usable first draft is…", options: ["Give AI the outline + audience + length", "Ask for 'a report'", "Write it fully yourself first"], answer: 0 },
+      { id: "m2q2", q: "AI output should be treated as…", options: ["A first draft you edit", "Final copy", "Something to paste verbatim"], answer: 0 },
+    ] },
+  { id: "m3", title: "Excel without formulas",
+    summary: "Plain-English prompts that give you formulas, cleaning steps and summaries.",
+    videos: [{ video_id: "jNQXAC9IVRw", title: "Describe the problem, get the formula (placeholder)", duration: "--:--" }],
+    questions: [
+      { id: "m3q1", q: "To get a formula from AI, describe…", options: ["Columns, what you want calculated, and an example", "Just the sheet name", "Nothing — AI guesses"], answer: 0 },
+      { id: "m3q2", q: "If the formula errors, you should…", options: ["Paste the error back to AI for a fix", "Give up on Excel", "Reinstall Office"], answer: 0 },
+    ] },
+  { id: "m4", title: "Email & meeting notes",
+    summary: "Draft replies, summarise threads, write tricky emails politely — in your tone.",
+    videos: [{ video_id: "jNQXAC9IVRw", title: "Inbox zero with AI drafts (placeholder)", duration: "--:--" }],
+    questions: [
+      { id: "m4q1", q: "For an email in your own tone, give AI…", options: ["A sample of how you write + the points to cover", "Nothing", "Your colleague's email"], answer: 0 },
+      { id: "m4q2", q: "Long thread to summarise? Ask AI for…", options: ["Decisions + action items + owners", "A poem", "The longest reply"], answer: 0 },
+    ] },
+  { id: "m5", title: "Presentations in minutes",
+    summary: "Topic to slide outline to speaker notes — then make it pretty.",
+    videos: [{ video_id: "jNQXAC9IVRw", title: "Deck outlines with AI (placeholder)", duration: "--:--" }],
+    questions: [
+      { id: "m5q1", q: "A good deck prompt includes…", options: ["Audience + goal + slide count", "Just the topic", "The office Wi-Fi password"], answer: 0 },
+      { id: "m5q2", q: "AI speaker notes are for…", options: ["What you'll say per slide", "Printing as the deck", "Replacing slides"], answer: 0 },
+    ] },
+  { id: "m6", title: "Your AI daily workflow",
+    summary: "String it together: a repeatable morning-to-evening AI routine.",
+    videos: [{ video_id: "jNQXAC9IVRw", title: "Building your daily AI routine (placeholder)", duration: "--:--" }],
+    questions: [
+      { id: "m6q1", q: "The habit that compounds is…", options: ["Reusing and refining your best prompts", "Starting from scratch each time", "Avoiding AI on busy days"], answer: 0 },
+      { id: "m6q2", q: "AI in office work is best for…", options: ["First drafts, summaries, structure", "Final accountability", "Replacing judgement"], answer: 0 },
+    ] },
+];
+
+const PORTAL_ASSETS = {
+  quickstart: { name: "AI for Office Work — Quick-Start Guide", file: "ai-office-quick-start.pdf", need: null },
+  prompts: { name: "Prompt Library — 60+ office prompts", file: "ai-prompt-library.pdf", need: "bump" },
+  templates: { name: "Office-Template Pack", file: "office-template-pack.pdf", need: "bump" },
+  bundle: { name: "Second course — welcome pack", file: "second-course-welcome.pdf", need: "upsell" },
+};
+
+function entitlements(order) {
+  const paid = (k) => order.items.some((i) => i.kind === k && i.status === "paid");
+  return { course: order.status === "paid", prompt_pack: paid("bump"), bundle: paid("upsell") };
+}
+function portalAuth(req) {
+  const tok = (req.headers.authorization || "").replace(/^Bearer /, "");
+  const oid = sessions.get(tok);
+  const order = oid && orders.get(oid);
+  return order ? { token: tok, order, order_id: oid } : null;
+}
+function moduleProgress(orderId, modId) {
+  const st = (quizState.get(orderId) || {})[modId] || {};
+  return {
+    status: st.passed ? "passed" : st.attempts ? "in_progress" : "not_started",
+    best_score_pct: st.best_pct || 0,
+    attempts: st.attempts || 0,
+  };
+}
+function progressOf(orderId) {
+  const mods = PORTAL_MODULES.map((mod) => ({ id: mod.id, progress: moduleProgress(orderId, mod.id) }));
+  const passed = mods.filter((m) => m.progress.status === "passed").length;
+  return {
+    modules_total: PORTAL_MODULES.length,
+    modules_passed: passed,
+    percent: Math.round((passed / PORTAL_MODULES.length) * 100),
+    certificate_ready: passed === PORTAL_MODULES.length,
+    modules: mods,
+  };
+}
+
 const server = createServer(async (req, res) => {
   if (cors(req, res)) return;
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
@@ -249,6 +341,184 @@ const server = createServer(async (req, res) => {
     const item = o && o.items.find((i) => i.kind === q.k && i.status === "paid");
     const asset = Object.values(ASSETS).find((a) => a.file === m[1]);
     if (!o || !item || !asset) return json(res, 404, { error: "not found" });
+    const pdf = placeholderPdf(asset.name.replace(/\.pdf$/, ""));
+    res.writeHead(200, {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${asset.file}"`,
+      "Content-Length": pdf.length,
+    });
+    return res.end(pdf);
+  }
+
+
+  /* --- portal routes (state + helpers hoisted to module scope) --- */
+  if (p === "/api/funnel/portal/login" && req.method === "POST") {
+    const b = await readBody(req);
+    let order = null;
+    if (b.token) {
+      order = orders.get(String(b.token).replace(/^magic_/, "")) || null;
+    } else if (b.email && b.order_id) {
+      const o = orders.get(String(b.order_id).trim());
+      if (o && o.email === String(b.email).trim().toLowerCase()) order = o;
+    }
+    if (!order || order.status !== "paid")
+      return json(res, 401, { error: "no matching paid order" });
+    const token = "ptok_" + randomUUID().replace(/-/g, "").slice(0, 24);
+    sessions.set(token, order.id);
+    console.log(`[mock] portal login ${order.id} ${order.email}`);
+    return json(res, 200, {
+      token, token_type: "Bearer",
+      expires_at: Date.now() + 30 * 24 * 3600 * 1000,
+      email: order.email, order_id: order.id,
+      entitlements: entitlements(order),
+    });
+  }
+
+  if (p === "/api/funnel/portal/me" && req.method === "GET") {
+    const a = portalAuth(req);
+    if (!a) return json(res, 401, { error: "unauthorized" });
+    return json(res, 200, { email: a.order.email, order_id: a.order.id, entitlements: entitlements(a.order) });
+  }
+
+  if (p === "/api/funnel/portal/modules" && req.method === "GET") {
+    const a = portalAuth(req);
+    if (!a) return json(res, 401, { error: "unauthorized" });
+    return json(res, 200, {
+      course_name: "AI for Office Work",
+      modules: PORTAL_MODULES.map((mod) => ({
+        id: mod.id, title: mod.title, summary: mod.summary,
+        videos: mod.videos, quiz_count: mod.questions.length,
+        progress: moduleProgress(a.order_id, mod.id),
+      })),
+    });
+  }
+
+  m = p.match(/^\/api\/funnel\/portal\/modules\/([^/]+)$/);
+  if (m && req.method === "GET") {
+    const a = portalAuth(req);
+    if (!a) return json(res, 401, { error: "unauthorized" });
+    const mod = PORTAL_MODULES.find((x) => x.id === m[1]);
+    if (!mod) return json(res, 404, { error: "module not found" });
+    return json(res, 200, {
+      module: {
+        id: mod.id, title: mod.title, summary: mod.summary,
+        videos: mod.videos,
+        questions: mod.questions.map((q) => ({ id: q.id, q: q.q, options: q.options })),
+        progress: moduleProgress(a.order_id, mod.id),
+      },
+    });
+  }
+
+  m = p.match(/^\/api\/funnel\/portal\/modules\/([^/]+)\/quiz$/);
+  if (m && req.method === "POST") {
+    const a = portalAuth(req);
+    if (!a) return json(res, 401, { error: "unauthorized" });
+    const mod = PORTAL_MODULES.find((x) => x.id === m[1]);
+    if (!mod) return json(res, 404, { error: "module not found" });
+    const b = await readBody(req);
+    const ans = b.answers || {};
+    const results = {};
+    let correct = 0;
+    mod.questions.forEach((q) => {
+      results[q.id] = q.answer;
+      if (Number(ans[q.id]) === q.answer) correct++;
+    });
+    const total = mod.questions.length;
+    const pct = Math.round((correct / total) * 100);
+    const passed = pct >= PASS_PCT;
+    const st = quizState.get(a.order_id) || {};
+    const prev = st[mod.id] || { best_pct: 0, passed: false, attempts: 0 };
+    st[mod.id] = {
+      best_pct: Math.max(prev.best_pct, pct),
+      passed: prev.passed || passed,
+      attempts: prev.attempts + 1,
+    };
+    quizState.set(a.order_id, st);
+    console.log(`[mock] quiz ${a.order_id} ${mod.id} -> ${pct}% passed=${passed}`);
+    return json(res, 200, {
+      module_id: mod.id, correct_count: correct, total,
+      score_pct: pct, pass_pct: PASS_PCT, passed, results,
+      progress: progressOf(a.order_id),
+    });
+  }
+
+  if (p === "/api/funnel/portal/progress" && req.method === "GET") {
+    const a = portalAuth(req);
+    if (!a) return json(res, 401, { error: "unauthorized" });
+    return json(res, 200, progressOf(a.order_id));
+  }
+
+  if (p === "/api/funnel/portal/certificate" && req.method === "GET") {
+    const a = portalAuth(req);
+    if (!a) return json(res, 401, { error: "unauthorized" });
+    const prog = progressOf(a.order_id);
+    if (!prog.certificate_ready)
+      return json(res, 200, {
+        ready: false,
+        message: `Pass all ${prog.modules_total} module quizzes — ${prog.modules_passed} done so far — and your certificate of completion unlocks here.`,
+      });
+    return json(res, 200, {
+      ready: true,
+      course_name: "AI for Office Work",
+      learner_name: a.order.email,
+      serial: "BA-" + a.order.id.replace(/^ord_/, "").toUpperCase(),
+      issued_at: new Date().toISOString(),
+      pdf_url: "/api/funnel/portal/certificate.pdf",
+    });
+  }
+
+  m = p.match(/^\/api\/funnel\/portal\/certificate\.pdf$/);
+  if (m && req.method === "GET") {
+    const bearer = (req.headers.authorization || "").replace(/^Bearer /, "");
+    const oid = sessions.get(bearer) || url.searchParams.get("token");
+    const order = oid && (orders.get(oid) || orders.get(sessions.get(oid)));
+    if (!order) return json(res, 401, { error: "unauthorized" });
+    if (!progressOf(order.id).certificate_ready)
+      return json(res, 409, { error: "course not complete" });
+    const pdf = placeholderPdf(
+      "Certificate of Completion - AI for Office Work - " + order.email + " - serial BA-" + order.id.replace(/^ord_/, "").toUpperCase()
+    );
+    res.writeHead(200, {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="bloom-academy-certificate.pdf"`,
+      "Content-Length": pdf.length,
+    });
+    return res.end(pdf);
+  }
+
+  if (p === "/api/funnel/portal/downloads" && req.method === "GET") {
+    const a = portalAuth(req);
+    if (!a) return json(res, 401, { error: "unauthorized" });
+    const ent = entitlements(a.order);
+    const exp = Date.now() + 24 * 3600 * 1000;
+    const dl = Object.keys(PORTAL_ASSETS).map((kind) => {
+      const asset = PORTAL_ASSETS[kind];
+      const entitled = !asset.need || (asset.need === "bump" ? ent.prompt_pack : ent.bundle);
+      const base = { name: asset.name, format: "PDF" };
+      if (!entitled) {
+        base.locked = true;
+        base.lock_note = asset.need === "bump" ? "Unlocks with the +₹99 prompt pack" : "Unlocks with the ₹599 bundle";
+        return base;
+      }
+      const sig = createHmac("sha256", ADMIN_TOKEN)
+        .update(`${a.order_id}:${kind}:${exp}`).digest("hex").slice(0, 24);
+      base.url = `/api/funnel/portal/dl/${asset.file}?o=${a.order_id}&k=${kind}&e=${exp}&s=${sig}`;
+      return base;
+    });
+    return json(res, 200, { downloads: dl });
+  }
+
+  m = p.match(/^\/api\/funnel\/portal\/dl\/([^/]+)$/);
+  if (m && req.method === "GET") {
+    const q = Object.fromEntries(url.searchParams);
+    if (!verifyDl(q)) return json(res, 403, { error: "invalid or expired link" });
+    const o = orders.get(q.o);
+    const kind = q.k;
+    const asset = PORTAL_ASSETS[kind];
+    if (!o || !asset || asset.file !== m[1]) return json(res, 404, { error: "not found" });
+    const ent = entitlements(o);
+    const entitled = !asset.need || (asset.need === "bump" ? ent.prompt_pack : ent.bundle);
+    if (!entitled) return json(res, 403, { error: "not entitled" });
     const pdf = placeholderPdf(asset.name.replace(/\.pdf$/, ""));
     res.writeHead(200, {
       "Content-Type": "application/pdf",

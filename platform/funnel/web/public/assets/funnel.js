@@ -87,10 +87,13 @@
   }
 
   /* ---------- API client (contract: /api/funnel/*) ---------- */
-  function req(method, path, body) {
+  function req(method, path, body, token) {
+    var headers = {};
+    if (body) headers["Content-Type"] = "application/json";
+    if (token) headers["Authorization"] = "Bearer " + token;
     return fetch(API_BASE + path, {
       method: method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
@@ -131,6 +134,58 @@
     downloads: function (id) {
       return req("GET", "/api/funnel/orders/" + encodeURIComponent(id) + "/downloads");
     },
+  };
+
+  /* ---------- learner portal session + gated API (contract: /api/funnel/portal/*)
+   * Session token is minted by POST /portal/login (email + order_id, or a
+   * magic-link {token}) on the sibling backend (TEC-121) and stored in
+   * sessionStorage — closing the tab ends the session, no cookies needed. */
+  var PORTAL_KEY = "funnel_portal_session";
+  function saveSession(sess) {
+    try { sessionStorage.setItem(PORTAL_KEY, JSON.stringify(sess)); } catch (e) {}
+  }
+  function getSession() {
+    try { return JSON.parse(sessionStorage.getItem(PORTAL_KEY) || "null"); }
+    catch (e) { return null; }
+  }
+  function clearSession() {
+    try { sessionStorage.removeItem(PORTAL_KEY); } catch (e) {}
+  }
+  function portalToken() {
+    var s2 = getSession();
+    return s2 && s2.token ? s2.token : null;
+  }
+  /* Redirect guard for gated pages — sends the visitor to /login when there
+   * is no session, preserving the target as ?next=. Returns the token. */
+  function requireSession() {
+    var t = portalToken();
+    if (!t) {
+      var next = encodeURIComponent(location.pathname + location.search);
+      location.href = "/login?next=" + next;
+      return null;
+    }
+    return t;
+  }
+
+  var portal = {
+    login: function (email, orderId) {
+      return req("POST", "/api/funnel/portal/login", { email: email, order_id: orderId });
+    },
+    loginToken: function (magicToken) {
+      return req("POST", "/api/funnel/portal/login", { token: magicToken });
+    },
+    me: function () { return req("GET", "/api/funnel/portal/me", null, portalToken()); },
+    modules: function () { return req("GET", "/api/funnel/portal/modules", null, portalToken()); },
+    module: function (id) {
+      return req("GET", "/api/funnel/portal/modules/" + encodeURIComponent(id), null, portalToken());
+    },
+    submitQuiz: function (id, answers) {
+      return req("POST", "/api/funnel/portal/modules/" + encodeURIComponent(id) + "/quiz",
+        { answers: answers }, portalToken());
+    },
+    progress: function () { return req("GET", "/api/funnel/portal/progress", null, portalToken()); },
+    certificate: function () { return req("GET", "/api/funnel/portal/certificate", null, portalToken()); },
+    downloads: function () { return req("GET", "/api/funnel/portal/downloads", null, portalToken()); },
   };
 
   /* ---------- payment rail dispatch ---------- */
@@ -201,6 +256,11 @@
     captureUtm: captureUtm,
     getUtm: getUtm,
     api: api,
+    portal: portal,
+    saveSession: saveSession,
+    getSession: getSession,
+    clearSession: clearSession,
+    requireSession: requireSession,
     settle: settle,
     qs: qs,
     inr: inr,

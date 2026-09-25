@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Thank you — your downloads | Bloom Academy</title>
-<meta name="description" content="Your IELTS eBook order is confirmed. Download your files here.">
+<title>Thank you — your AI course is ready | Bloom Academy</title>
+<meta name="description" content="Your AI for Office Work order is confirmed. Access your learner portal here.">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0f172a">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -25,7 +25,14 @@
 
     <div class="done-badge" aria-hidden="true">✓</div>
     <h1 style="font-size:22px;margin:0 0 8px">Order confirmed.</h1>
-    <p class="lede" id="confirm-copy">We've sent your download links to your email — check your inbox (and spam folder, just in case).</p>
+    <p class="lede" id="confirm-copy">We've sent your login details and links to your email — check your inbox (and spam folder, just in case).</p>
+
+    <div class="portal-cta">
+      <p class="t">Your course lives in the learner portal</p>
+      <p class="d">Modules, videos, quizzes, certificate and downloads — all in one place.</p>
+      <a class="cta" id="portal-link" href="/login">Open your learner portal</a>
+      <p class="micro">Use your order email + order ID to sign in.</p>
+    </div>
 
     <section aria-labelledby="dl">
       <h2 class="sec-title" id="dl" style="margin-top:20px">Your downloads</h2>
@@ -47,6 +54,8 @@
       err = Funnel.el("dl-err"), copy = Funnel.el("confirm-copy");
 
   if (!orderId) { location.href = "/"; return; }
+  var portalLink = Funnel.el("portal-link");
+  if (portalLink) portalLink.href = "/login?order=" + encodeURIComponent(orderId);
 
   var purchaseFired = false;
   function firePurchase(order) {
@@ -60,7 +69,7 @@
         var isUpsell = p.kind === "upsell";
         Funnel.track("Purchase", {
           value: (p.amount_paise || 0) / 100, currency: p.currency || "INR",
-          content_name: (isUpsell ? "Band 7 Mini-Course upsell " : "IELTS funnel order ") + orderId
+          content_name: (isUpsell ? "AI Course Bundle upsell " : "AI course funnel order ") + orderId
         }, Funnel.purchaseEventId(orderId, isUpsell));
       });
       return;
@@ -70,7 +79,7 @@
     if (paidPaise > 0) {
       Funnel.track("Purchase", {
         value: paidPaise / 100, currency: "INR",
-        content_name: "IELTS funnel order " + orderId,
+        content_name: "AI course funnel order " + orderId,
         num_items: items.length
       }, Funnel.purchaseEventId(orderId, false));
     }
@@ -79,7 +88,7 @@
   Funnel.api.getOrder(orderId)
     .then(function (order) {
       if (order.email) {
-        copy.textContent = "We've sent your download links to " + order.email +
+        copy.textContent = "We've sent your login details and links to " + order.email +
           " — check your inbox (and spam folder, just in case).";
       }
       firePurchase(order);
