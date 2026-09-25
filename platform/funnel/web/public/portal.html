@@ -60,7 +60,7 @@
   </main>
 </div>
 <script src="/config.js"></script>
-<script src="/assets/funnel.js"></script>
+<script src="/assets/funnel.js?v=2"></script>
 <script>
 (function () {
   "use strict";
@@ -74,8 +74,9 @@
       dlErr = Funnel.el("dl-err");
 
   var modules = [];
+  var ent = {};           // me.entitlements {course,prompt_library,second_course}
   var openId = null;
-  var quizAnswers = {};   // moduleId -> {qid: optionIndex}
+  var quizAnswers = {};   // moduleId -> {qid: optionId}
   var quizResult = {};    // moduleId -> submit result
   var certUrl = null;
 
@@ -115,21 +116,28 @@
     var pct = typeof p.percent === "number" ? p.percent : Math.round((passed / total) * 100);
     progFill.style.width = pct + "%";
     progLabel.textContent = passed + " of " + total + " modules passed" +
-      (p.certificate_ready ? " — certificate unlocked" : "");
+      (p.complete || p.certificate_ready ? " — certificate unlocked" : "");
     Funnel.el("prog-bar-wrap").setAttribute("aria-valuenow", String(pct));
   }
 
   /* ---------- module map ---------- */
   function statusOf(m) {
     var pr = m.progress || {};
-    return pr.status || (pr.passed ? "passed" : "not_started");
+    if (pr.status) return pr.status;
+    if (pr.passed) return "passed";
+    return (pr.attempts || 0) > 0 ? "in_progress" : "not_started";
+  }
+  /* progress.best_score is the best raw score (a count), not a pct. */
+  function scorePct(pr) {
+    if (pr.best_score_pct != null) return pr.best_score_pct;
+    if (pr.best_score != null && pr.total) return Math.round((pr.best_score / pr.total) * 100);
+    return null;
   }
   function pill(m) {
-    var st = statusOf(m), pr = m.progress || {};
-    if (st === "passed")
-      return '<span class="pill ok">Passed' + (pr.best_score_pct != null ? " · " + pr.best_score_pct + "%" : "") + "</span>";
-    if (st === "in_progress")
-      return '<span class="pill mid">In progress' + (pr.best_score_pct != null ? " · " + pr.best_score_pct + "%" : "") + "</span>";
+    var st = statusOf(m), sp = scorePct(m.progress || {});
+    var tag = sp != null ? " · " + sp + "%" : "";
+    if (st === "passed") return '<span class="pill ok">Passed' + tag + "</span>";
+    if (st === "in_progress") return '<span class="pill mid">In progress' + tag + "</span>";
     if (st === "locked") return '<span class="pill lock">Locked</span>';
     return '<span class="pill">Not started</span>';
   }
@@ -171,11 +179,25 @@
     if (!body) return;
     var cached = moduleCache[id];
     if (cached) { renderModuleDetail(body, cached); return; }
-    Funnel.portal.module(id)
-      .then(function (d) {
-        moduleCache[id] = d;
-        renderModuleDetail(body, d);
+    Promise.all([
+      Funnel.portal.module(id),
+      Funnel.portal.quiz(id).catch(function (e) {
+        return e.status === 404 ? null : Promise.reject(e);
+      }),
+    ])
+      .then(function (pair) {
+        var d = pair[0], quiz = pair[1];
+        var m = d.module || d;
+        var finish = function (lesson) {
+          moduleCache[id] = { module: m, quiz: quiz, lesson_html: lesson };
+          d = moduleCache[id];
+        };
+        if (m.lesson_url) {
+          return Funnel.portal.lessonHtml(m.lesson_url).then(finish);
+        }
+        finish(null);
       })
+      .then(function () { renderModuleDetail(body, moduleCache[id]); })
       .catch(function (e) {
         if (expired(e)) return;
         body.innerHTML = '<p class="form-err" role="alert">' + esc(e.message || "Could not load this module.") + "</p>";
@@ -185,25 +207,30 @@
   function renderModuleDetail(body, d) {
     var m = d.module || d;
     var html = "";
-    if (m.lesson_text) html += '<div class="lesson">' + m.lesson_text + "</div>";
+    if (d.lesson_html) html += '<div class="lesson">' + d.lesson_html + "</div>";
+    else if (m.lesson_text) html += '<div class="lesson">' + m.lesson_text + "</div>";
 
     var vids = m.videos || m.youtube || [];
     if (vids.length) {
       html += '<p class="sec-kicker" style="margin-top:10px">Free bonus · curated YouTube lessons</p>';
       vids.forEach(function (v) {
         var vid = v.video_id || v.id;
+        /* Always youtube-nocookie — built from video_id, never the plain
+         * youtube.com embed_url the API also sends. */
         html += '<div class="vid-wrap"><div class="vid">' +
           '<iframe src="https://www.youtube-nocookie.com/embed/' + encodeURIComponent(vid) +
           '" title="' + esc(v.title || "Curated YouTube lesson") +
           '" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>' +
           '<p class="vid-cap">' + esc(v.title || "Video lesson") +
-          (v.duration ? " <small>" + esc(v.duration) + "</small>" : "") + "</p></div>";
+          (v.duration_seconds ? " <small>" + Math.round(v.duration_seconds / 60) + " min</small>"
+            : v.duration ? " <small>" + esc(v.duration) + "</small>" : "") + "</p></div>";
       });
       html += '<p class="micro">Free bonus content — hosted by YouTube, organised for you by Bloom Academy.</p>';
     }
 
-    var qs = m.questions || (m.quiz && m.quiz.questions) || [];
-    if (qs.length) html += quizHtml(m.id, qs);
+    var qs = (d.quiz && d.quiz.questions) || m.questions || (m.quiz && m.quiz.questions) || [];
+    var passPct = (d.quiz && d.quiz.pass_score_pct) || m.pass_score_pct || 70;
+    if (qs.length) html += quizHtml(m.id, qs, passPct);
     else html += '<p class="micro" style="margin-top:12px">Quiz for this module is being finalised — check back soon.</p>';
 
     body.innerHTML = html;
@@ -218,17 +245,19 @@
   }
 
   /* ---------- quiz ---------- */
-  function quizHtml(mid, qs) {
+  function quizHtml(mid, qs, passPct) {
     var h = '<div class="mq" data-mid="' + esc(mid) + '">' +
       '<p class="sec-kicker" style="margin-top:14px">Module quiz</p>' +
-      '<p class="mq-pass">Pass mark: 70% — retake any time.</p>';
+      '<p class="mq-pass">Pass mark: ' + (passPct || 70) + "% — retake any time.</p>";
     qs.forEach(function (q, qi) {
       var qid = q.id || "q" + qi;
       h += '<div class="mq-q" data-qid="' + esc(qid) + '">' +
-        '<p class="mq-t">' + (qi + 1) + ". " + esc(q.q || q.question) + "</p>" +
+        '<p class="mq-t">' + (qi + 1) + ". " + esc(q.prompt || q.q || q.question) + "</p>" +
         '<div class="mq-opts">';
       (q.options || []).forEach(function (opt, oi) {
-        h += '<button type="button" class="mq-opt" data-oi="' + oi + '">' + esc(opt) + "</button>";
+        var oid = opt && opt.id != null ? opt.id : "o" + oi;
+        var otext = opt && opt.text != null ? opt.text : opt;
+        h += '<button type="button" class="mq-opt" data-oid="' + esc(oid) + '">' + esc(otext) + "</button>";
       });
       h += "</div></div>";
     });
@@ -249,7 +278,7 @@
       box.querySelectorAll(".mq-q").forEach(function (qEl) {
         var qid = qEl.dataset.qid;
         qEl.querySelectorAll(".mq-opt").forEach(function (o) {
-          o.classList.toggle("sel", answers[qid] === Number(o.dataset.oi));
+          o.classList.toggle("sel", answers[qid] === o.dataset.oid);
         });
       });
       submit.disabled = Object.keys(answers).length < qs.length;
@@ -258,7 +287,7 @@
       o.addEventListener("click", function () {
         if (submit.dataset.done === "1") return;
         var qEl = o.closest(".mq-q");
-        answers[qEl.dataset.qid] = Number(o.dataset.oi);
+        answers[qEl.dataset.qid] = o.dataset.oid;
         refreshSel();
       });
     });
@@ -288,15 +317,17 @@
   function renderQuizResult(box, r) {
     var resBox = box.querySelector(".mq-result");
     var passed = !!r.passed;
+    var correct = r.score != null ? r.score : r.correct_count;
     var pct = r.score_pct != null ? r.score_pct :
-      (r.total ? Math.round((r.correct_count / r.total) * 100) : 0);
+      (r.total ? Math.round((correct / r.total) * 100) : 0);
+    var need = r.pass_score_pct || 70;
     resBox.hidden = false;
     resBox.innerHTML =
       '<div class="score ' + (passed ? "ok" : "fail") + '">' +
       '<b>' + pct + "%</b><span>" +
-      (passed ? "Module passed — nice work." : "Not yet — you need 70% to pass.") + "</span></div>" +
-      '<p class="micro">' + (r.correct_count != null && r.total != null
-        ? r.correct_count + " of " + r.total + " correct. " : "") +
+      (passed ? "Module passed — nice work." : "Not yet — you need " + need + "% to pass.") + "</span></div>" +
+      '<p class="micro">' + (correct != null && r.total != null
+        ? correct + " of " + r.total + " correct. " : "") +
       (passed ? "Move to the next module — or grab your certificate when all are done."
               : "Review the lesson, then retake.") + "</p>";
 
@@ -340,6 +371,38 @@
   }
 
   /* ---------- downloads ---------- */
+  var SKU_LABEL = {
+    "ai-office-course": "Course files",
+    "prompt-library-pack": "Prompt Library & Office-Template Pack",
+    "ai-creators-starter": "Second course — AI Creators Starter",
+  };
+  function dlRow(name, meta, url, lockNote) {
+    var row = document.createElement("div");
+    row.className = "dl-item";
+    var n = document.createElement("span");
+    n.className = "n";
+    n.textContent = name;
+    if (meta) {
+      var sm = document.createElement("small");
+      sm.textContent = meta;
+      n.appendChild(sm);
+    }
+    row.appendChild(n);
+    if (lockNote) {
+      var lock = document.createElement("span");
+      lock.className = "pill lock";
+      lock.textContent = lockNote;
+      row.appendChild(lock);
+    } else {
+      var a = document.createElement("a");
+      a.className = "dl-btn";
+      a.href = url;
+      a.textContent = "Download";
+      a.rel = "noopener";
+      row.appendChild(a);
+    }
+    dlList.appendChild(row);
+  }
   var dlLoaded = false;
   function loadDownloads() {
     if (dlLoaded) return;
@@ -348,41 +411,21 @@
       .then(function (res) {
         dlLoading.hidden = true;
         var files = res.downloads || res.files || res.items || [];
-        if (!files.length) {
-          dlList.innerHTML = '<div class="state-box">Nothing here yet — files land as the course content drops.</div>';
-          return;
-        }
         files.forEach(function (f) {
-          var row = document.createElement("div");
-          row.className = "dl-item";
-          var n = document.createElement("span");
-          n.className = "n";
-          n.textContent = f.name || f.title || "Download";
-          var meta = [f.format || "PDF", f.size].filter(Boolean).join(" · ");
-          if (meta || f.note) {
-            var s = document.createElement("small");
-            s.textContent = f.note ? (meta ? meta + " — " + f.note : f.note) : meta;
-            n.appendChild(s);
-          }
-          row.appendChild(n);
-          if (f.locked) {
-            var lock = document.createElement("span");
-            lock.className = "pill lock";
-            lock.textContent = f.lock_note || "Add-on";
-            row.appendChild(lock);
-          } else {
-            var url = f.url || f.link || "";
-            if (url && url.charAt(0) === "/") url = Funnel.apiBase + url;
-            var a = document.createElement("a");
-            a.className = "dl-btn";
-            a.href = url;
-            a.textContent = "Download";
-            a.setAttribute("download", "");
-            a.rel = "noopener";
-            row.appendChild(a);
-          }
-          dlList.appendChild(row);
+          var meta = (SKU_LABEL[f.sku] || f.sku || "") +
+            (f.expires_at ? " · link refreshes each visit" : "");
+          var url = f.url || f.link || "";
+          if (url && url.charAt(0) === "/") url = Funnel.apiBase + url;
+          dlRow(f.file || f.name || f.title || "Download", meta, url, null);
         });
+        /* Server only returns entitled files — surface the add-ons the buyer
+         * skipped as locked rows so the upgrade path stays visible. */
+        if (ent.prompt_library === false)
+          dlRow("Prompt Library & Office-Template Pack", "Add-on", "", "Included with +₹99 pack");
+        if (ent.second_course === false)
+          dlRow("Second course — AI Creators Starter", "Add-on", "", "Included with ₹599 bundle");
+        if (!dlList.children.length)
+          dlList.innerHTML = '<div class="state-box">Nothing here yet — files land as the course content drops.</div>';
       })
       .catch(function (e) {
         if (expired(e)) return;
@@ -403,61 +446,95 @@
         return r.blob();
       });
   }
+  /* Issued state — serial + PDF actions. pdf_url is the backend's absolute
+   * signed path; certBlob adds the bearer header for the gated download. */
+  function renderIssued(c) {
+    var card = document.createElement("div");
+    card.className = "cert-card";
+    card.innerHTML =
+      '<div class="cert-badge" aria-hidden="true">★</div>' +
+      '<h3>' + esc(c.course_name || "AI for Office Work") + "</h3>" +
+      '<p class="cert-meta">Certificate of completion' +
+      (c.buyer_name ? " · " + esc(c.buyer_name) : "") +
+      (c.serial ? " · serial " + esc(c.serial) : "") +
+      (c.issued_at ? " · " + esc(String(c.issued_at).slice(0, 10)) : "") + "</p>";
+    var view = document.createElement("button");
+    view.className = "cta";
+    view.type = "button";
+    view.textContent = "View certificate";
+    var dl = document.createElement("a");
+    dl.className = "cta cta-ghost";
+    dl.textContent = "Download PDF";
+    dl.href = "#";
+    card.appendChild(view);
+    var pp = document.createElement("p");
+    pp.appendChild(dl);
+    card.appendChild(pp);
+    certBox.innerHTML = "";
+    certBox.appendChild(card);
+
+    var path = c.pdf_url || "/api/funnel/gated/certificate/pdf";
+    function withBlob(cb) {
+      view.disabled = true;
+      certBlob(path)
+        .then(function (b) { view.disabled = false; cb(URL.createObjectURL(b)); })
+        .catch(function (e) { view.disabled = false; alert(e.message); });
+    }
+    view.addEventListener("click", function () {
+      withBlob(function (u) { window.open(u, "_blank", "noopener"); });
+    });
+    dl.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      withBlob(function (u) {
+        var a = document.createElement("a");
+        a.href = u;
+        a.download = "bloom-academy-certificate.pdf";
+        a.click();
+      });
+    });
+  }
+  /* Eligible but not yet issued — the backend needs the buyer's name once
+   * (the PDF is immutable after issue). */
+  function renderIssueForm() {
+    certBox.innerHTML =
+      '<div class="card"><h3>You passed every module</h3>' +
+      "<p>Enter the name for your certificate of completion — it prints exactly as typed.</p>" +
+      '<label class="fl"><span>Name on certificate</span>' +
+      '<input id="cert-name" type="text" maxlength="80" autocomplete="name" placeholder="e.g. Arjun Sharma"></label>' +
+      '<p class="form-err" id="cert-err" hidden role="alert"></p>' +
+      '<button type="button" class="cta" id="cert-issue">Issue my certificate</button></div>';
+    var nameEl = Funnel.el("cert-name"), errEl = Funnel.el("cert-err"),
+        btn = Funnel.el("cert-issue");
+    btn.addEventListener("click", function () {
+      var name = nameEl.value.trim();
+      if (name.length < 2) {
+        Funnel.showError(errEl, "Type your full name — it goes on the certificate.");
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = "Issuing…";
+      Funnel.portal.issueCertificate(name)
+        .then(renderIssued)
+        .catch(function (e) {
+          if (expired(e)) return;
+          btn.disabled = false;
+          btn.textContent = "Issue my certificate";
+          Funnel.showError(errEl, e.message || "Could not issue the certificate — try again.");
+        });
+    });
+  }
   function loadCertificate() {
     if (certLoaded) return;
     certLoaded = true;
     certBox.innerHTML = '<div class="state-box"><div class="spin"></div>Checking your certificate…</div>';
     Funnel.portal.certificate()
       .then(function (c) {
-        if (!c || !c.ready) {
-          certBox.innerHTML =
-            '<div class="card"><h3>Almost there</h3><p>' +
-            esc((c && c.message) || "Pass all module quizzes and your certificate of completion unlocks here.") +
-            "</p></div>";
-          return;
-        }
-        var card = document.createElement("div");
-        card.className = "cert-card";
-        card.innerHTML =
-          '<div class="cert-badge" aria-hidden="true">★</div>' +
-          '<h3>' + esc(c.course_name || "AI for Office Work") + "</h3>" +
-          '<p class="cert-meta">Certificate of completion' +
-          (c.serial ? " · serial " + esc(c.serial) : "") +
-          (c.issued_at ? " · " + esc(String(c.issued_at).slice(0, 10)) : "") + "</p>";
-        var view = document.createElement("button");
-        view.className = "cta";
-        view.type = "button";
-        view.textContent = "View certificate";
-        var dl = document.createElement("a");
-        dl.className = "cta cta-ghost";
-        dl.textContent = "Download PDF";
-        dl.href = "#";
-        card.appendChild(view);
-        var p = document.createElement("p");
-        p.appendChild(dl);
-        card.appendChild(p);
-        certBox.innerHTML = "";
-        certBox.appendChild(card);
-
-        var path = c.pdf_url || c.url || "/api/funnel/portal/certificate.pdf";
-        function withBlob(cb) {
-          view.disabled = true;
-          certBlob(path)
-            .then(function (b) { view.disabled = false; cb(URL.createObjectURL(b)); })
-            .catch(function (e) { view.disabled = false; alert(e.message); });
-        }
-        view.addEventListener("click", function () {
-          withBlob(function (u) { window.open(u, "_blank", "noopener"); });
-        });
-        dl.addEventListener("click", function (ev) {
-          ev.preventDefault();
-          withBlob(function (u) {
-            var a = document.createElement("a");
-            a.href = u;
-            a.download = "bloom-academy-certificate.pdf";
-            a.click();
-          });
-        });
+        if (c && c.issued) { renderIssued(c); return; }
+        if (c && c.eligible) { renderIssueForm(); return; }
+        certBox.innerHTML =
+          '<div class="card"><h3>Almost there</h3><p>' +
+          esc((c && c.message) || "Pass all module quizzes and your certificate of completion unlocks here.") +
+          "</p></div>";
       })
       .catch(function (e) {
         if (expired(e)) return;
@@ -478,6 +555,8 @@
         whoEl.textContent = [me.email, me.order_id ? "order " + me.order_id : null]
           .filter(Boolean).join(" · ");
       }
+      if (me && me.entitlements) ent = me.entitlements;
+      if (me && me.progress) renderProgress(me.progress);
     })
     .catch(function (e) { if (!expired(e)) throw e; });
 

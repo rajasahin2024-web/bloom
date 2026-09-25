@@ -8,7 +8,7 @@ thank-you → buyer login → gated learner portal. Vanilla HTML/CSS/JS for spee
 
 ```
 serve.js          zero-dep static server + /config.js env injection + clean URLs + gzip
-mock-api.js       DEV/QA contract stub for /api/funnel/* incl. /portal/* (until TEC-121 ships)
+mock-api.js       DEV/QA contract stub for /api/funnel/* incl. /gated/* (mirrors TEC-121)
 public/
   index.html      landing — /          (ViewContent)
   checkout.html   checkout — /checkout (InitiateCheckout)
@@ -54,24 +54,31 @@ All events include `value` (INR rupees, not paise) and `currency: "INR"`.
 `Funnel.settle()` dispatches: `razorpay` → lazy-loads `checkout.razorpay.com/v1/checkout.js`
 and opens the modal (UPI-first); `mock` → POSTs `mock.settle_url`.
 
-## Learner portal contract (`/api/funnel/portal/*`, real impl = TEC-121)
+## Learner portal contract (`/api/funnel/gated/*` — shipped in TEC-121)
 
-- `POST /portal/login` `{email, order_id}` | `{token}` (magic link) →
-  `{token, token_type, expires_at, email, order_id, entitlements}` on a **paid** order;
-  `401` otherwise. Token is kept in `sessionStorage` and sent as `Authorization: Bearer`.
-- `GET /portal/me` → `{email, order_id, entitlements:{course, prompt_pack, bundle}}`
-- `GET /portal/modules` → `{course_name, modules:[{id,title,summary,videos:[{video_id,title,duration}],quiz_count,progress:{status,best_score_pct,attempts}}]}`
-- `GET /portal/modules/{id}` → `{module:{…,questions:[{id,q,options[]}]}}` — **answers never leave the server**
-- `POST /portal/modules/{id}/quiz` `{answers:{qid:optionIndex}}` →
-  `{score_pct, passed, pass_pct, correct_count, total, results:{qid:correctIndex}, progress}`
-- `GET /portal/progress` → `{modules_total, modules_passed, percent, certificate_ready, modules[]}`
-- `GET /portal/certificate` → `{ready, course_name?, serial?, issued_at?, pdf_url?, message?}`
-- `GET /portal/certificate.pdf` → PDF (Bearer or `?token=`); completion only — never "accredited"
-- `GET /portal/downloads` → `{downloads:[{name,format,url?|locked,lock_note?}]}` —
-  signed asset URLs same scheme as `/dl/*`; prompt-pack rows lock without bump, bundle rows without upsell
-- Videos are `youtube-nocookie.com` embeds — free curated bonus, never the paid content.
+- `POST /gated/auth/login` `{email, order_id}` →
+  `{token(fns_*), expires_at, order_id, email, entitlements:{course,prompt_library,second_course}, course:{id,title}}`
+  on a **paid** order; `401` bad creds, `403` unsettled. Token kept in
+  `sessionStorage`, sent as `Authorization: Bearer`. Magic links carry the
+  session token directly — `/gated/me` validates it.
+- `GET /gated/me` → `{order_id, email, entitlements, progress, certificate}`
+- `GET /gated/modules` → `{course, modules_total, modules_passed, complete,
+  modules:[{id,title,summary,lesson_url,videos:[{video_id,title,duration_seconds,embed_url}],
+  quiz_question_count,pass_score_pct,progress:{attempts,best_score,total,passed,last_attempt_at}}]}`
+- `GET /gated/modules/{id}` → single module view · `GET /gated/modules/{id}/lesson` → gated lesson HTML
+- `GET /gated/modules/{id}/quiz` → `{module_id,title,pass_score_pct,questions:[{id,prompt,options:[{id,text}]}]}` — **answers never leave the server**
+- `POST /gated/modules/{id}/quiz/submit` `{answers:{qid:optionId}}` →
+  `{module_id,score,total,passed,pass_score_pct,module:{progress}}`
+- `GET /gated/progress` → same summary shape as `/modules`
+- `GET /gated/certificate` → `{eligible,issued,serial,issued_at,buyer_name,pdf_url}`;
+  `POST /gated/certificate` `{name}` issues the PDF (idempotent, 403 until complete);
+  `GET /gated/certificate/pdf` → `application/pdf`. Completion only — never "accredited".
+- `GET /gated/downloads` → `{downloads:[{sku,file,url,expires_at}]}` — entitlement-filtered
+  24h signed links; the portal additionally shows skipped add-ons as locked rows.
+- Videos are `youtube-nocookie.com` embeds built from `video_id` — free curated bonus, never the paid content.
 
 ## Run
+
 
 ```bash
 # web (serves public/ + config.js)

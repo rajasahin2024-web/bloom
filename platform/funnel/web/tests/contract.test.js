@@ -131,77 +131,99 @@ test("portal contract: login -> modules -> quiz -> progress -> certificate -> do
   const order = await create.json();
   await fetch(`${API}${order.mock.settle_url}`, { method: "POST" });
 
-  // login rejects bad creds / unpaid orders
-  const bad = await fetch(`${API}/api/funnel/portal/login`, {
+  // login rejects bad creds / unknown orders
+  const bad = await fetch(`${API}/api/funnel/gated/auth/login`, {
     method: "POST", headers: json,
     body: JSON.stringify({ email: "learner@example.com", order_id: "ord_nope" }),
   });
   assert.equal(bad.status, 401);
 
-  const login = await fetch(`${API}/api/funnel/portal/login`, {
+  const login = await fetch(`${API}/api/funnel/gated/auth/login`, {
     method: "POST", headers: json,
     body: JSON.stringify({ email: "learner@example.com", order_id: order.order_id }),
   });
   assert.equal(login.status, 200);
   const sess = await login.json();
-  assert.ok(sess.token);
+  assert.ok(sess.token.startsWith("fns_"));
+  assert.equal(sess.entitlements.course, true);
+  assert.equal(sess.entitlements.prompt_library, true);   // bump purchased
+  assert.equal(sess.entitlements.second_course, false);   // upsell skipped
   const auth = { Authorization: `Bearer ${sess.token}` };
 
-  const me = await (await fetch(`${API}/api/funnel/portal/me`, { headers: auth })).json();
+  const me = await (await fetch(`${API}/api/funnel/gated/me`, { headers: auth })).json();
   assert.equal(me.email, "learner@example.com");
+  assert.equal(me.entitlements.prompt_library, true);
 
-  // portal endpoints require auth
-  assert.equal((await fetch(`${API}/api/funnel/portal/modules`)).status, 401);
+  // gated endpoints require auth
+  assert.equal((await fetch(`${API}/api/funnel/gated/modules`)).status, 401);
 
-  const mods = await (await fetch(`${API}/api/funnel/portal/modules`, { headers: auth })).json();
+  const mods = await (await fetch(`${API}/api/funnel/gated/modules`, { headers: auth })).json();
   assert.equal(mods.modules.length, 6);
+  assert.equal(mods.complete, false);
   assert.ok(mods.modules[0].videos[0].video_id);
-  assert.equal(mods.modules[0].progress.status, "not_started");
+  assert.equal(mods.modules[0].progress.passed, false);
 
-  const det = await (await fetch(`${API}/api/funnel/portal/modules/m1`, { headers: auth })).json();
-  assert.ok(det.module.questions.length >= 2);
-  assert.ok(!("answer" in det.module.questions[0]), "answers must not leak to the client");
+  // module detail embeds no questions — quiz is a separate stripped resource
+  const det = await (await fetch(`${API}/api/funnel/gated/modules/m1`, { headers: auth })).json();
+  assert.equal(det.id, "m1");
+  assert.ok(det.lesson_url);
+  const lesson = await fetch(`${API}${det.lesson_url}`, { headers: auth });
+  assert.equal(lesson.status, 200);
+  assert.match(lesson.headers.get("content-type"), /text\/html/);
 
-  // failing attempt (all mock answers are index 0 -> pick last = wrong)
+  const quiz = await (await fetch(`${API}/api/funnel/gated/modules/m1/quiz`, { headers: auth })).json();
+  assert.ok(quiz.questions.length >= 2);
+  assert.ok(!("answer" in quiz.questions[0]), "answers must not leak to the client");
+  assert.ok(quiz.questions[0].options[0].id, "options carry ids");
+
+  // failing attempt — all mock correct answers are option "a", so pick the last
   const wrong = {};
-  det.module.questions.forEach((q) => { wrong[q.id] = q.options.length - 1; });
-  const fail = await (await fetch(`${API}/api/funnel/portal/modules/m1/quiz`, {
+  quiz.questions.forEach((q) => { wrong[q.id] = q.options[q.options.length - 1].id; });
+  const fail = await (await fetch(`${API}/api/funnel/gated/modules/m1/quiz/submit`, {
     method: "POST", headers: { ...auth, ...json }, body: JSON.stringify({ answers: wrong }),
   })).json();
   assert.equal(fail.passed, false);
-  assert.ok(fail.results.m1q1 === 0);
+  assert.equal(fail.total, quiz.questions.length);
+  assert.equal(fail.module.attempts, 1);
 
   // pass every module
   for (const mod of mods.modules) {
-    const d = await (await fetch(`${API}/api/funnel/portal/modules/${mod.id}`, { headers: auth })).json();
+    const q = await (await fetch(`${API}/api/funnel/gated/modules/${mod.id}/quiz`, { headers: auth })).json();
     const ans = {};
-    d.module.questions.forEach((q) => { ans[q.id] = 0; });
-    const r = await (await fetch(`${API}/api/funnel/portal/modules/${mod.id}/quiz`, {
+    q.questions.forEach((qq) => { ans[qq.id] = "a"; });
+    const r = await (await fetch(`${API}/api/funnel/gated/modules/${mod.id}/quiz/submit`, {
       method: "POST", headers: { ...auth, ...json }, body: JSON.stringify({ answers: ans }),
     })).json();
     assert.equal(r.passed, true, mod.id);
   }
 
-  const prog = await (await fetch(`${API}/api/funnel/portal/progress`, { headers: auth })).json();
-  assert.equal(prog.certificate_ready, true);
+  const prog = await (await fetch(`${API}/api/funnel/gated/progress`, { headers: auth })).json();
+  assert.equal(prog.complete, true);
   assert.equal(prog.modules_passed, 6);
 
-  const cert = await (await fetch(`${API}/api/funnel/portal/certificate`, { headers: auth })).json();
-  assert.equal(cert.ready, true);
-  assert.match(cert.serial, /^BA-/);
-  const pdf = await fetch(`${API}${cert.pdf_url}`, { headers: auth });
+  // certificate: eligible -> POST {name} issues -> pdf_url serves the PDF
+  const cert = await (await fetch(`${API}/api/funnel/gated/certificate`, { headers: auth })).json();
+  assert.equal(cert.eligible, true);
+  assert.equal(cert.issued, false);
+  const issue = await fetch(`${API}/api/funnel/gated/certificate`, {
+    method: "POST", headers: { ...auth, ...json },
+    body: JSON.stringify({ name: "Test Learner" }),
+  });
+  assert.equal(issue.status, 200);
+  const cert2 = await issue.json();
+  assert.equal(cert2.issued, true);
+  assert.match(cert2.serial, /^AIW-/);
+  const pdf = await fetch(cert2.pdf_url, { headers: auth });
   assert.equal(pdf.status, 200);
   assert.match(pdf.headers.get("content-type"), /application\/pdf/);
 
-  // bump was purchased -> prompt library unlocked; upsell not -> locked
-  const dls = await (await fetch(`${API}/api/funnel/portal/downloads`, { headers: auth })).json();
-  const quick = dls.downloads.find((d) => /quick/i.test(d.name));
-  const prompts = dls.downloads.find((d) => /prompt/i.test(d.name));
-  const bundle = dls.downloads.find((d) => /second course/i.test(d.name));
-  assert.ok(quick && quick.url);
-  assert.ok(prompts && prompts.url && !prompts.locked);
-  assert.ok(bundle && bundle.locked);
-  const file = await fetch(`${API}${quick.url}`);
+  // downloads: entitlement-filtered signed links (course+bump yes, upsell no)
+  const dls = await (await fetch(`${API}/api/funnel/gated/downloads`, { headers: auth })).json();
+  const skus = dls.downloads.map((d) => d.sku);
+  assert.ok(skus.includes("ai-office-course"));
+  assert.ok(skus.includes("prompt-library-pack"));
+  assert.ok(!skus.includes("ai-creators-starter"));
+  const file = await fetch(dls.downloads[0].url);
   assert.equal(file.status, 200);
   assert.match(file.headers.get("content-type"), /application\/pdf/);
 });

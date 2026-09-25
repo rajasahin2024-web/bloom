@@ -136,10 +136,10 @@
     },
   };
 
-  /* ---------- learner portal session + gated API (contract: /api/funnel/portal/*)
-   * Session token is minted by POST /portal/login (email + order_id, or a
-   * magic-link {token}) on the sibling backend (TEC-121) and stored in
-   * sessionStorage — closing the tab ends the session, no cookies needed. */
+  /* ---------- learner portal session + gated API (contract: /api/funnel/gated/*)
+   * Session token is minted by POST /gated/auth/login (email + order_id) on
+   * the sibling backend (TEC-121) and stored in sessionStorage — closing the
+   * tab ends the session, no cookies needed. */
   var PORTAL_KEY = "funnel_portal_session";
   function saveSession(sess) {
     try { sessionStorage.setItem(PORTAL_KEY, JSON.stringify(sess)); } catch (e) {}
@@ -169,23 +169,39 @@
 
   var portal = {
     login: function (email, orderId) {
-      return req("POST", "/api/funnel/portal/login", { email: email, order_id: orderId });
+      return req("POST", "/api/funnel/gated/auth/login", { email: email, order_id: orderId });
     },
+    /* Magic links aren't a separate backend endpoint — the link carries the
+     * session token itself; /gated/me validates it on the next call. */
     loginToken: function (magicToken) {
-      return req("POST", "/api/funnel/portal/login", { token: magicToken });
+      return Promise.resolve({ token: magicToken });
     },
-    me: function () { return req("GET", "/api/funnel/portal/me", null, portalToken()); },
-    modules: function () { return req("GET", "/api/funnel/portal/modules", null, portalToken()); },
+    me: function () { return req("GET", "/api/funnel/gated/me", null, portalToken()); },
+    modules: function () { return req("GET", "/api/funnel/gated/modules", null, portalToken()); },
     module: function (id) {
-      return req("GET", "/api/funnel/portal/modules/" + encodeURIComponent(id), null, portalToken());
+      return req("GET", "/api/funnel/gated/modules/" + encodeURIComponent(id), null, portalToken());
+    },
+    quiz: function (id) {
+      return req("GET", "/api/funnel/gated/modules/" + encodeURIComponent(id) + "/quiz", null, portalToken());
     },
     submitQuiz: function (id, answers) {
-      return req("POST", "/api/funnel/portal/modules/" + encodeURIComponent(id) + "/quiz",
+      return req("POST", "/api/funnel/gated/modules/" + encodeURIComponent(id) + "/quiz/submit",
         { answers: answers }, portalToken());
     },
-    progress: function () { return req("GET", "/api/funnel/portal/progress", null, portalToken()); },
-    certificate: function () { return req("GET", "/api/funnel/portal/certificate", null, portalToken()); },
-    downloads: function () { return req("GET", "/api/funnel/portal/downloads", null, portalToken()); },
+    /* lesson_url is a gated FileResponse — fetch with the bearer and inject,
+     * since iframes can't send Authorization headers. */
+    lessonHtml: function (lessonUrl) {
+      var url = /^https?:/.test(lessonUrl) ? lessonUrl : API_BASE + lessonUrl;
+      return fetch(url, { headers: { Authorization: "Bearer " + (portalToken() || "") } })
+        .then(function (r) { return r.ok ? r.text() : null; })
+        .catch(function () { return null; });
+    },
+    progress: function () { return req("GET", "/api/funnel/gated/progress", null, portalToken()); },
+    certificate: function () { return req("GET", "/api/funnel/gated/certificate", null, portalToken()); },
+    issueCertificate: function (name) {
+      return req("POST", "/api/funnel/gated/certificate", { name: name }, portalToken());
+    },
+    downloads: function () { return req("GET", "/api/funnel/gated/downloads", null, portalToken()); },
   };
 
   /* ---------- payment rail dispatch ---------- */
