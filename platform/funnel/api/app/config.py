@@ -68,6 +68,24 @@ class Settings(BaseSettings):
         default=24 * 3600, alias="DOWNLOAD_URL_TTL_SECONDS"
     )
 
+    # Gated delivery area (buyer portal)
+    gated_session_ttl_seconds: int = Field(
+        default=30 * 24 * 3600, alias="GATED_SESSION_TTL_SECONDS"
+    )
+    # Failed-login budget per (ip, email) per 60s window.
+    gated_login_max_attempts: int = Field(
+        default=20, alias="GATED_LOGIN_MAX_ATTEMPTS"
+    )
+    certificates_dir: str = Field(
+        default=str(API_DIR / "data" / "certificates"),
+        alias="FUNNEL_CERTIFICATES_DIR",
+    )
+    # Optional explicit course manifest path; default search is
+    # {assets_dir}/course/manifest.json then the bundled placeholder.
+    course_manifest: str | None = Field(
+        default=None, alias="FUNNEL_COURSE_MANIFEST"
+    )
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

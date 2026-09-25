@@ -1,7 +1,7 @@
 # Bloom Funnel API
 
-Standalone FastAPI service for the India IELTS eBook funnel
-(landing → checkout ₹199 → +₹99 bump → ₹599 upsell → downloads).
+Standalone FastAPI service for the "AI for Office Work" micro-course funnel
+(landing → checkout ₹199 → +₹99 bump → ₹599 upsell → gated delivery area).
 
 ## Run
 
@@ -13,6 +13,7 @@ cp .env.example .env          # fill in when creds exist
 
 DB: single-file SQLite at `data/funnel.db` (gitignored). Assets served from
 `../assets/` (produced by TEC-119; missing files are skipped).
+Generated certificates are written to `data/certificates/`.
 
 ## API contract
 
@@ -28,6 +29,61 @@ DB: single-file SQLite at `data/funnel.db` (gitignored). Assets served from
 | `POST /api/funnel/webhooks/razorpay` | `X-Razorpay-Signature` verified; `payment.captured` → paid, `payment.failed` → attempt logged |
 | `GET /api/funnel/buyers.csv` | `Authorization: Bearer $ADMIN_TOKEN` (or `?token=`) |
 | `GET /api/funnel/payment-stats` | admin-gated; per-method attempt counts + `success_rate` (captured/attempts) |
+
+
+## Gated delivery area (buyer portal)
+
+Buyers log in with email + order id (`POST /api/funnel/gated/auth/login`) and
+receive a bearer session token (`fns_*`, sha256-hashed at rest, 30-day TTL via
+`GATED_SESSION_TTL_SECONDS`). All `/gated/*` endpoints below require
+`Authorization: Bearer <token>`. Failed logins are throttled per (ip, email):
+`GATED_LOGIN_MAX_ATTEMPTS` per 60s (default 20). Only paid orders can log in.
+
+Entitlements are derived server-side from the paid order's items:
+`course` (base paid), `prompt_library` (+₹99 bump sku), `second_course`
+(₹599 upsell sku).
+
+| Endpoint | Notes |
+|---|---|
+| `POST /api/funnel/gated/auth/login` | `{email, order_id}` → `{token, expires_at, entitlements, course}` |
+| `GET /api/funnel/gated/me` | entitlements + full progress + certificate state |
+| `GET /api/funnel/gated/modules` | ordered module map: title/summary/lesson_url/videos[{video_id,title,duration_seconds,embed_url}]/quiz count + per-module progress |
+| `GET /api/funnel/gated/modules/{id}` | single module detail |
+| `GET /api/funnel/gated/modules/{id}/lesson` | serves the module's lesson HTML (gated) |
+| `GET /api/funnel/gated/modules/{id}/quiz` | questions WITHOUT answers |
+| `POST /api/funnel/gated/modules/{id}/quiz/submit` | `{answers:{qid:opt}}` → `{score,total,passed}`; append-only attempts, module passes on any passing attempt |
+| `GET /api/funnel/gated/progress` | same aggregate as `/modules` |
+| `GET /api/funnel/gated/certificate` | `{eligible, issued, serial, pdf_url}` |
+| `POST /api/funnel/gated/certificate` | `{name}` → issues "Certificate of Completion" PDF once all module quizzes passed; idempotent per order |
+| `GET /api/funnel/gated/certificate/pdf` | serves the generated PDF |
+| `GET /api/funnel/gated/downloads` | signed 24h links filtered by entitlement (quick-start PDF, prompt library, upsell bundle) |
+
+### Course manifest (content contract with TEC-119)
+
+Load order: `$FUNNEL_COURSE_MANIFEST` → `{FUNNEL_ASSETS_DIR}/course/manifest.json`
+→ bundled placeholder `app/course_manifest.json`. Schema:
+
+```json
+{
+  "course": {"id": "ai-office-work-v1", "title": "AI for Office Work",
+             "pass_score_pct": 70},
+  "modules": [{
+    "id": "m1", "title": "...", "summary": "...",
+    "lesson": "course/m1/lesson.html",
+    "videos": [{"video_id": "<youtube-id>", "title": "...",
+                "duration_seconds": 480}],
+    "pass_score_pct": 70,
+    "quiz": [{"id": "q1", "prompt": "...",
+              "options": [{"id": "a", "text": "..."}],
+              "answer": "a"}]
+  }]
+}
+```
+
+YouTube entries carry id/title/duration only — the portal embeds
+`youtube.com/embed/{video_id}`; media is never re-hosted. Answers are stripped
+before quiz payloads leave the API. Certificate wording is completion-only —
+no accreditation claims.
 
 ## Meta CAPI dedup convention
 

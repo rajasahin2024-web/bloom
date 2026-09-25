@@ -25,8 +25,14 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("FUNNEL_ASSETS_DIR", str(tmp_path / "assets"))
     monkeypatch.setenv("DOWNLOAD_SIGNING_SECRET", "test-secret")
     (tmp_path / "assets").mkdir()
-    (tmp_path / "assets" / "ebook.pdf").write_bytes(b"%PDF fake ebook")
-    (tmp_path / "assets" / "workbook.pdf").write_bytes(b"%PDF fake workbook")
+    (tmp_path / "assets" / "course").mkdir()
+    (tmp_path / "assets" / "course" / "quick-start.pdf").write_bytes(
+        b"%PDF fake quick-start")
+    (tmp_path / "assets" / "prompts").mkdir()
+    (tmp_path / "assets" / "prompts" / "office-prompt-library.pdf").write_bytes(
+        b"%PDF fake prompt library")
+    (tmp_path / "assets" / "prompts" / "email-templates.txt").write_text(
+        "template pack")
     (tmp_path / "assets" / "upsell").mkdir()
     (tmp_path / "assets" / "upsell" / "bundle.pdf").write_bytes(b"%PDF bundle")
 
@@ -79,13 +85,13 @@ def test_full_funnel_mock_rail(client, caplog):
     assert purch["custom_data"]["value"] == 298.0
 
     r = client.get(f"/api/funnel/orders/{oid}")
-    assert r.json()["items"][0]["sku"] == "ielts-ebook"
+    assert r.json()["items"][0]["sku"] == "ai-office-course"
     assert len(r.json()["items"]) == 2
 
     r = client.get(f"/api/funnel/orders/{oid}/downloads")
     assert r.status_code == 200
     downloads = r.json()["downloads"]
-    assert {d["file"] for d in downloads} == {"ebook.pdf", "workbook.pdf"}
+    assert {d["file"] for d in downloads} == {"quick-start.pdf", "office-prompt-library.pdf", "email-templates.txt"}
     for d in downloads:
         path = d["url"].split("/api/funnel", 1)[1]
         assert client.get(f"/api/funnel{path}").status_code == 200
@@ -136,7 +142,7 @@ def test_upsell_flow(client, caplog):
     r = client.post(f"/api/funnel/orders/{oid}/mock-settle?payment_id={up_pid}")
     assert r.status_code == 200
     skus = {i["sku"] for i in r.json()["items"]}
-    assert "band7-upsell" in skus
+    assert "ai-creators-starter" in skus
     capi_events = [json.loads(x.message.split("CAPI_DRY_RUN ", 1)[1])
                    for x in caplog.records if "CAPI_DRY_RUN" in x.message]
     up_purch = capi_events[-1]["data"][0]
@@ -163,7 +169,7 @@ def test_webhook_signature(tmp_path, monkeypatch):
     c = TestClient(create_app())
 
     order, payment = store.create_order(
-        email="w@x.com", items=[{"sku": "ielts-ebook", "amount_paise": 19900}],
+        email="w@x.com", items=[{"sku": "ai-office-course", "amount_paise": 19900}],
         event_id="e-wh", utm=None, payment_kind="base",
         amount_paise=19900, rail="razorpay",
     )

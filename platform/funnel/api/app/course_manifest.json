@@ -1,0 +1,178 @@
+{
+  "course": {
+    "id": "ai-office-work-v1",
+    "title": "AI for Office Work",
+    "pass_score_pct": 70,
+    "note": "PLACEHOLDER manifest — replaced by platform/funnel/assets/course/manifest.json from TEC-119"
+  },
+  "modules": [
+    {
+      "id": "m1-ai-basics",
+      "title": "Getting Started with AI at Work (placeholder)",
+      "summary": "What ChatGPT-style tools can and cannot do for daily office tasks.",
+      "lesson": "course/m1-ai-basics/lesson.html",
+      "videos": [
+        {"video_id": "PLACEHOLDER_m1v1", "title": "Intro to AI assistants for office work", "duration_seconds": 420},
+        {"video_id": "PLACEHOLDER_m1v2", "title": "Writing your first good prompt", "duration_seconds": 510}
+      ],
+      "quiz": [
+        {
+          "id": "q1",
+          "prompt": "What is the safest first use of an AI assistant at work?",
+          "options": [
+            {"id": "a", "text": "Pasting confidential client data into a public chatbot"},
+            {"id": "b", "text": "Drafting a routine internal email with no sensitive data"},
+            {"id": "c", "text": "Letting it send emails automatically without review"},
+            {"id": "d", "text": "Uploading the company password sheet"}
+          ],
+          "answer": "b"
+        },
+        {
+          "id": "q2",
+          "prompt": "A good prompt usually includes…",
+          "options": [
+            {"id": "a", "text": "Only the task, nothing else"},
+            {"id": "b", "text": "Task, context, format, and constraints"},
+            {"id": "c", "text": "As many buzzwords as possible"},
+            {"id": "d", "text": "Your login password so it remembers you"}
+          ],
+          "answer": "b"
+        },
+        {
+          "id": "q3",
+          "prompt": "AI output should be treated as…",
+          "options": [
+            {"id": "a", "text": "Always correct"},
+            {"id": "b", "text": "A first draft that you review before using"},
+            {"id": "c", "text": "Illegal to use at work"},
+            {"id": "d", "text": "A replacement for your judgment"}
+          ],
+          "answer": "b"
+        },
+        {
+          "id": "q4",
+          "prompt": "Which is a good office task for AI?",
+          "options": [
+            {"id": "a", "text": "Summarizing a long meeting transcript"},
+            {"id": "b", "text": "Signing a contract on your behalf"},
+            {"id": "c", "text": "Making up HR policies that do not exist"},
+            {"id": "d", "text": "Approving your own leave"}
+          ],
+          "answer": "a"
+        }
+      ]
+    },
+    {
+      "id": "m2-excel-sheets",
+      "title": "AI for Excel & Spreadsheets (placeholder)",
+      "summary": "Use AI to explain formulas, clean data, and build quick reports.",
+      "lesson": "course/m2-excel-sheets/lesson.html",
+      "videos": [
+        {"video_id": "PLACEHOLDER_m2v1", "title": "Explain any Excel formula with AI", "duration_seconds": 465},
+        {"video_id": "PLACEHOLDER_m2v2", "title": "Cleaning messy sheets with AI help", "duration_seconds": 540}
+      ],
+      "quiz": [
+        {
+          "id": "q1",
+          "prompt": "When AI gives you a formula, you should…",
+          "options": [
+            {"id": "a", "text": "Paste it into production sheets immediately"},
+            {"id": "b", "text": "Test it on a copy of the data first"},
+            {"id": "c", "text": "Never test formulas"},
+            {"id": "d", "text": "Share the sheet password with the chatbot"}
+          ],
+          "answer": "b"
+        },
+        {
+          "id": "q2",
+          "prompt": "The best way to ask AI for Excel help is to…",
+          "options": [
+            {"id": "a", "text": "Describe columns, sample rows, and the result you want"},
+            {"id": "b", "text": "Say 'fix my sheet'"},
+            {"id": "c", "text": "Upload every file you own"},
+            {"id": "d", "text": "Ask it to guess your data"}
+          ],
+          "answer": "a"
+        },
+        {
+          "id": "q3",
+          "prompt": "AI is most reliable in Excel work for…",
+          "options": [
+            {"id": "a", "text": "Explaining VLOOKUP/XLOOKUP and suggesting formulas"},
+            {"id": "b", "text": "Guaranteeing your totals are correct"},
+            {"id": "c", "text": "Editing locked cells"},
+            {"id": "d", "text": "Replacing all checks"}
+          ],
+          "answer": "a"
+        },
+        {
+          "id": "q4",
+          "prompt": "Before pasting sheet data into a chatbot you should…",
+          "options": [
+            {"id": "a", "text": "Include all customer personal details"},
+            {"id": "b", "text": "Remove or mask sensitive values"},
+            {"id": "c", "text": "Add your bank details"},
+            {"id": "d", "text": "Nothing — chatbots are always private"}
+          ],
+          "answer": "b"
+        }
+      ]
+    },
+    {
+      "id": "m3-email-slides",
+      "title": "AI for Emails & Presentations (placeholder)",
+      "summary": "Draft professional emails and outline slides faster.",
+      "lesson": "course/m3-email-slides/lesson.html",
+      "videos": [
+        {"video_id": "PLACEHOLDER_m3v1", "title": "Drafting office emails with AI", "duration_seconds": 390},
+        {"video_id": "PLACEHOLDER_m3v2", "title": "From outline to slide deck with AI", "duration_seconds": 610}
+      ],
+      "quiz": [
+        {
+          "id": "q1",
+          "prompt": "For a professional email draft, give the AI…",
+          "options": [
+            {"id": "a", "text": "The recipient, purpose, tone, and key points"},
+            {"id": "b", "text": "Nothing"},
+            {"id": "c", "text": "Your email password"},
+            {"id": "d", "text": "The whole inbox"}
+          ],
+          "answer": "a"
+        },
+        {
+          "id": "q2",
+          "prompt": "AI-drafted slides should be…",
+          "options": [
+            {"id": "a", "text": "Presented exactly as generated"},
+            {"id": "b", "text": "Reviewed, fact-checked, and styled to your brand"},
+            {"id": "c", "text": "Deleted"},
+            {"id": "d", "text": "Sent to competitors"}
+          ],
+          "answer": "b"
+        },
+        {
+          "id": "q3",
+          "prompt": "A realistic benefit of AI email drafting is…",
+          "options": [
+            {"id": "a", "text": "It always writes better than you"},
+            {"id": "b", "text": "It gets you a solid first draft faster"},
+            {"id": "c", "text": "It knows your company's secrets"},
+            {"id": "d", "text": "It sends mail without you"}
+          ],
+          "answer": "b"
+        },
+        {
+          "id": "q4",
+          "prompt": "Which should you NOT put in a prompt for slides?",
+          "options": [
+            {"id": "a", "text": "Audience and goal of the deck"},
+            {"id": "b", "text": "Number of slides you want"},
+            {"id": "c", "text": "Unreleased financial figures marked confidential"},
+            {"id": "d", "text": "The tone you want"}
+          ],
+          "answer": "c"
+        }
+      ]
+    }
+  ]
+}

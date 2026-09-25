@@ -1,4 +1,4 @@
-"""Bloom funnel API — standalone checkout service for the IELTS eBook funnel.
+"""Bloom funnel API — checkout + gated delivery for the AI-course funnel.
 
 Run:
     uvicorn app.main:app --host 0.0.0.0 --port 8090
@@ -13,9 +13,9 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import __version__, store
+from app import __version__, gated_store, store
 from app.config import get_settings
-from app.routers import admin, assets, orders, webhooks
+from app.routers import admin, assets, gated, orders, webhooks
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,7 +28,7 @@ _settings = get_settings()
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Bloom Funnel API",
-        description="IELTS eBook funnel — orders, payments, Meta CAPI, downloads.",
+        description="AI-course funnel — orders, payments, Meta CAPI, gated delivery.",
         version=__version__,
         docs_url="/api/funnel/docs",
         openapi_url="/api/funnel/openapi.json",
@@ -41,6 +41,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     store.init_db()
+    gated_store.init_db()
 
     @app.get("/api/funnel/health")
     def health() -> dict[str, Any]:
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
         }
 
     app.include_router(orders.router)
+    app.include_router(gated.router)
     app.include_router(webhooks.router)
     app.include_router(assets.router)
     app.include_router(admin.router)
