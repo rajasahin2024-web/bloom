@@ -17,3 +17,9 @@ Project: **Bloom Academy IELTS Learning Platform** (Techfly client engagement, p
 3. Project docs live in `docs/` — read those before proposing scope/architecture changes.
 4. Tech stack is fixed (proposal v5.1): React+Vite+TS, FastAPI, Postgres+pgvector+PgBouncer, Redis, LangGraph `ai-tutor`, Docker Compose. Architecture decision A1: modular monolith; carve-outs only `ai-tutor` and mail engine.
 5. Boss communicates in Banglish and often wants a direct answer only — in ask-mode issues, answer in the thread; don't implement.
+
+## Deploy / preview ports (host: 82.112.226.111)
+
+- `ufw allow <port>/tcp` is enough — no cloud firewall panel.
+- **Port 8080 is taken** by an unrelated live service (`news-portal-linux`, `/www/wwwroot/teestatorsha`) — do not kill it. For the funnel web preview use **8081** (or next free port) and note the actual port in your issue comment/work product.
+- Funnel API target port **8090** is free as of 2026-09-24.
