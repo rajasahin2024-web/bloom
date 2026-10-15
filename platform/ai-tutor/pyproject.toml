@@ -1,0 +1,58 @@
+[project]
+name = "bloom-ai-tutor"
+version = "0.1.0"
+description = "Bloom AI Tutor — FastAPI gateway + Redis queue + LangGraph worker pool (RAG over pgvector)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "sqlalchemy>=2.0.36",
+    "psycopg[binary]>=3.2.0",
+    "alembic>=1.14.0",
+    "redis>=5.2.0",
+    "pgvector>=0.3.6",
+    "langgraph>=1.0.0",
+    "openai>=1.50.0",
+    "httpx>=0.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[project.scripts]
+tutor-ingest = "tutor.ingest:main"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+ignore_missing_imports = true
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["tutor*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "W"]
+# B008: function call in default argument — required by FastAPI's Depends().
+ignore = ["B008"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tutor/tests"]
