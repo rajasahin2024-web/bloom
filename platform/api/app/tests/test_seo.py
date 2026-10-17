@@ -472,3 +472,196 @@ def test_faqpage_schema_behind_toggle(admin_token: str) -> None:
         conn = _pg()
         conn.execute("DELETE FROM cms_pages WHERE slug = 'faq'")
         conn.close()
+
+
+# ── Phase 3: AIO settings + sitemap options ──────────────────────────────
+
+
+def test_aio_registry_keys_exist() -> None:
+    aio = {
+        "aio.enabled",
+        "aio.crawler_policy",
+        "aio.crawler_list",
+        "aio.custom_robots",
+        "aio.llms_txt_enabled",
+        "aio.llms_txt",
+        "aio.org_summary",
+        "aio.key_facts",
+        "aio.same_as",
+    }
+    sitemap = {
+        "sitemap.include_pages",
+        "sitemap.include_posts",
+        "sitemap.extra_paths",
+    }
+    assert aio | sitemap <= set(_SPEC)
+    assert all(_SPEC[k].group == "aio" for k in aio)
+    assert all(_SPEC[k].group == "sitemap" for k in sitemap)
+
+
+def test_aio_validation() -> None:
+    assert _validate("aio.enabled", True) == {}
+    assert _validate("aio.enabled", "yes")
+    assert _validate("aio.crawler_policy", "Block listed") == {}
+    assert _validate("aio.crawler_policy", "Allow all") == {}
+    assert _validate("aio.crawler_policy", "block all")
+    assert _validate("aio.crawler_list", "GPTBot\nClaudeBot\n") == {}
+    assert _validate("aio.same_as", "https://fb.com/bloom\nhttps://x.com/bloom\n") == {}
+    assert _validate("aio.same_as", "notaurl")
+    assert _validate("aio.same_as", "") == {}
+    assert _validate("sitemap.extra_paths", "/courses\n/about-us\n") == {}
+    assert _validate("sitemap.extra_paths", "courses")
+    assert _validate("sitemap.extra_paths", "https://evil.com/x")
+    assert _validate("sitemap.include_pages", False) == {}
+    assert _validate("sitemap.include_posts", "yes")
+
+
+def test_llms_txt_serves_generated() -> None:
+    resp = client.get("/llms.txt")
+    # enabled by default (aio.enabled + aio.llms_txt_enabled both default on)
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/plain")
+    assert resp.text.startswith("# ")
+
+
+def test_admin_sitemap_requires_auth() -> None:
+    assert client.get("/api/admin/sitemap").status_code == 401
+
+
+@requires_infra
+def test_llms_txt_toggle_and_override(admin_token: str) -> None:
+    try:
+        resp = client.get("/llms.txt")
+        assert resp.status_code == 200
+        assert "# Bloom" in resp.text
+
+        _patch(admin_token, {"aio.llms_txt": "# Custom brief\n"})
+        resp = client.get("/llms.txt")
+        assert resp.text == "# Custom brief\n"
+
+        _patch(admin_token, {"aio.llms_txt_enabled": False})
+        assert client.get("/llms.txt").status_code == 404
+
+        _patch(admin_token, {"aio.llms_txt_enabled": True, "aio.enabled": False})
+        assert client.get("/llms.txt").status_code == 404
+    finally:
+        client.post("/api/admin/settings/reset", headers=_auth(admin_token))
+
+
+@requires_infra
+def test_robots_ai_crawler_policies(admin_token: str) -> None:
+    try:
+        _patch(
+            admin_token,
+            {"aio.crawler_policy": "Block listed", "aio.crawler_list": "GPTBot\nClaudeBot"},
+        )
+        body = client.get("/robots.txt").text
+        assert "User-agent: GPTBot\nDisallow: /" in body
+        assert "User-agent: ClaudeBot\nDisallow: /" in body
+
+        _patch(
+            admin_token,
+            {
+                "aio.crawler_policy": "Custom rules",
+                "aio.custom_robots": "User-agent: FooBot\nDisallow: /private",
+            },
+        )
+        body = client.get("/robots.txt").text
+        assert "User-agent: FooBot\nDisallow: /private" in body
+
+        _patch(admin_token, {"aio.enabled": False})
+        body = client.get("/robots.txt").text
+        assert "FooBot" not in body and "GPTBot" not in body
+    finally:
+        client.post("/api/admin/settings/reset", headers=_auth(admin_token))
+
+
+@requires_infra
+def test_sitemap_include_flags_and_extra_paths(admin_token: str) -> None:
+    conn = _pg()
+    conn.execute(
+        "INSERT INTO cms_pages (id, slug, title, body, status, created_at,"
+        " updated_at) VALUES (%s, 'sm-page', 'SM Page', '', 'published', %s, %s)",
+        (str(uuid.uuid4()), datetime.now(UTC), datetime.now(UTC)),
+    )
+    conn.execute(
+        "INSERT INTO cms_posts (id, slug, title, body, tags, featured, status,"
+        " created_at, updated_at) VALUES (%s, 'sm-post', 'SM Post', '', '{}',"
+        " false, 'published', %s, %s)",
+        (str(uuid.uuid4()), datetime.now(UTC), datetime.now(UTC)),
+    )
+    conn.close()
+    try:
+        _patch(
+            admin_token,
+            {
+                "institute.website_url": "https://bloom.example",
+                "seo.sitemap_enabled": True,
+                "sitemap.extra_paths": "/courses\n/partners",
+            },
+        )
+        xml = client.get("/sitemap.xml").text
+        assert "<loc>https://bloom.example/sm-page</loc>" in xml
+        assert "<loc>https://bloom.example/blog/sm-post</loc>" in xml
+        assert "<loc>https://bloom.example/courses</loc>" in xml
+        assert "<loc>https://bloom.example/partners</loc>" in xml
+
+        _patch(admin_token, {"sitemap.include_posts": False})
+        xml = client.get("/sitemap.xml").text
+        assert "/blog/sm-post" not in xml
+        assert "/sm-page" in xml
+
+        _patch(admin_token, {"sitemap.include_pages": False})
+        xml = client.get("/sitemap.xml").text
+        assert "/sm-page" not in xml
+        assert "<loc>https://bloom.example/</loc>" in xml  # home always listed
+    finally:
+        client.post("/api/admin/settings/reset", headers=_auth(admin_token))
+        conn = _pg()
+        conn.execute("DELETE FROM cms_pages WHERE slug = 'sm-page'")
+        conn.execute("DELETE FROM cms_posts WHERE slug = 'sm-post'")
+        conn.close()
+
+
+@requires_infra
+def test_admin_sitemap_preview(admin_token: str) -> None:
+    try:
+        _patch(
+            admin_token,
+            {
+                "institute.website_url": "https://bloom.example",
+                "seo.sitemap_enabled": True,
+            },
+        )
+        resp = client.get("/api/admin/sitemap", headers=_auth(admin_token))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["enabled"] is True
+        assert body["base_url"] == "https://bloom.example"
+        assert body["sitemap_url"] == "https://bloom.example/sitemap.xml"
+        assert body["entry_count"] >= 1
+        assert body["entries"][0]["path"] == "/"
+        assert "<urlset" in body["xml"]
+    finally:
+        client.post("/api/admin/settings/reset", headers=_auth(admin_token))
+
+
+@requires_infra
+def test_aio_jsonld_round_trip(admin_token: str) -> None:
+    try:
+        _patch(
+            admin_token,
+            {
+                "aio.org_summary": "IELTS academy in London.",
+                "aio.same_as": "https://fb.com/bloom\nhttps://x.com/bloom",
+            },
+        )
+        org = client.get("/api/seo/meta").json()["json_ld"][0]
+        assert org["description"] == "IELTS academy in London."
+        assert org["sameAs"] == ["https://fb.com/bloom", "https://x.com/bloom"]
+
+        _patch(admin_token, {"aio.enabled": False})
+        org = client.get("/api/seo/meta").json()["json_ld"][0]
+        assert "sameAs" not in org
+    finally:
+        client.post("/api/admin/settings/reset", headers=_auth(admin_token))

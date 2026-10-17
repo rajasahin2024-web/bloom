@@ -72,14 +72,19 @@ describe("ADMIN_NAV — approved Plan v7 menu structure", () => {
       "Email Engine",
       "WhatsApp API",
       "SEO Settings",
-      "AEO Settings",
+      "AIO Settings",
       "Sitemaps",
       "Redis",
     ]);
   });
 
   it("marks every sub-item Soon except the live Settings leaves", () => {
-    const live = new Set(["general-settings", "seo-settings"]);
+    const live = new Set([
+      "general-settings",
+      "seo-settings",
+      "aio-settings",
+      "sitemaps",
+    ]);
     for (const item of ADMIN_NAV) {
       for (const sub of item.children) {
         if (live.has(sub.id)) continue;
@@ -105,6 +110,24 @@ describe("ADMIN_NAV — approved Plan v7 menu structure", () => {
     expect(leaf).toBeDefined();
     expect(leaf?.soon).toBe(false);
     expect(leaf?.to).toBe("/admin/settings/seo");
+  });
+
+  it("AIO Settings is a live destination under Settings", () => {
+    const leaf = ADMIN_NAV.find((i) => i.id === "settings")?.children.find(
+      (c) => c.id === "aio-settings",
+    );
+    expect(leaf).toBeDefined();
+    expect(leaf?.soon).toBe(false);
+    expect(leaf?.to).toBe("/admin/settings/aio");
+  });
+
+  it("Sitemaps is a live destination under Settings", () => {
+    const leaf = ADMIN_NAV.find((i) => i.id === "settings")?.children.find(
+      (c) => c.id === "sitemaps",
+    );
+    expect(leaf).toBeDefined();
+    expect(leaf?.soon).toBe(false);
+    expect(leaf?.to).toBe("/admin/settings/sitemaps");
   });
 
   it("has unique ids across items and sub-items", () => {

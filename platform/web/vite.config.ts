@@ -23,6 +23,20 @@ export default defineConfig({
         target: process.env.API_PROXY_TARGET ?? "http://localhost:8000",
         changeOrigin: true,
       },
+      // Crawler-facing files are served by the API — proxy them so the dev
+      // preview answers /sitemap.xml, /robots.txt and /llms.txt on :5173.
+      "/sitemap.xml": {
+        target: process.env.API_PROXY_TARGET ?? "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/robots.txt": {
+        target: process.env.API_PROXY_TARGET ?? "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/llms.txt": {
+        target: process.env.API_PROXY_TARGET ?? "http://localhost:8000",
+        changeOrigin: true,
+      },
     },
   },
   test: {

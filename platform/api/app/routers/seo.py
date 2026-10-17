@@ -20,14 +20,16 @@ import re
 from typing import Any
 from xml.sax.saxutils import escape as xml_escape
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.database import new_session
+from app.deps import require_admin
 from app.models.cms import CmsPage, CmsPost
 from app.models.enums import CmsStatus
+from app.models.user import User
 from app.services import settings as settings_service
 from app.services import setup as setup_service
 
@@ -72,15 +74,37 @@ def _canonical_base(values: dict[str, Any]) -> str:
 # ── robots.txt ───────────────────────────────────────────────────────────
 
 
+def _aio_lines(value: Any) -> list[str]:
+    """Non-empty trimmed lines of a textarea setting."""
+    return [s for s in (line.strip() for line in str(value or "").splitlines()) if s]
+
+
+def _ai_crawler_rules(values: dict[str, Any]) -> str:
+    """robots.txt block for the AIO crawler policy — '' when inactive."""
+    if not values.get("aio.enabled"):
+        return ""
+    policy = str(values.get("aio.crawler_policy") or "Allow all")
+    if policy == "Block listed":
+        return "".join(
+            f"User-agent: {token}\nDisallow: /\n\n"
+            for token in _aio_lines(values.get("aio.crawler_list"))
+        )
+    if policy == "Custom rules":
+        custom = str(values.get("aio.custom_robots") or "").strip()
+        return f"{custom}\n\n" if custom else ""
+    return ""
+
+
 @router.get("/robots.txt", include_in_schema=False)
 def robots_txt() -> PlainTextResponse:
     values = _resolved()
     if not values.get("seo.indexing_enabled"):
         return PlainTextResponse("User-agent: *\nDisallow: /\n")
-    body = str(values.get("seo.robots_txt") or _DEFAULT_ROBOTS)
+    body = str(values.get("seo.robots_txt") or _DEFAULT_ROBOTS).rstrip() + "\n\n"
+    body += _ai_crawler_rules(values)
     base = _canonical_base(values)
     if base and values.get("seo.sitemap_enabled") and "sitemap:" not in body.lower():
-        body = f"{body.rstrip()}\n\nSitemap: {base}/sitemap.xml\n"
+        body += f"Sitemap: {base}/sitemap.xml\n"
     if not body.endswith("\n"):
         body += "\n"
     return PlainTextResponse(body)
@@ -89,27 +113,70 @@ def robots_txt() -> PlainTextResponse:
 # ── sitemap.xml ──────────────────────────────────────────────────────────
 
 
-def _sitemap_entries() -> list[tuple[str, str | None]]:
-    """(path, lastmod) pairs for published CMS content. Empty when DB is down.
+def _published_content() -> list[tuple[str, str, str | None, str]]:
+    """(path, title, lastmod, source) for published CMS content.
 
-    Public site routes are Phase 3 — until then CMS pages map to `/{slug}`
-    and posts to `/blog/{slug}`.
+    Empty when the DB is down. Public site routes are Phase 3 — until then
+    CMS pages map to `/{slug}` and posts to `/blog/{slug}`.
     """
     db = new_session()
     if db is None:
         return []
     try:
         pages = db.execute(
-            select(CmsPage.slug, CmsPage.updated_at).where(CmsPage.status == CmsStatus.published)
+            select(CmsPage.slug, CmsPage.title, CmsPage.updated_at).where(
+                CmsPage.status == CmsStatus.published
+            )
         ).all()
         posts = db.execute(
-            select(CmsPost.slug, CmsPost.updated_at).where(CmsPost.status == CmsStatus.published)
+            select(CmsPost.slug, CmsPost.title, CmsPost.updated_at).where(
+                CmsPost.status == CmsStatus.published
+            )
         ).all()
     finally:
         db.close()
-    entries = [(f"/{slug}", ts) for slug, ts in pages]
-    entries += [(f"/blog/{slug}", ts) for slug, ts in posts]
-    return [(p, ts.date().isoformat() if ts else None) for p, ts in entries]
+
+    def lastmod(ts: Any) -> str | None:
+        return ts.date().isoformat() if ts else None
+
+    return [
+        *( (f"/{s}", t, lastmod(ts), "page") for s, t, ts in pages ),
+        *( (f"/blog/{s}", t, lastmod(ts), "post") for s, t, ts in posts ),
+    ]
+
+
+def _sitemap_entries(values: dict[str, Any]) -> list[tuple[str, str | None, str]]:
+    """(path, lastmod, source) for the sitemap — honor the sitemap group."""
+    entries: list[tuple[str, str | None, str]] = [("/", None, "home")]
+    seen = {"/"}
+    for path, _title, lastmod, source in _published_content():
+        if source == "page" and not values.get("sitemap.include_pages"):
+            continue
+        if source == "post" and not values.get("sitemap.include_posts"):
+            continue
+        if path not in seen:
+            seen.add(path)
+            entries.append((path, lastmod, source))
+    for path in _aio_lines(values.get("sitemap.extra_paths")):
+        if path not in seen:
+            seen.add(path)
+            entries.append((path, None, "extra"))
+    return entries
+
+
+def _sitemap_xml(base: str, entries: list[tuple[str, str | None, str]]) -> str:
+    items = "".join(
+        "  <url>\n"
+        f"    <loc>{xml_escape(base)}{xml_escape(path)}</loc>\n"
+        + (f"    <lastmod>{lastmod}</lastmod>\n" if lastmod else "")
+        + "  </url>\n"
+        for path, lastmod, _source in entries
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{items}</urlset>\n"
+    )
 
 
 @router.get("/sitemap.xml", include_in_schema=False)
@@ -121,20 +188,77 @@ def sitemap_xml() -> Response:
             status_code=404,
             detail="Sitemap is disabled or Website URL is not set",
         )
-    urls = [("/", None), *_sitemap_entries()]
-    items = "".join(
-        "  <url>\n"
-        f"    <loc>{xml_escape(base)}{xml_escape(path)}</loc>\n"
-        + (f"    <lastmod>{lastmod}</lastmod>\n" if lastmod else "")
-        + "  </url>\n"
-        for path, lastmod in urls
+    return Response(
+        content=_sitemap_xml(base, _sitemap_entries(values)),
+        media_type="application/xml",
     )
-    xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        f"{items}</urlset>\n"
+
+
+@router.get("/api/admin/sitemap")
+def admin_sitemap(_: User = Depends(require_admin)) -> dict[str, Any]:
+    """Admin preview of the runtime sitemap — state, entries and the XML."""
+    values = _resolved()
+    base = _canonical_base(values)
+    enabled = bool(values.get("seo.sitemap_enabled"))
+    entries = _sitemap_entries(values)
+    return {
+        "enabled": enabled,
+        "base_url": base,
+        "sitemap_url": f"{base}/sitemap.xml" if base else "",
+        "entry_count": len(entries),
+        "entries": [
+            {
+                "loc": f"{base}{path}" if base else path,
+                "path": path,
+                "lastmod": lastmod,
+                "source": source,
+            }
+            for path, lastmod, source in entries
+        ],
+        "xml": _sitemap_xml(base, entries) if enabled and base else "",
+    }
+
+
+# ── llms.txt (AI / answer engines) ───────────────────────────────────────
+
+
+def _generated_llms_txt(values: dict[str, Any], base: str) -> str:
+    """Auto llms.txt — H1 name, > summary, key facts, published links."""
+    title = str(values.get("seo.site_title") or values.get("institute.name") or "").strip()
+    summary = (
+        str(values.get("aio.org_summary") or "").strip()
+        or str(values.get("institute.tagline") or "").strip()
+        or str(values.get("seo.meta_description") or "").strip()
     )
-    return Response(content=xml, media_type="application/xml")
+    lines = [f"# {title or 'Site'}", ""]
+    if summary:
+        lines += [f"> {summary}", ""]
+    facts = _aio_lines(values.get("aio.key_facts"))
+    if facts:
+        lines += ["## Facts", ""]
+        lines += [f"- {fact}" for fact in facts]
+        lines.append("")
+    links = [
+        (path, link_title)
+        for path, link_title, _lm, _src in _published_content()
+    ]
+    if links:
+        lines += ["## Content", ""]
+        lines += [f"- [{t}]({base}{p})" for p, t in links]
+        lines.append("")
+    return "\n".join(lines)
+
+
+@router.get("/llms.txt", include_in_schema=False)
+def llms_txt() -> PlainTextResponse:
+    values = _resolved()
+    if not values.get("aio.enabled") or not values.get("aio.llms_txt_enabled"):
+        raise HTTPException(status_code=404, detail="llms.txt is disabled")
+    override = str(values.get("aio.llms_txt") or "").strip()
+    body = override if override else _generated_llms_txt(values, _canonical_base(values))
+    if not body.endswith("\n"):
+        body += "\n"
+    return PlainTextResponse(body)
 
 
 # ── structured data (Schema.org JSON-LD) ─────────────────────────────────
@@ -162,8 +286,17 @@ def _org_schema(values: dict[str, Any], base: str) -> dict[str, Any]:
     if logo:
         schema["logo"] = _abs_url(base, logo)
     tagline = str(values.get("institute.tagline") or "").strip()
-    if tagline:
-        schema["description"] = tagline
+    description = (
+        str(values.get("aio.org_summary") or "").strip()
+        if values.get("aio.enabled")
+        else ""
+    ) or tagline
+    if description:
+        schema["description"] = description
+    if values.get("aio.enabled"):
+        same_as = _aio_lines(values.get("aio.same_as"))
+        if same_as:
+            schema["sameAs"] = same_as
     address = str(values.get("institute.address") or "").strip()
     if address:
         schema["address"] = {"@type": "PostalAddress", "streetAddress": address}

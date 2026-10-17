@@ -52,6 +52,8 @@ _OH_SEGMENT_RE = re.compile(
     r"^(?:[MTWFS][a-z](?:[-,][MTWFS][a-z])*\s+)?"
     r"(?:[01]?\d|2[0-3]):[0-5]\d-(?:[01]?\d|2[0-3]):[0-5]\d$"
 )
+# site-relative path, one per line: /courses, /blog/post-1, /a/b/?x=1
+_PATH_LINE_RE = re.compile(r"^/[\w\-./~%!$&'()*+,;=:@?#]*$")
 
 # data:image/{png,jpeg,webp};base64,… uploads (same rules as the setup wizard)
 _IMAGE_DATA_URL = re.compile(
@@ -94,7 +96,8 @@ class SettingSpec:
     max_length: int = 300
     number_min: float = 0
     number_max: float = 100
-    # extra string check: geo_lat | geo_lng | opening_hours | twitter_handle | fb_app_id
+    # extra string check: geo_lat | geo_lng | opening_hours | twitter_handle
+    # | fb_app_id | url_list | path_list
     format: str | None = None
 
 
@@ -124,6 +127,17 @@ _GROUPS: tuple[tuple[str, str, str], ...] = (
         "SEO Settings",
         "Search visibility — global meta, indexing controls, verification "
         "and analytics tags.",
+    ),
+    (
+        "aio",
+        "AIO Settings",
+        "AI / answer-engine visibility — llms.txt, AI crawler policy and "
+        "the facts answer engines read from the structured data.",
+    ),
+    (
+        "sitemap",
+        "Sitemap",
+        "What the runtime-generated /sitemap.xml includes.",
     ),
 )
 
@@ -723,6 +737,160 @@ SPECS: tuple[SettingSpec, ...] = (
         ),
         default=True,
     ),
+    # ── AIO Settings (AI / answer-engine optimization) ───────────────────
+    SettingSpec(
+        key="aio.enabled",
+        group="aio",
+        label="Enable AI optimization",
+        type="toggle",
+        description=(
+            "Master switch — when off, /llms.txt is not served, the "
+            "AI-crawler policy is not added to robots.txt and the fields "
+            "below stay out of the JSON-LD payload."
+        ),
+        default=True,
+    ),
+    SettingSpec(
+        key="aio.crawler_policy",
+        group="aio",
+        label="AI crawler policy",
+        type="select",
+        description=(
+            "How robots.txt treats AI crawlers — Allow all adds no rules, "
+            "Block listed disallows every token below, Custom appends the "
+            "raw rules box."
+        ),
+        default="Allow all",
+        options=("Allow all", "Block listed", "Custom rules"),
+    ),
+    SettingSpec(
+        key="aio.crawler_list",
+        group="aio",
+        label="AI crawler tokens",
+        type="textarea",
+        description=(
+            "One crawler user-agent token per line — blocked in robots.txt "
+            "when the policy is 'Block listed'. Prefilled with the major "
+            "AI crawlers."
+        ),
+        default="\n".join(
+            (
+                "GPTBot",
+                "ClaudeBot",
+                "PerplexityBot",
+                "Google-Extended",
+                "CCBot",
+                "Bytespider",
+                "Applebot-Extended",
+                "meta-externalagent",
+            )
+        ),
+        max_length=2000,
+    ),
+    SettingSpec(
+        key="aio.custom_robots",
+        group="aio",
+        label="Custom robots.txt rules",
+        type="textarea",
+        description=(
+            "Raw lines appended to robots.txt when the policy is 'Custom "
+            "rules' — e.g. a User-agent block with Allow/Disallow lines."
+        ),
+        default="",
+        max_length=4000,
+    ),
+    SettingSpec(
+        key="aio.llms_txt_enabled",
+        group="aio",
+        label="Serve llms.txt",
+        type="toggle",
+        description=(
+            "Publish /llms.txt — the machine-readable site brief that "
+            "answer engines and LLM crawlers read."
+        ),
+        default=True,
+    ),
+    SettingSpec(
+        key="aio.llms_txt",
+        group="aio",
+        label="llms.txt override",
+        type="textarea",
+        description=(
+            "Optional verbatim content for /llms.txt. Leave empty to "
+            "auto-generate it from the site title, org summary, key facts "
+            "and published CMS links."
+        ),
+        default="",
+        max_length=8000,
+    ),
+    SettingSpec(
+        key="aio.org_summary",
+        group="aio",
+        label="Organization summary",
+        type="textarea",
+        description=(
+            "Factual 2–3 line description of the academy — becomes the "
+            "JSON-LD description and the llms.txt summary answer engines "
+            "quote."
+        ),
+        default="",
+        max_length=500,
+    ),
+    SettingSpec(
+        key="aio.key_facts",
+        group="aio",
+        label="Key facts",
+        type="textarea",
+        description=(
+            "One fact per line (e.g. 'IELTS batches start every month') — "
+            "listed as bullets in the auto-generated llms.txt."
+        ),
+        default="",
+        max_length=2000,
+    ),
+    SettingSpec(
+        key="aio.same_as",
+        group="aio",
+        label="SameAs profile URLs",
+        type="textarea",
+        description=(
+            "One URL per line — official profiles (Facebook, LinkedIn, "
+            "YouTube, Instagram…) emitted as JSON-LD sameAs."
+        ),
+        default="",
+        max_length=2000,
+        format="url_list",
+    ),
+    # ── Sitemap ──────────────────────────────────────────────────────────
+    SettingSpec(
+        key="sitemap.include_pages",
+        group="sitemap",
+        label="Include CMS pages",
+        type="toggle",
+        description="Published CMS pages appear as /{slug} in the sitemap.",
+        default=True,
+    ),
+    SettingSpec(
+        key="sitemap.include_posts",
+        group="sitemap",
+        label="Include blog posts",
+        type="toggle",
+        description="Published posts appear as /blog/{slug} in the sitemap.",
+        default=True,
+    ),
+    SettingSpec(
+        key="sitemap.extra_paths",
+        group="sitemap",
+        label="Extra paths",
+        type="textarea",
+        description=(
+            "Additional site paths to list, one per line (e.g. /courses) — "
+            "must start with '/'."
+        ),
+        default="",
+        max_length=2000,
+        format="path_list",
+    ),
 )
 
 SPEC_BY_KEY = {spec.key: spec for spec in SPECS}
@@ -879,6 +1047,30 @@ def _check_format(spec: SettingSpec, value: str, errors: dict[str, str]) -> None
     elif fmt == "fb_app_id":
         if not _FB_APP_ID_RE.match(value):
             _invalid(errors, spec.key, "must be a numeric app ID")
+    elif fmt == "url_list":
+        bad = [
+            line
+            for line in (s.strip() for s in value.splitlines())
+            if line and not _URL_RE.match(line)
+        ]
+        if bad:
+            _invalid(
+                errors,
+                spec.key,
+                f"every line must be a valid http(s) URL — fix: {bad[0][:60]}",
+            )
+    elif fmt == "path_list":
+        bad = [
+            line
+            for line in (s.strip() for s in value.splitlines())
+            if line and not _PATH_LINE_RE.match(line)
+        ]
+        if bad:
+            _invalid(
+                errors,
+                spec.key,
+                f"every line must be a site path starting with '/' — fix: {bad[0][:60]}",
+            )
 
 
 def _validate(spec: SettingSpec, raw: Any, errors: dict[str, str]) -> Any:

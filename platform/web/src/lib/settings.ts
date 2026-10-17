@@ -93,3 +93,28 @@ export async function fetchHealth(): Promise<HealthPayload> {
   const { data } = await apiFetch<HealthPayload>("/api/health");
   return data;
 }
+
+export interface SitemapEntry {
+  loc: string;
+  path: string;
+  lastmod: string | null;
+  source: string;
+}
+
+export interface SitemapPreview {
+  enabled: boolean;
+  base_url: string;
+  sitemap_url: string;
+  entry_count: number;
+  entries: SitemapEntry[];
+  xml: string;
+}
+
+export async function fetchSitemapPreview(
+  token: string,
+): Promise<SitemapPreview> {
+  const { data } = await apiFetch<SitemapPreview>("/api/admin/sitemap", {
+    token,
+  });
+  return data;
+}

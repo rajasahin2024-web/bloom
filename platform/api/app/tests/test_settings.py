@@ -103,7 +103,10 @@ def test_tax_percent_range() -> None:
 
 def test_registry_covers_all_groups() -> None:
     groups = {s.group for s in settings_service.SPECS}
-    assert groups == {"institute", "academic", "finance", "notifications", "seo"}
+    assert groups == {
+        "institute", "academic", "finance", "notifications", "seo",
+        "aio", "sitemap",
+    }
     # every key is unique
     keys = [s.key for s in settings_service.SPECS]
     assert len(keys) == len(set(keys))
@@ -193,6 +196,8 @@ def test_settings_round_trip(admin_token: str) -> None:
             "finance",
             "notifications",
             "seo",
+            "aio",
+            "sitemap",
         ]
         assert body["platform"]["env"]
         assert body["platform"]["version"]

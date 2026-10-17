@@ -15,6 +15,8 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { GeneralSettings } from "@/components/admin/GeneralSettings";
 import { SeoSettings } from "@/components/admin/SeoSettings";
+import { AioSettings } from "@/components/admin/AioSettings";
+import { SitemapSettings } from "@/components/admin/SitemapSettings";
 import {
   clearSession,
   fetchMe,
@@ -65,6 +67,14 @@ export function AdminPage() {
           <Route
             path="settings/seo"
             element={<SeoSettings session={session} />}
+          />
+          <Route
+            path="settings/aio"
+            element={<AioSettings session={session} />}
+          />
+          <Route
+            path="settings/sitemaps"
+            element={<SitemapSettings session={session} />}
           />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
