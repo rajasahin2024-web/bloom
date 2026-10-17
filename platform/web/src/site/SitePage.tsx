@@ -58,7 +58,70 @@ function loadSiteRuntime() {
           }),
       ),
     Promise.resolve(),
-  );
+  ).then(() => {
+    // Prototype tail script — sticky nav, mobile menu, scroll reveal,
+    // stat count-up. Runs after sections + collections are in the DOM.
+    const nav = document.getElementById("siteNav");
+    if (nav) {
+      const onScroll = () => nav.classList.toggle("stuck", scrollY > 12);
+      addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+    }
+    document
+      .querySelectorAll("#mob a")
+      .forEach((a) =>
+        a.addEventListener("click", () =>
+          document.getElementById("mob")?.classList.remove("on"),
+        ),
+      );
+    const io = new IntersectionObserver(
+      (es) =>
+        es.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("in");
+            io.unobserve(e.target);
+          }
+        }),
+      { threshold: 0.12, rootMargin: "0px 0px -40px" },
+    );
+    document
+      .querySelectorAll(".rv")
+      .forEach((el, i) => {
+        (el as HTMLElement).style.transitionDelay = `${(i % 4) * 70}ms`;
+        io.observe(el);
+      });
+    const strip = document.querySelector(".strip");
+    if (strip) {
+      const cio = new IntersectionObserver(
+        (es) =>
+          es.forEach((e) => {
+            if (!e.isIntersecting) return;
+            cio.unobserve(e.target);
+            e.target.querySelectorAll("b").forEach((b) => {
+              const raw = b.textContent?.trim() ?? "";
+              const m = raw.match(/^([+]?)([\d,.]+)(%?)$/);
+              if (!m) return;
+              const dec = m[2].includes(".") ? 1 : 0;
+              const end = parseFloat(m[2].replace(/,/g, ""));
+              let t0: number | null = null;
+              const step = (ts: number) => {
+                if (!t0) t0 = ts;
+                const p = Math.min(1, (ts - t0) / 1100);
+                const v = end * (1 - Math.pow(1 - p, 3));
+                b.textContent =
+                  m[1] +
+                  (dec ? v.toFixed(1) : Math.round(v).toLocaleString()) +
+                  m[3];
+                if (p < 1) requestAnimationFrame(step);
+              };
+              requestAnimationFrame(step);
+            });
+          }),
+        { threshold: 0.4 },
+      );
+      cio.observe(strip);
+    }
+  });
 }
 
 /** Non-trivial text nodes of a section's markup, in document order. */
