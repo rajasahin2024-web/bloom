@@ -1,30 +1,25 @@
 /**
- * Site page — renders a CMS page's ordered sections verbatim.
+ * Site page — renders a CMS page's ordered typed sections.
  *
- * The section `html` is the prototype markup stored in cms_pages.sections;
- * the prototype runtime scripts (cms data store, site bindings, image-slot
- * custom element) are loaded after render so JS-filled collections render
- * exactly like the prototype.
+ * Each section is `{id, label, type, enabled, animation, props}`. The
+ * SECTION_REGISTRY maps `type` → a React component that reproduces the
+ * prototype markup using the existing site.css classes — no raw HTML,
+ * no prototype runtime scripts.
  *
  * Admin edit mode: a fixed "Edit site" toolbar appears for admin sessions;
- * each section gets an Edit affordance opening a drawer with per-text-node
- * fields, a raw-HTML editor and a visibility toggle. Saving PATCHes the
- * whole sections array to /api/cms/pages/{id} — live immediately.
+ * each section gets a hover outline + an "Edit" chip that opens the
+ * full-screen SiteEditor modal. Saving PATCHes the whole sections array
+ * to /api/cms/pages/{id} — live immediately.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { fetchMe, loadSession } from "@/lib/auth";
+import { SECTION_REGISTRY, SECTION_TYPES } from "./sections/registry";
+import type { SiteSection } from "./sections/types";
+import { SiteEditor } from "./SiteEditor";
+import { initSiteRuntime } from "./siteRuntime";
 import "@/styles/site.css";
 import "@/styles/site-edit.css";
-
-export interface SiteSection {
-  id: string;
-  label: string;
-  type: string;
-  enabled: boolean;
-  html: string;
-  rawHtml?: string;
-}
 
 interface SitePageData {
   id: string;
@@ -33,121 +28,15 @@ interface SitePageData {
   sections: SiteSection[];
 }
 
-const SCRIPTS = ["bloom-cms-data.js", "image-slot.js", "bloom-site-cms.js"];
-let assetsLoaded = false;
-
-function loadSiteRuntime() {
-  if (assetsLoaded) return;
-  assetsLoaded = true;
-  const fa = document.createElement("link");
-  fa.rel = "stylesheet";
-  fa.href =
-    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css";
-  document.head.appendChild(fa);
-  // Sequential — cms-data defines cms(), site-cms binds containers.
-  SCRIPTS.reduce<Promise<void>>(
-    (p, name) =>
-      p.then(
-        () =>
-          new Promise((res) => {
-            const el = document.createElement("script");
-            el.src = `/site/${name}`;
-            el.onload = () => res();
-            el.onerror = () => res();
-            document.body.appendChild(el);
-          }),
-      ),
-    Promise.resolve(),
-  ).then(() => {
-    // Prototype tail script — sticky nav, mobile menu, scroll reveal,
-    // stat count-up. Runs after sections + collections are in the DOM.
-    const nav = document.getElementById("siteNav");
-    if (nav) {
-      const onScroll = () => nav.classList.toggle("stuck", scrollY > 12);
-      addEventListener("scroll", onScroll, { passive: true });
-      onScroll();
-    }
-    document
-      .querySelectorAll("#mob a")
-      .forEach((a) =>
-        a.addEventListener("click", () =>
-          document.getElementById("mob")?.classList.remove("on"),
-        ),
-      );
-    const io = new IntersectionObserver(
-      (es) =>
-        es.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add("in");
-            io.unobserve(e.target);
-          }
-        }),
-      { threshold: 0.12, rootMargin: "0px 0px -40px" },
-    );
-    document
-      .querySelectorAll(".rv")
-      .forEach((el, i) => {
-        (el as HTMLElement).style.transitionDelay = `${(i % 4) * 70}ms`;
-        io.observe(el);
-      });
-    const strip = document.querySelector(".strip");
-    if (strip) {
-      const cio = new IntersectionObserver(
-        (es) =>
-          es.forEach((e) => {
-            if (!e.isIntersecting) return;
-            cio.unobserve(e.target);
-            e.target.querySelectorAll("b").forEach((b) => {
-              const raw = b.textContent?.trim() ?? "";
-              const m = raw.match(/^([+]?)([\d,.]+)(%?)$/);
-              if (!m) return;
-              const dec = m[2].includes(".") ? 1 : 0;
-              const end = parseFloat(m[2].replace(/,/g, ""));
-              let t0: number | null = null;
-              const step = (ts: number) => {
-                if (!t0) t0 = ts;
-                const p = Math.min(1, (ts - t0) / 1100);
-                const v = end * (1 - Math.pow(1 - p, 3));
-                b.textContent =
-                  m[1] +
-                  (dec ? v.toFixed(1) : Math.round(v).toLocaleString()) +
-                  m[3];
-                if (p < 1) requestAnimationFrame(step);
-              };
-              requestAnimationFrame(step);
-            });
-          }),
-        { threshold: 0.4 },
-      );
-      cio.observe(strip);
-    }
-  });
-}
-
-/** Non-trivial text nodes of a section's markup, in document order. */
-function extractTexts(html: string): string[] {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const out: string[] = [];
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    const v = (n.nodeValue ?? "").trim();
-    if (v.length > 1) out.push(v);
-  }
-  return out;
-}
-
-/** Write edited text-node values back into the markup. */
-function applyTexts(html: string, values: string[]): string {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-  const kept: Node[] = [];
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    if ((n.nodeValue ?? "").trim().length > 1) kept.push(n);
-  }
-  kept.forEach((n, i) => {
-    if (i < values.length) n.nodeValue = ` ${values[i]} `;
-  });
-  return doc.body.innerHTML;
+function blankSection(type: string, index: number): SiteSection {
+  return {
+    id: `${type}-${Date.now()}-${index}`,
+    label: type.replace(/_/g, " "),
+    type,
+    enabled: true,
+    animation: null,
+    props: {},
+  };
 }
 
 export function SitePage({ slug = "home" }: { slug?: string }) {
@@ -156,27 +45,23 @@ export function SitePage({ slug = "home" }: { slug?: string }) {
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<SiteSection | null>(null);
-  const [texts, setTexts] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const drawerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     document.title =
       "Bloom IELTS Academy — the school for English, accepted all over the globe";
     apiFetch<SitePageData>(`/api/content/pages/${slug}`)
-      .then(({ data }) => {
-        setPage(data);
-        return data;
-      })
-      .then(() => setTimeout(loadSiteRuntime, 0))
+      .then(({ data }) => setPage(data))
       .catch((e: unknown) =>
         setError(e instanceof ApiError ? e.message : "Could not load the page."),
       );
   }, [slug]);
 
-  // Admin session → show the editing affordances.
+  useEffect(() => {
+    initSiteRuntime();
+  }, [page]);
+
   useEffect(() => {
     const s = loadSession();
     if (!s) return;
@@ -196,22 +81,6 @@ export function SitePage({ slug = "home" }: { slug?: string }) {
   const sections = useMemo(() => page?.sections ?? [], [page]);
   const current = sections.find((s) => s.id === openId) ?? null;
 
-  function openEditor(s: SiteSection) {
-    setOpenId(s.id);
-    setDraft({ ...s });
-    setTexts(extractTexts(s.html));
-    setTimeout(
-      () => drawerRef.current?.scrollIntoView({ block: "nearest" }),
-      30,
-    );
-  }
-
-  function patchSection(mut: (s: SiteSection) => SiteSection, save: boolean) {
-    if (!openId || !adminToken || !page) return;
-    const next = sections.map((s) => (s.id === openId ? mut(s) : s));
-    void persist(next, save);
-  }
-
   async function persist(next: SiteSection[], notify: boolean) {
     if (!adminToken || !page) return;
     setSaving(true);
@@ -229,16 +98,22 @@ export function SitePage({ slug = "home" }: { slug?: string }) {
     }
   }
 
-  function saveDraft() {
-    if (!draft) return;
-    const html =
-      draft.rawHtml !== undefined ? draft.rawHtml : applyTexts(draft.html, texts);
-    patchSection(
-      () => ({ ...draft, html }),
-      true,
-    );
+  function handleSave(updated: SiteSection) {
+    const next = sections.map((s) => (s.id === updated.id ? updated : s));
+    void persist(next, true);
     setOpenId(null);
-    setDraft(null);
+  }
+
+  function handleDelete() {
+    if (!current) return;
+    const next = sections.filter((s) => s.id !== current.id);
+    void persist(next, true);
+    setOpenId(null);
+  }
+
+  function addSection(type: string) {
+    const next = [...sections, blankSection(type, sections.length)];
+    void persist(next, true);
   }
 
   if (error) {
@@ -278,95 +153,57 @@ export function SitePage({ slug = "home" }: { slug?: string }) {
       <div className={`site-root${editing ? " editing" : ""}`}>
         {sections
           .filter((s) => s.enabled || editing)
-          .map((s) => (
-            <div
-              key={s.id}
-              className={`site-sec${editing ? " editable" : ""}${s.enabled ? "" : " off"}`}
+          .map((s) => {
+            const C = SECTION_REGISTRY[s.type];
+            return (
+              <div
+                key={s.id}
+                className={`site-sec${editing ? " editable" : ""}${s.enabled ? "" : " off"}`}
+              >
+                {editing && (
+                  <button
+                    type="button"
+                    className="site-sec-edit"
+                    onClick={() => setOpenId(s.id)}
+                  >
+                    Edit — {s.label}
+                  </button>
+                )}
+                {C ? <C props={s.props} animation={s.animation} /> : null}
+              </div>
+            );
+          })}
+        {editing && (
+          <div className="site-add-section">
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) addSection(e.target.value);
+                e.target.value = "";
+              }}
             >
-              {editing && (
-                <button
-                  type="button"
-                  className="site-sec-edit"
-                  onClick={() => openEditor(s)}
-                >
-                  Edit — {s.label}
-                </button>
-              )}
-              <div dangerouslySetInnerHTML={{ __html: s.html }} />
-            </div>
-          ))}
+              <option value="">+ Add section…</option>
+              {SECTION_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t.replace(/_/g, " ")}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
-      {draft && current && (
-        <div className="site-edit-scrim" onClick={() => setDraft(null)}>
-          <div
-            className="site-edit-drawer"
-            role="dialog"
-            aria-label={`Edit ${current.label}`}
-            ref={drawerRef}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="site-edit-head">
-              <b>{current.label}</b>
-              <label className="site-edit-vis">
-                <input
-                  type="checkbox"
-                  checked={draft.enabled}
-                  onChange={(e) =>
-                    setDraft({ ...draft, enabled: e.target.checked })
-                  }
-                />
-                Visible
-              </label>
-            </div>
-            <div className="site-edit-body">
-              {texts.map((t, i) => (
-                <label key={i} className="site-edit-f">
-                  <span>{t.slice(0, 42)}</span>
-                  <textarea
-                    rows={Math.min(4, Math.max(1, Math.ceil(t.length / 60)))}
-                    value={texts[i]}
-                    onChange={(e) => {
-                      const n = [...texts];
-                      n[i] = e.target.value;
-                      setTexts(n);
-                    }}
-                  />
-                </label>
-              ))}
-              <label className="site-edit-f">
-                <span>Raw HTML (overrides fields above)</span>
-                <textarea
-                  rows={10}
-                  className="mono"
-                  defaultValue={draft.html}
-                  onChange={(e) =>
-                    setDraft({ ...draft, rawHtml: e.target.value })
-                  }
-                />
-              </label>
-            </div>
-            <div className="site-edit-foot">
-              <button
-                type="button"
-                className="adm-btn adm-btn-g"
-                onClick={() => setDraft(null)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="adm-btn"
-                onClick={saveDraft}
-                disabled={saving}
-              >
-                {saving ? "Saving…" : "Save — go live"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {current && adminToken && (
+        <SiteEditor
+          section={current}
+          token={adminToken}
+          onSave={handleSave}
+          onClose={() => setOpenId(null)}
+          onDelete={handleDelete}
+        />
       )}
       {note && <div className="adm-toast">{note}</div>}
+      {saving && <div className="adm-toast">Saving…</div>}
     </>
   );
 }

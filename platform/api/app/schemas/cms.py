@@ -135,3 +135,10 @@ class CmsMediaOut(BaseModel):
     size_bytes: int | None
     uploaded_by_id: uuid.UUID | None
     created_at: datetime
+
+
+class CmsMediaUploadIn(BaseModel):
+    filename: str = Field(min_length=1, max_length=255)
+    mime_type: str | None = Field(default=None, max_length=100)
+    data_url: str = Field(min_length=1, max_length=2_000_000)
+    alt_text: str | None = Field(default=None, max_length=500)

@@ -10,6 +10,7 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app import __version__
 from app.core.config import get_settings
@@ -24,6 +25,7 @@ from app.routers import (
     settings,
     setup,
 )
+from app.services import setup as setup_service
 
 _settings = get_settings()
 
@@ -54,6 +56,14 @@ def create_app() -> FastAPI:
     app.include_router(content.router)
     app.include_router(settings.router)
     app.include_router(seo.router)
+
+    uploads_dir = setup_service.UPLOADS_DIR
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        "/uploads",
+        StaticFiles(directory=str(uploads_dir)),
+        name="uploads",
+    )
 
     @app.get("/", include_in_schema=False)
     def root() -> dict[str, Any]:

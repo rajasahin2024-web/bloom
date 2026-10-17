@@ -23,6 +23,7 @@ from app.schemas.cms import (
     CmsMediaIn,
     CmsMediaOut,
     CmsMediaPatch,
+    CmsMediaUploadIn,
     CmsPageIn,
     CmsPageOut,
     CmsPagePatch,
@@ -31,6 +32,8 @@ from app.schemas.cms import (
     CmsPostPatch,
 )
 from app.schemas.common import Page, Pagination
+from app.services import media as media_service
+from app.services import section_schemas
 
 router = APIRouter(
     prefix="/api/cms",
@@ -123,6 +126,13 @@ def create_page(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ) -> CmsPageOut:
+    if payload.sections is not None:
+        errors = section_schemas.validate_sections(payload.sections)
+        if errors:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"message": "Section validation failed", "errors": errors},
+            )
     if payload.status == CmsStatus.published and payload.published_at is None:
         payload.published_at = datetime.now(UTC)
     return CmsPageOut.model_validate(_create(db, CmsPage, payload, user))
@@ -140,6 +150,13 @@ def patch_page(
     db: Session = Depends(get_db),
     user: User = Depends(require_admin),
 ) -> CmsPageOut:
+    if payload.sections is not None:
+        errors = section_schemas.validate_sections(payload.sections)
+        if errors:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"message": "Section validation failed", "errors": errors},
+            )
     return CmsPageOut.model_validate(
         _patch(db, _get_or_404(db, CmsPage, page_id), payload, user)
     )
@@ -240,6 +257,30 @@ def create_media(
     return CmsMediaOut.model_validate(_create(db, CmsMedia, payload, user))
 
 
+@router.post(
+    "/media/upload", status_code=status.HTTP_201_CREATED, response_model=CmsMediaOut
+)
+def upload_media(
+    payload: CmsMediaUploadIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+) -> CmsMediaOut:
+    try:
+        media = media_service.save_cms_media(
+            payload.data_url, payload.filename, payload.mime_type, user.id, db
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    if payload.alt_text:
+        media.alt_text = payload.alt_text
+        db.commit()
+        db.refresh(media)
+    return CmsMediaOut.model_validate(media)
+
+
 @router.get("/media/{media_id}", response_model=CmsMediaOut)
 def get_media(media_id: uuid.UUID, db: Session = Depends(get_db)) -> CmsMediaOut:
     return CmsMediaOut.model_validate(_get_or_404(db, CmsMedia, media_id))
@@ -259,4 +300,5 @@ def patch_media(
 
 @router.delete("/media/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_media(media_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
-    _delete(db, _get_or_404(db, CmsMedia, media_id))
+    _get_or_404(db, CmsMedia, media_id)
+    media_service.delete_cms_media(media_id, db)

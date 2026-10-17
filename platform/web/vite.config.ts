@@ -40,7 +40,8 @@ export default defineConfig({
     },
   },
   test: {
-    // jsdom is added by later stages when they write DOM/component tests.
+    environment: "jsdom",
+    setupFiles: ["./src/test-setup.ts"],
     passWithNoTests: true,
   },
 });

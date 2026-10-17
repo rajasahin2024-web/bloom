@@ -989,3 +989,9 @@
   --leaf-200:#c9e5be;--leaf-100:#e4f1dc;--leaf-50:#f2f8ee;
   --amber:#f0a13a;--coral:#ef6a5a;--violet:#7a5cd6;--sky:#3899d4;
 }
+
+/* ── university marquee (TEC-129) ── */
+.site-root .uni-marquee{display:flex;gap:18px;flex-wrap:nowrap;overflow:hidden;width:100%;animation:uni-marquee-ltr 30s linear infinite}
+.site-root .uni-marquee:hover{animation-play-state:paused}
+.site-root .uni-marquee .uni{flex:0 0 auto}
+@keyframes uni-marquee-ltr{from{transform:translateX(0)}to{transform:translateX(-50%)}}

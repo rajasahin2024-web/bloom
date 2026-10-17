@@ -18,6 +18,7 @@ from app.models.cms import CmsPage, CmsPost
 from app.models.enums import CmsStatus
 from app.schemas.cms import CmsPageOut, CmsPostOut
 from app.schemas.common import Page, Pagination
+from app.services import section_schemas
 
 router = APIRouter(prefix="/api/content", tags=["content"])
 
@@ -27,11 +28,14 @@ _SEED_HOME = Path(__file__).resolve().parents[1] / "seed" / "home_sections.json"
 def _ensure_home_page(db: Session) -> CmsPage | None:
     """Seed the `home` page from the bundled prototype export — idempotent.
 
-    Runs once when the row is absent or still carries no sections; admins
-    edit the persisted row afterwards.
+    Runs once when the row is absent or still carries old html-string sections
+    (no ``props`` key); admins edit the persisted row afterwards. Typed
+    sections are left untouched so admin edits survive re-seeds.
     """
     row = db.scalar(select(CmsPage).where(CmsPage.slug == "home"))
-    if row is not None and row.sections:
+    if row is not None and row.sections and section_schemas.is_typed_section(
+        row.sections[0]
+    ):
         return row
     try:
         seed = json.loads(_SEED_HOME.read_text(encoding="utf-8"))
