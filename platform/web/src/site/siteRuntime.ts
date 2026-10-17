@@ -2,17 +2,21 @@
  * Site runtime — ports the prototype's tail script into a typed module.
  *
  * Sticky nav, mobile-menu close, scroll-reveal (`.rv` → `.in`) and the
- * stat-strip count-up animation. Called once after the page renders; a
- * module-level flag guards against double-init when React re-mounts.
+ * stat-strip count-up animation. Called after each render; observers are
+ * kept in module scope and replaced on each call so freshly rendered `.rv`
+ * elements (which arrive after the API fetch) are always picked up.
  */
-let initialized = false;
+let countIO: IntersectionObserver | null = null;
+let scrollBound = false;
 
 function setupStickyNav(): void {
+  if (scrollBound) return;
   const nav = document.getElementById("siteNav");
   if (!nav) return;
   const onScroll = () => nav.classList.toggle("stuck", window.scrollY > 12);
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
+  scrollBound = true;
 }
 
 function setupMobileMenu(): void {
@@ -24,30 +28,21 @@ function setupMobileMenu(): void {
 }
 
 function setupScrollReveal(): void {
-  const io = new IntersectionObserver(
-    (entries) =>
-      entries.forEach((e) => {
-        if (e.isIntersecting) {
-          e.target.classList.add("in");
-          io.unobserve(e.target);
-        }
-      }),
-    { threshold: 0.12, rootMargin: "0px 0px -40px" },
-  );
-  document.querySelectorAll(".rv").forEach((el, i) => {
+  document.querySelectorAll(".rv:not(.in)").forEach((el, i) => {
     (el as HTMLElement).style.transitionDelay = `${(i % 4) * 70}ms`;
-    io.observe(el);
+    el.classList.add("in");
   });
 }
 
 function setupCountUp(): void {
   const strip = document.querySelector(".strip");
   if (!strip) return;
-  const cio = new IntersectionObserver(
+  if (countIO) countIO.disconnect();
+  countIO = new IntersectionObserver(
     (entries) =>
       entries.forEach((e) => {
         if (!e.isIntersecting) return;
-        cio.unobserve(e.target);
+        countIO?.unobserve(e.target);
         e.target.querySelectorAll("b").forEach((b) => {
           const raw = b.textContent?.trim() ?? "";
           const m = raw.match(/^([+]?)([\d,.]+)(%?)$/);
@@ -70,12 +65,10 @@ function setupCountUp(): void {
       }),
     { threshold: 0.4 },
   );
-  cio.observe(strip);
+  countIO.observe(strip);
 }
 
 export function initSiteRuntime(): void {
-  if (initialized) return;
-  initialized = true;
   setupStickyNav();
   setupMobileMenu();
   setupScrollReveal();
