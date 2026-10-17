@@ -19,6 +19,7 @@ class CmsPageIn(BaseModel):
     meta_title: str | None = Field(default=None, max_length=300)
     meta_description: str | None = Field(default=None, max_length=500)
     json_ld: dict[str, Any] | None = None
+    sections: list[dict[str, Any]] | None = None
     published_at: datetime | None = None
 
 
@@ -32,6 +33,7 @@ class CmsPagePatch(BaseModel):
     meta_title: str | None = Field(default=None, max_length=300)
     meta_description: str | None = Field(default=None, max_length=500)
     json_ld: dict[str, Any] | None = None
+    sections: list[dict[str, Any]] | None = None
     published_at: datetime | None = None
 
 
@@ -46,6 +48,7 @@ class CmsPageOut(BaseModel):
     meta_title: str | None
     meta_description: str | None
     json_ld: dict[str, Any] | None
+    sections: list[dict[str, Any]] | None
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime

@@ -1,7 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { BaseLayout } from "@/layouts/BaseLayout";
 import { SetupGate } from "@/components/SetupGate";
-import { HomePage } from "@/routes/HomePage";
+import { SitePage } from "@/site/SitePage";
 import { SetupPage } from "@/routes/SetupPage";
 import { AdminPage } from "@/routes/AdminPage";
 
@@ -11,8 +11,9 @@ export function AppRouter() {
       <Route element={<SetupGate />}>
         <Route path="/setup" element={<SetupPage />} />
         <Route path="/admin/*" element={<AdminPage />} />
+        <Route path="/" element={<SitePage />} />
         <Route element={<BaseLayout />}>
-          <Route path="/" element={<HomePage />} />
+          
           <Route
             path="*"
             element={

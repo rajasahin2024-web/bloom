@@ -74,6 +74,8 @@ class CmsPage(Base):
     meta_title: Mapped[str | None] = mapped_column(String(300))
     meta_description: Mapped[str | None] = mapped_column(String(500))
     json_ld: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Ordered page sections for the visual site pages (home, …)
+    sections: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
