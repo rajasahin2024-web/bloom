@@ -24,6 +24,18 @@ describe("SECTION_REGISTRY", () => {
       "paper_cta",
       "contact",
       "footer",
+      "band_table",
+      "faq",
+      "course_grid",
+      "uni_filter",
+      "data_table",
+      "moments",
+      "map_block",
+      "job_list",
+      "job_form",
+      "blog_grid",
+      "blog_filter",
+      "auth_page",
     ];
     for (const t of expected) {
       expect(SECTION_REGISTRY[t]).toBeDefined();

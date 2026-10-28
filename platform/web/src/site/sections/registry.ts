@@ -27,6 +27,18 @@ import { LifeSection } from "./LifeSection";
 import { PaperCtaSection } from "./PaperCtaSection";
 import { ContactSection } from "./ContactSection";
 import { FooterSection } from "./FooterSection";
+import { BandTableSection } from "./BandTableSection";
+import { FaqSection } from "./FaqSection";
+import { CourseGridSection } from "./CourseGridSection";
+import { UniFilterSection } from "./UniFilterSection";
+import { DataTableSection } from "./DataTableSection";
+import { MomentsSection } from "./MomentsSection";
+import { MapBlockSection } from "./MapBlockSection";
+import { JobListSection } from "./JobListSection";
+import { JobFormSection } from "./JobFormSection";
+import { BlogGridSection } from "./BlogGridSection";
+import { BlogFilterSection } from "./BlogFilterSection";
+import { AuthPageSection } from "./AuthPageSection";
 import type { FieldSpec, SectionMeta } from "./types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,6 +63,18 @@ export const SECTION_REGISTRY: Record<string, ComponentType<{ props: any; animat
   paper_cta: PaperCtaSection,
   contact: ContactSection,
   footer: FooterSection,
+  band_table: BandTableSection,
+  faq: FaqSection,
+  course_grid: CourseGridSection,
+  uni_filter: UniFilterSection,
+  data_table: DataTableSection,
+  moments: MomentsSection,
+  map_block: MapBlockSection,
+  job_list: JobListSection,
+  job_form: JobFormSection,
+  blog_grid: BlogGridSection,
+  blog_filter: BlogFilterSection,
+  auth_page: AuthPageSection,
 };
 
 const linkFields: FieldSpec[] = [
@@ -432,6 +456,396 @@ export const SECTION_META: Record<string, SectionMeta> = {
         ],
       },
       { kind: "textarea", key: "copyright", label: "Copyright" },
+    ],
+  },
+  band_table: {
+    label: "Band scale table",
+    fields: [
+      { kind: "text", key: "eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "heading", label: "Heading" },
+      { kind: "textarea", key: "lead", label: "Lead" },
+      {
+        kind: "text",
+        key: "rows",
+        label: "Band rows",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "score", label: "Band score" },
+          { kind: "text", key: "bg", label: "Badge background" },
+          { kind: "text", key: "color", label: "Badge text colour" },
+          { kind: "text", key: "title", label: "Title" },
+          { kind: "textarea", key: "body", label: "Description" },
+          { kind: "textarea", key: "usage", label: "Where it is required" },
+        ],
+      },
+      {
+        kind: "text",
+        key: "footnotes",
+        label: "Footnotes",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "label", label: "Label" },
+          { kind: "text", key: "text", label: "Text" },
+        ],
+      },
+    ],
+  },
+  faq: {
+    label: "FAQ",
+    fields: [
+      { kind: "text", key: "eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "heading", label: "Heading" },
+      {
+        kind: "text",
+        key: "items",
+        label: "Questions",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "question", label: "Question" },
+          { kind: "textarea", key: "answer", label: "Answer" },
+          { kind: "toggle", key: "open", label: "Open by default" },
+        ],
+      },
+    ],
+  },
+  course_grid: {
+    label: "Course grid",
+    fields: [
+      { kind: "text", key: "eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "heading", label: "Heading" },
+      { kind: "textarea", key: "lead", label: "Lead" },
+      {
+        kind: "text",
+        key: "courses",
+        label: "Courses",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "icon", label: "Icon name" },
+          { kind: "text", key: "name", label: "Name" },
+          { kind: "textarea", key: "blurb", label: "Blurb" },
+          { kind: "text", key: "level", label: "Level tag" },
+          { kind: "text", key: "weeks", label: "Weeks" },
+          { kind: "text", key: "tier", label: "Tier tag" },
+          { kind: "text", key: "price", label: "Price" },
+        ],
+      },
+    ],
+  },
+  uni_filter: {
+    label: "University directory",
+    fields: [
+      { kind: "text", key: "eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "heading", label: "Heading" },
+      { kind: "textarea", key: "lead", label: "Lead" },
+      {
+        kind: "text",
+        key: "universities",
+        label: "Universities",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "name", label: "Name" },
+          { kind: "text", key: "country", label: "Country" },
+          { kind: "text", key: "flag", label: "Flag emoji" },
+          { kind: "text", key: "course", label: "Course line" },
+          { kind: "text", key: "city", label: "City" },
+          { kind: "text", key: "tuition", label: "Tuition / year" },
+          { kind: "text", key: "intake", label: "Intakes" },
+          { kind: "text", key: "per_skill", label: "Per-skill rule" },
+          { kind: "text", key: "ielts", label: "IELTS" },
+          { kind: "text", key: "toefl", label: "TOEFL" },
+          { kind: "text", key: "rank", label: "QS rank" },
+          { kind: "textarea", key: "note", label: "Note" },
+          { kind: "image", key: "photo_url", label: "Campus photo" },
+        ],
+      },
+    ],
+  },
+  data_table: {
+    label: "Data table",
+    fields: [
+      { kind: "text", key: "eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "heading", label: "Heading" },
+      { kind: "textarea", key: "lead", label: "Lead" },
+      {
+        kind: "text",
+        key: "columns",
+        label: "Columns",
+        list: true,
+        itemFields: [{ kind: "text", key: "label", label: "Label" }],
+      },
+      {
+        kind: "text",
+        key: "rows",
+        label: "Rows",
+        list: true,
+        itemFields: [
+          {
+            kind: "text",
+            key: "cells",
+            label: "Cells",
+            list: true,
+            itemFields: [
+              { kind: "text", key: "text", label: "Text" },
+              { kind: "text", key: "sub", label: "Sub-line" },
+              { kind: "toggle", key: "bold", label: "Bold" },
+              { kind: "toggle", key: "mono", label: "Monospace" },
+            ],
+          },
+        ],
+      },
+      { kind: "textarea", key: "footnote", label: "Footnote" },
+    ],
+  },
+  moments: {
+    label: "Moments gallery",
+    fields: [
+      { kind: "text", key: "eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "heading", label: "Heading" },
+      { kind: "textarea", key: "lead", label: "Lead" },
+      {
+        kind: "text",
+        key: "items",
+        label: "Moments",
+        list: true,
+        itemFields: [
+          {
+            kind: "select",
+            key: "size",
+            label: "Tile size",
+            options: ["a", "b", "c", "d", "e", "f", "g"],
+          },
+          { kind: "image", key: "media_url", label: "Photo" },
+          { kind: "text", key: "caption", label: "Caption" },
+          { kind: "text", key: "sub", label: "Sub-caption" },
+        ],
+      },
+      { kind: "textarea", key: "footnote", label: "Footnote" },
+    ],
+  },
+  map_block: {
+    label: "Map block",
+    fields: [
+      { kind: "text", key: "eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "heading", label: "Heading" },
+      { kind: "textarea", key: "lead", label: "Lead" },
+      { kind: "text", key: "min_height", label: "Min height (px)" },
+      {
+        kind: "text",
+        key: "dots",
+        label: "Ping dots",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "x", label: "Left (%)" },
+          { kind: "text", key: "y", label: "Top (%)" },
+          { kind: "text", key: "size", label: "Size (px)" },
+          { kind: "text", key: "delay", label: "Pulse delay (s)" },
+          { kind: "text", key: "color", label: "Colour" },
+        ],
+      },
+      {
+        kind: "group",
+        key: "marker",
+        label: "Labelled marker",
+        fields: [
+          { kind: "text", key: "x", label: "Left (%)" },
+          { kind: "text", key: "y", label: "Top (%)" },
+          { kind: "text", key: "label", label: "Label" },
+        ],
+      },
+    ],
+  },
+  job_list: {
+    label: "Job list",
+    fields: [
+      { kind: "text", key: "eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "heading", label: "Heading" },
+      { kind: "textarea", key: "lead", label: "Lead" },
+      {
+        kind: "text",
+        key: "jobs",
+        label: "Roles",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "icon", label: "Icon name" },
+          { kind: "text", key: "title", label: "Title" },
+          { kind: "text", key: "department", label: "Department tag" },
+          { kind: "text", key: "office", label: "Office tag" },
+          { kind: "text", key: "contract", label: "Contract tag" },
+          { kind: "text", key: "ctc", label: "Salary tag" },
+          { kind: "textarea", key: "summary", label: "What we need" },
+          { kind: "text", key: "posted", label: "Posted" },
+          { kind: "text", key: "band", label: "Band" },
+          { kind: "text", key: "apply_label", label: "Apply label" },
+          { kind: "url", key: "apply_href", label: "Apply link" },
+        ],
+      },
+      { kind: "text", key: "empty_heading", label: "Empty heading" },
+      { kind: "textarea", key: "empty_body", label: "Empty body" },
+      { kind: "text", key: "empty_cta_label", label: "Empty CTA label" },
+      { kind: "url", key: "empty_cta_href", label: "Empty CTA link" },
+    ],
+  },
+  job_form: {
+    label: "Job application form",
+    fields: [
+      { kind: "text", key: "eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "heading", label: "Heading" },
+      { kind: "textarea", key: "lead", label: "Lead" },
+      { kind: "text", key: "tips_title", label: "Tips card title" },
+      {
+        kind: "text",
+        key: "tips",
+        label: "Tips",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "title", label: "Title" },
+          { kind: "textarea", key: "body", label: "Body" },
+        ],
+      },
+      { kind: "textarea", key: "aside_note", label: "Aside note" },
+      {
+        kind: "text",
+        key: "roles",
+        label: "Roles",
+        list: true,
+        itemFields: [{ kind: "text", key: "label", label: "Label" }],
+      },
+      {
+        kind: "text",
+        key: "countries",
+        label: "Countries",
+        list: true,
+        itemFields: [{ kind: "text", key: "label", label: "Label" }],
+      },
+      {
+        kind: "text",
+        key: "offices",
+        label: "Offices",
+        list: true,
+        itemFields: [{ kind: "text", key: "label", label: "Label" }],
+      },
+      {
+        kind: "text",
+        key: "examiner_statuses",
+        label: "Examiner statuses",
+        list: true,
+        itemFields: [{ kind: "text", key: "label", label: "Label" }],
+      },
+      { kind: "text", key: "submit_label", label: "Submit label" },
+      { kind: "textarea", key: "footnote", label: "Footnote" },
+      { kind: "text", key: "whatsapp", label: "HR WhatsApp number" },
+    ],
+  },
+  blog_grid: {
+    label: "Blog grid",
+    fields: [
+      { kind: "text", key: "eyebrow", label: "Eyebrow" },
+      { kind: "text", key: "heading", label: "Heading" },
+      { kind: "textarea", key: "lead", label: "Lead" },
+      {
+        kind: "text",
+        key: "posts",
+        label: "Posts",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "cat", label: "Category" },
+          { kind: "text", key: "title", label: "Title" },
+          { kind: "textarea", key: "excerpt", label: "Excerpt" },
+          { kind: "text", key: "author", label: "Author" },
+          { kind: "text", key: "date", label: "Date" },
+          { kind: "text", key: "read", label: "Minutes to read" },
+          { kind: "toggle", key: "featured", label: "Featured" },
+          { kind: "image", key: "hero_url", label: "Hero image" },
+          { kind: "url", key: "href", label: "Link" },
+        ],
+      },
+    ],
+  },
+  blog_filter: {
+    label: "Blog filter pills",
+    fields: [
+      {
+        kind: "text",
+        key: "categories",
+        label: "Categories",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "name", label: "Name" },
+          { kind: "text", key: "count", label: "Count" },
+        ],
+      },
+    ],
+  },
+  auth_page: {
+    label: "Auth page",
+    fields: [
+      { kind: "text", key: "brand_name", label: "Brand name" },
+      { kind: "text", key: "brand_tagline", label: "Brand tagline" },
+      { kind: "image", key: "logo_url", label: "Logo" },
+      { kind: "url", key: "home_href", label: "Home link" },
+      { kind: "text", key: "eyebrow", label: "Eyebrow" },
+      { kind: "textarea", key: "heading", label: "Heading" },
+      { kind: "textarea", key: "lead", label: "Lead" },
+      {
+        kind: "text",
+        key: "features",
+        label: "Aside features",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "icon", label: "Icon name" },
+          { kind: "text", key: "title", label: "Title" },
+          { kind: "textarea", key: "body", label: "Body" },
+        ],
+      },
+      { kind: "textarea", key: "quote", label: "Quote" },
+      { kind: "text", key: "quote_author", label: "Quote author" },
+      {
+        kind: "text",
+        key: "roles",
+        label: "Sign-in roles",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "key", label: "Key" },
+          { kind: "text", key: "name", label: "Name" },
+          { kind: "text", key: "icon", label: "Icon name" },
+          { kind: "text", key: "sub", label: "Sub-line" },
+        ],
+      },
+      {
+        kind: "text",
+        key: "countries",
+        label: "Countries",
+        list: true,
+        itemFields: [{ kind: "text", key: "label", label: "Label" }],
+      },
+      {
+        kind: "text",
+        key: "languages",
+        label: "First languages",
+        list: true,
+        itemFields: [{ kind: "text", key: "label", label: "Label" }],
+      },
+      {
+        kind: "text",
+        key: "exams",
+        label: "Exams",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "value", label: "Value" },
+          { kind: "text", key: "label", label: "Label" },
+        ],
+      },
+      {
+        kind: "text",
+        key: "plans",
+        label: "Course plans",
+        list: true,
+        itemFields: [
+          { kind: "text", key: "value", label: "Value" },
+          { kind: "text", key: "label", label: "Label" },
+        ],
+      },
+      { kind: "text", key: "notice", label: "Submit notice" },
     ],
   },
 };

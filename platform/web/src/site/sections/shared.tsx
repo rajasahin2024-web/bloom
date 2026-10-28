@@ -1,5 +1,14 @@
-import type { ReactNode } from "react";
+import { createElement, type ReactNode } from "react";
 import { Icon } from "./Icon";
+
+/**
+ * The prototype's `<cap>` caption tag used inside `.mo` moment cells.
+ * `cap` is not a standard HTML element, so it is created imperatively to
+ * keep the exact prototype markup (`.mo cap`) without a JSX declaration.
+ */
+export function Cap({ children }: { children: ReactNode }) {
+  return createElement("cap", null, children);
+}
 
 /** Section heading block — eyebrow + h2 + lead, matching `.head`/`.head.mid`. */
 export function Head({
