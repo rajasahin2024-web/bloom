@@ -1,0 +1,133 @@
+{
+  "slug": "abroad",
+  "title": "Study abroad with FMA Overseas — universities that accept a Bloom band",
+  "meta_description": "The universities that have admitted Bloom students, the English requirement each department actually enforces, and how our FMA Overseas partnership handles your application.",
+  "sections": [
+    {
+      "id": "sec_overseas",
+      "label": "Overseas",
+      "type": "overseas",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Study abroad · in partnership with FMA Overseas",
+        "heading": "A band is not the goal. The offer letter is.",
+        "body": "Getting Band 7 is half the journey. Turning it into a place at a university abroad — the application, the credential check, the visa, the accommodation — is the other half. That is what FMA Overseas does, and Bloom students go straight through to them.",
+        "variant": "dark",
+        "lockup": {
+          "bloom": { "name": "Bloom", "sub": "IELTS Academy", "logo_url": "/site/bloom-mark.png" },
+          "partner": { "name": "FMA Overseas", "sub": "Future MedsAcademy", "mark": "FMA" },
+          "note": "Your Bloom score report transfers directly into an FMA Overseas application file. One team, one set of documents, no repeating yourself."
+        },
+        "items": [
+          { "title": "Reach your band", "body": "Bloom gets you to the score your target university requires — including any per-skill minimum, which is where most applications actually fail." },
+          { "title": "Shortlist with FMA", "body": "An FMA Overseas counsellor matches your band, transcript and budget against real entry requirements and tells you where you will get in." },
+          { "title": "Apply and get offers", "body": "Applications, statements of purpose, credential evaluation and reference chasing, handled for you. Multiple offers, not one hopeful punt." },
+          { "title": "Visa and finance", "body": "Student visa filing, financial documentation, tuition deposits and the interview preparation that decides a UKVI or SEVIS outcome." },
+          { "title": "Arrive settled", "body": "Accommodation, airport pickup, bank account, registration and a Bloom alumni contact already studying on your campus." }
+        ],
+        "checklist": {
+          "eyebrow": "What the partnership covers",
+          "title": "Everything between your result and your first lecture.",
+          "items": [
+            { "icon": "check", "title": "Requirement checking before you sit", "body": "We confirm the exact overall and per-skill minimum your shortlist demands, so you do not pass the test and still miss the offer." },
+            { "icon": "check", "title": "Credential evaluation", "body": "Degree and transcript assessment for the UK, Ireland, Canada, Australia, Germany and Italy — including ECTS conversion." },
+            { "icon": "check", "title": "Pathway and foundation routes", "body": "If your band is not there yet, a pre-sessional English or foundation route that still leads to the same degree." },
+            { "icon": "check", "title": "Scholarship and funding search", "body": "Merit awards, regional bursaries and assistantships matched to your profile — most students never find these alone." },
+            { "icon": "check", "title": "Visa filing and interview prep", "body": "Financial evidence, the credibility interview, and the English-language part of the visa rules that changes most often." },
+            { "icon": "check", "title": "One file, both teams", "body": "Your Bloom band history, mock reports and score conversions attach to your FMA application automatically." }
+          ]
+        },
+        "unis_title": "Where our students went",
+        "universities": [
+          { "name": "University of Manchester", "country": "United Kingdom", "flag": "🇬🇧", "course": "MSc Data Science", "ielts": "6.5", "per_skill": "no band below 6.0" },
+          { "name": "King's College London", "country": "United Kingdom", "flag": "🇬🇧", "course": "MSc Public Health", "ielts": "7.0", "per_skill": "6.5 in writing" },
+          { "name": "UNSW Sydney", "country": "Australia", "flag": "🇦🇺", "course": "MEng Civil", "ielts": "6.5", "per_skill": "6.0 each" },
+          { "name": "University of Toronto", "country": "Canada", "flag": "🇨🇦", "course": "MA Economics", "ielts": "7.0", "per_skill": "no minimum stated" },
+          { "name": "TU Delft", "country": "Netherlands", "flag": "🇳🇱", "course": "MSc Aerospace Engineering", "ielts": "6.5", "per_skill": "6.0 each" },
+          { "name": "Trinity College Dublin", "country": "Ireland", "flag": "🇮🇪", "course": "MSc Computer Science", "ielts": "6.5", "per_skill": "6.0 each" },
+          { "name": "University of Pavia", "country": "Italy", "flag": "🇮🇹", "course": "Medicine & Surgery (English)", "ielts": "B2 equivalent", "per_skill": "IMAT entrance exam required" },
+          { "name": "RWTH Aachen", "country": "Germany", "flag": "🇩🇪", "course": "MSc Mechanical Engineering", "ielts": "6.5", "per_skill": "no minimum stated" }
+        ],
+        "stats": [
+          { "value": "340+", "label": "Placements via FMA Overseas" },
+          { "value": "9", "label": "Destination countries" },
+          { "value": "96%", "label": "Visa approval rate" }
+        ],
+        "cta": { "label": "Talk to an overseas counsellor", "href": "#contact", "icon": "plane-departure" },
+        "cta_note": "Free consultation for every Bloom student, whatever your current band."
+      }
+    },
+    {
+      "id": "sec_universities",
+      "label": "University network",
+      "type": "uni_filter",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Our university network",
+        "heading": "Where a Bloom band actually gets you.",
+        "lead": "Every university below has admitted a Bloom student. The English requirement shown is the one the department actually enforces — including the per-skill minimum, which is what catches most applicants out.",
+        "all_label": "All destinations",
+        "universities": [
+          { "id": "u1", "name": "University of Manchester", "country": "United Kingdom", "flag": "🇬🇧", "city": "Manchester", "rank": "34", "tuition": "£28,000", "intake": "Sep · Jan", "course": "MSc Data Science", "ielts": "6.5", "per_skill": "no band below 6.0", "toefl": "90", "photo_url": "", "featured": true, "note": "Strong pathway for our Plus and Premium students." },
+          { "id": "u2", "name": "King's College London", "country": "United Kingdom", "flag": "🇬🇧", "city": "London", "rank": "40", "tuition": "£33,450", "intake": "Sep", "course": "MSc Public Health", "ielts": "7.0", "per_skill": "6.5 in writing", "toefl": "100", "photo_url": "", "featured": true, "note": "Writing minimum is the usual blocker — plan for a 7.0 writing target." },
+          { "id": "u3", "name": "UNSW Sydney", "country": "Australia", "flag": "🇦🇺", "city": "Sydney", "rank": "19", "tuition": "A$52,000", "intake": "Feb · Jul · Sep", "course": "MEng Civil", "ielts": "6.5", "per_skill": "6.0 each", "toefl": "90", "photo_url": "", "featured": true, "note": "Three intakes a year gives useful flexibility if a retake is needed." },
+          { "id": "u4", "name": "University of Toronto", "country": "Canada", "flag": "🇨🇦", "city": "Toronto", "rank": "21", "tuition": "C$58,000", "intake": "Sep", "course": "MA Economics", "ielts": "7.0", "per_skill": "no minimum stated", "toefl": "100", "photo_url": "", "featured": false, "note": "Overall 7.0 with no per-skill rule — a strong listening score can carry writing." },
+          { "id": "u5", "name": "TU Delft", "country": "Netherlands", "flag": "🇳🇱", "city": "Delft", "rank": "47", "tuition": "€21,000", "intake": "Sep", "course": "MSc Aerospace Engineering", "ielts": "6.5", "per_skill": "6.0 each", "toefl": "90", "photo_url": "", "featured": false, "note": "No tuition-fee loan for non-EU; plan finances early." },
+          { "id": "u6", "name": "Trinity College Dublin", "country": "Ireland", "flag": "🇮🇪", "city": "Dublin", "rank": "87", "tuition": "€26,000", "intake": "Sep", "course": "MSc Computer Science", "ielts": "6.5", "per_skill": "6.0 each", "toefl": "88", "photo_url": "", "featured": false, "note": "Two-year post-study work visa makes this popular with our cohort." },
+          { "id": "u7", "name": "University of Pavia", "country": "Italy", "flag": "🇮🇹", "city": "Pavia", "rank": "601", "tuition": "€3,900", "intake": "Sep", "course": "Medicine & Surgery (English)", "ielts": "B2 equivalent", "per_skill": "IMAT entrance exam required", "toefl": "—", "photo_url": "", "featured": true, "note": "IMAT route — prepared jointly with Future MedsAcademy." },
+          { "id": "u8", "name": "RWTH Aachen", "country": "Germany", "flag": "🇩🇪", "city": "Aachen", "rank": "99", "tuition": "€0 (semester fee)", "intake": "Oct · Apr", "course": "MSc Mechanical Engineering", "ielts": "6.5", "per_skill": "no minimum stated", "toefl": "90", "photo_url": "", "featured": false, "note": "No tuition fees; blocked account required for the visa." }
+        ],
+        "globe": {
+          "eyebrow": "Accepted everywhere",
+          "heading": "The school for English that is accepted all over the globe.",
+          "body": "IELTS, TOEFL, PTE, Duolingo, Cambridge and OET are recognised by more than 12,000 institutions, every major immigration authority and every medical regulator we work with. You prepare once at Bloom; the score opens doors on four continents.",
+          "flags": ["🇬🇧 United Kingdom", "🇦🇺 Australia", "🇨🇦 Canada", "🇺🇸 United States", "🇳🇿 New Zealand", "🇮🇪 Ireland", "🇳🇱 Netherlands", "🇩🇪 Germany", "🇮🇹 Italy", "🇦🇪 UAE", "🇴🇲 Oman", "🇸🇬 Singapore"],
+          "ctas": [
+            { "label": "Ask about a specific university", "href": "/contact", "icon": "comments", "style": "white" },
+            { "label": "How the exam works", "href": "/ielts", "icon": "", "style": "line" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "sec_campus",
+      "label": "Campus life",
+      "type": "life",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Campus life",
+        "heading": "Students who made it there.",
+        "lead": "Photographs sent back by Bloom students after they arrived — the reason any of this matters.",
+        "variant": "paper",
+        "mid": true,
+        "gallery": [
+          { "media_url": "", "caption": "Arrival week — Manchester, September intake", "slot": "abr-1" },
+          { "media_url": "", "caption": "First lecture — UNSW Sydney", "slot": "abr-2" },
+          { "media_url": "", "caption": "Campus tour — University of Toronto", "slot": "abr-3" },
+          { "media_url": "", "caption": "Graduation — TU Delft", "slot": "abr-4" }
+        ]
+      }
+    },
+    {
+      "id": "sec_contact",
+      "label": "Contact",
+      "type": "contact",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "heading": "Find out what band you would get today.",
+        "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
+        "phone": "+91 80 4718 2260",
+        "email": "hello@bloomielts.com",
+        "address": "Prestige Tech Park, Marathahalli, Bengaluru 560103, India",
+        "map_url": "",
+        "form_enabled": true,
+        "primary_btn": { "label": "Take the free placement test", "href": "/login?mode=signup", "icon": "seedling" },
+        "secondary_btn": { "label": "Sign in to my account", "href": "/login" }
+      }
+    }
+  ]
+}

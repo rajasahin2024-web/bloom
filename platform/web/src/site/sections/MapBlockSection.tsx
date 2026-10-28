@@ -1,20 +1,33 @@
 import { Head, Section } from "./shared";
 
 interface Dot {
-  x: string;
-  y: string;
-  size: string;
-  delay: string;
-  color: string;
+  left: string;
+  top: string;
+  size: number | string;
+  delay: number | string;
+  color?: string;
+}
+
+interface Country {
+  flag: string;
+  name: string;
+  students: string;
+  pct: number | string;
+  bar_color?: string;
 }
 
 interface MapBlockProps {
   eyebrow: string;
   heading: string;
   lead: string;
-  min_height: string;
-  dots: Dot[];
-  marker: { x: string; y: string; label: string };
+  variant?: string;
+  anchor_id?: string;
+  map: {
+    dots: Dot[];
+    label?: { text: string; left: string; top: string };
+  };
+  countries: Country[];
+  stats: { value: string; label: string }[];
 }
 
 const OUTLINE =
@@ -26,44 +39,107 @@ const OUTLINE =
   "M420 214c22-7 46-5 67 5 16 8 30 20 47 25";
 
 export function MapBlockSection({ props }: { props: MapBlockProps }) {
-  const { eyebrow, heading, lead, min_height, dots, marker } = props;
+  const { eyebrow, heading, lead, variant, anchor_id, map, countries, stats } =
+    props;
   return (
-    <Section variant="dark">
+    <Section variant={variant === "paper" ? "paper" : "dark"} id={anchor_id ?? "reach"}>
       <Head eyebrow={eyebrow} heading={heading} lead={lead} />
-      <div className="mapwrap rv" style={{ minHeight: min_height || 340 }}>
-        <svg viewBox="0 0 640 320" style={{ width: "100%", height: "auto", opacity: 0.42 }}>
-          <path fill="none" stroke="#a3d199" strokeWidth={1.1} d={OUTLINE} />
-        </svg>
-        {(dots ?? []).map((d, i) => (
-          <span
-            key={i}
-            className="dot"
-            style={{
-              width: d.size,
-              height: d.size,
-              left: d.x,
-              top: d.y,
-              animationDelay: d.delay,
-              background: d.color || undefined,
-            }}
-          />
-        ))}
-        {marker?.label && (
-          <div
-            style={{
-              position: "absolute",
-              left: marker.x,
-              top: marker.y,
-              transform: "translate(16px,-8px)",
-              fontSize: "10.5px",
-              fontWeight: 800,
-              color: "var(--amber)",
-              letterSpacing: ".4px",
-            }}
+      <div className="reach">
+        <div className="mapwrap rv" style={{ minHeight: 340 }}>
+          <svg
+            viewBox="0 0 640 320"
+            style={{ width: "100%", height: "auto", opacity: 0.42 }}
           >
-            {marker.label}
+            <path fill="none" stroke="#a3d199" strokeWidth={1.1} d={OUTLINE} />
+          </svg>
+          {(map?.dots ?? []).map((d, i) => (
+            <span
+              key={i}
+              className="dot"
+              style={{
+                width: d.size,
+                height: d.size,
+                left: d.left,
+                top: d.top,
+                animationDelay:
+                  typeof d.delay === "number" ? `${d.delay}s` : d.delay,
+                background:
+                  d.color === "amber" ? "var(--amber)" : d.color || undefined,
+              }}
+            />
+          ))}
+          {map?.label?.text && (
+            <div
+              style={{
+                position: "absolute",
+                left: map.label.left,
+                top: map.label.top,
+                transform: "translate(16px,-8px)",
+                fontSize: "10.5px",
+                fontWeight: 800,
+                color: "var(--amber)",
+                letterSpacing: ".4px",
+              }}
+            >
+              {map.label.text}
+            </div>
+          )}
+        </div>
+        <div className="rv">
+          <div className="countries">
+            {(countries ?? []).map((c, i) => (
+              <div key={i} className="crow">
+                <span className="fl">{c.flag}</span>
+                <span className="nm">{c.name}</span>
+                <div className="bar">
+                  <i
+                    style={{
+                      width: `${c.pct}%`,
+                      background: c.bar_color || "var(--leaf-300)",
+                    }}
+                  />
+                </div>
+                <span className="n">{c.students}</span>
+              </div>
+            ))}
           </div>
-        )}
+          {stats && stats.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                gap: 26,
+                flexWrap: "wrap",
+                marginTop: 32,
+                paddingTop: 26,
+                borderTop: "1px solid rgba(255,255,255,.14)",
+              }}
+            >
+              {stats.map((s, i) => (
+                <div key={i}>
+                  <div
+                    style={{
+                      fontFamily: "var(--display)",
+                      fontSize: 23,
+                      fontWeight: 800,
+                      letterSpacing: "-1px",
+                    }}
+                  >
+                    {s.value}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "11.5px",
+                      color: "rgba(255,255,255,.6)",
+                      marginTop: 3,
+                    }}
+                  >
+                    {s.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </Section>
   );

@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import { BaseLayout } from "@/layouts/BaseLayout";
+import { SiteLayout } from "@/layouts/SiteLayout";
 import { SetupGate } from "@/components/SetupGate";
 import { SitePage } from "@/site/SitePage";
 import { SetupPage } from "@/routes/SetupPage";
@@ -11,9 +12,16 @@ export function AppRouter() {
       <Route element={<SetupGate />}>
         <Route path="/setup" element={<SetupPage />} />
         <Route path="/admin/*" element={<AdminPage />} />
-        <Route path="/" element={<SitePage />} />
+        {/* Public site pages share the common Navbar + Footer chrome. */}
+        <Route element={<SiteLayout />}>
+          <Route path="/" element={<SitePage slug="home" />} />
+          <Route path="/:slug" element={<SitePage />} />
+        </Route>
+        {/* /login is standalone — the prototype's auth page has no site
+            chrome, so it renders outside SiteLayout. The static path
+            outranks /:slug above regardless of declaration order. */}
+        <Route path="/login" element={<SitePage slug="login" />} />
         <Route element={<BaseLayout />}>
-          
           <Route
             path="*"
             element={

@@ -71,6 +71,18 @@ const PATHS: Record<string, string> = {
   "user-doctor": "M8 7a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM3 14c0-2.5 2.2-4 5-4s5 1.5 5 4M5.5 10.5V13M7 12h3",
   google: "M14 8.2c0 3.6-2.4 6.3-6 6.3a6.5 6.5 0 1 1 0-13c1.7 0 3.3.6 4.5 1.7l-1.8 1.8C9.9 4.3 9 4 8 4a4 4 0 1 0 3.7 5.5H8V7h6z",
   microsoft: "M2 2h5.5v5.5H2zM8.5 2H14v5.5H8.5zM2 8.5h5.5V14H2zM8.5 8.5H14V14H8.5z",
+  bullseye: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2z",
+  clock: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM8 4v4l2.5 2.5",
+  "earth-asia": "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM2.5 6.5h4l1.5 2-2 1.5v3M10 3.5l2 2-1.5 1.5L12 10l2.5-1",
+  trophy: "M4 2h8v4a4 4 0 0 1-8 0zM4 3H2v1a3 3 0 0 0 3 3M12 3h2v1a3 3 0 0 1-3 3M8 10v2M5 14h6M6.5 12h3",
+  "user-plus": "M6 7a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM1.5 14c0-3 2-4.5 4.5-4.5s4.5 1.5 4.5 4.5M12 6v5M9.5 8.5h5",
+  "magnifying-glass": "M7 12A5 5 0 1 0 7 2a5 5 0 0 0 0 10zM11 11l4 4",
+  chalkboard: "M2 2h12v9H2zM8 11v3M5 14h6M5 5h6M5 7.5h4",
+  "circle-check": "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12zM5.5 8l1.8 1.8L10.8 6",
+  "calendar-day": "M2 3h12v11H2zM2 6h12M5 1v3M11 1v3M5.5 8.5h5v4h-5z",
+  "envelope-circle-check": "M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM2.8 5.5 8 9l5.2-3.5M3 11h10",
+  "circle-notch": "M8 1.5A6.5 6.5 0 1 1 1.5 8",
+  tag: "M2 2h5l7 7-5 5-7-7zM5.5 5.5h.01",
 };
 
 export function Icon({ name, size = 14, className }: IconProps) {

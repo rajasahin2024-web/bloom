@@ -1,0 +1,351 @@
+{
+  "slug": "medical",
+  "title": "OET and Medical English — registration with the GMC, NMC and DHA",
+  "meta_description": "Preparation for doctors, nurses, dentists and pharmacists sitting OET or the IELTS 7.0-each requirement, delivered with Future MedsAcademy.",
+  "sections": [
+    {
+      "id": "sec_oet_compare",
+      "label": "IELTS or OET",
+      "type": "data_table",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "eyebrow": "Medical English · with Future MedsAcademy",
+        "heading": "Doctors and nurses need a different English exam.",
+        "intro": "The Occupational English Test is the healthcare-specific alternative to IELTS, accepted by the GMC, NMC, AHPRA, the Medical Council of Ireland and dozens of other regulators. Every task is set in a clinical context — and that is exactly why it suits medics and why generic preparation fails.",
+        "table_label": "IELTS or OET for registration?",
+        "columns": [
+          "",
+          "OET",
+          "IELTS Academic"
+        ],
+        "rows": [
+          [
+            {
+              "text": "Content",
+              "bold": true
+            },
+            "Clinical — patient notes, referral letters, consultations",
+            "General academic topics"
+          ],
+          [
+            {
+              "text": "Grades",
+              "bold": true
+            },
+            {
+              "text": "A to E per sub-test",
+              "mono": true
+            },
+            {
+              "text": "Bands 0–9",
+              "mono": true
+            }
+          ],
+          [
+            {
+              "text": "GMC requirement",
+              "bold": true
+            },
+            {
+              "text": "B in each sub-test",
+              "mono": true,
+              "strong": true
+            },
+            {
+              "text": "7.5 overall, 7.0 each",
+              "mono": true,
+              "strong": true
+            }
+          ],
+          [
+            {
+              "text": "NMC requirement",
+              "bold": true
+            },
+            {
+              "text": "B (C+ writing accepted)",
+              "mono": true,
+              "strong": true
+            },
+            {
+              "text": "7.0 overall",
+              "mono": true,
+              "strong": true
+            }
+          ],
+          [
+            {
+              "text": "Writing task",
+              "bold": true
+            },
+            "A referral or discharge letter from case notes",
+            "A report and an argumentative essay"
+          ],
+          [
+            {
+              "text": "Speaking",
+              "bold": true
+            },
+            "Two clinical role-plays with a patient",
+            "Interview and abstract discussion"
+          ],
+          [
+            {
+              "text": "Best for",
+              "bold": true
+            },
+            "Registration and clinical practice",
+            "Study, plus registration"
+          ]
+        ],
+        "footnote": "Our advice: if your only goal is to practise, take OET — the vocabulary is already yours. If you also plan to study, take IELTS Academic, which covers both.",
+        "side": {
+          "kind": "subtests",
+          "title": "The four OET sub-tests",
+          "items": [
+            {
+              "icon": "headphones",
+              "tone": "sky",
+              "title": "Listening · 45 min, all professions",
+              "body": "Patient consultations and a workplace presentation. Note-taking under clinical pressure."
+            },
+            {
+              "icon": "book-open",
+              "tone": "leaf",
+              "title": "Reading · 60 min, all professions",
+              "body": "Guidelines, package inserts, policy documents and journal extracts. Part A is fifteen minutes of pure speed."
+            },
+            {
+              "icon": "file-medical",
+              "tone": "amber",
+              "title": "Writing · 45 min, profession-specific",
+              "body": "One letter — usually a referral — written from real case notes. Selecting the relevant clinical detail is the whole skill."
+            },
+            {
+              "icon": "user-doctor",
+              "tone": "coral",
+              "title": "Speaking · 20 min, profession-specific",
+              "body": "Two role-plays with an interlocutor playing your patient. Graded on clinical communication as well as language."
+            }
+          ],
+          "note": "Twelve professions: medicine, nursing, dentistry, pharmacy, physiotherapy, occupational therapy, radiography, optometry, podiatry, speech pathology, veterinary science and dietetics."
+        },
+        "pad_bottom": 0
+      }
+    },
+    {
+      "id": "sec_partnership",
+      "label": "Bloom + FMA delivery",
+      "type": "rich_block",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "eyebrow": "How Bloom and FMA deliver it together",
+        "heading": "Language teachers and practising clinicians, in the same course.",
+        "body": "OET fails candidates who have excellent clinical English and no idea what an examiner wants from a referral letter — and candidates whose English is fine but whose role-play manner is not. We put both specialists in the room.",
+        "ctas": [
+          {
+            "label": "Start the OET pathway",
+            "href": "/login?mode=signup",
+            "icon": "stethoscope",
+            "style": "p"
+          },
+          {
+            "label": "Speak to the medical team",
+            "href": "#contact",
+            "icon": "",
+            "style": "ghost"
+          }
+        ],
+        "cards": [
+          {
+            "icon": "user-doctor",
+            "title": "Role-plays with real medics",
+            "body": "Future MedsAcademy clinicians play your patient, so the scenario behaves like a consultation rather than a language exercise.",
+            "href": ""
+          },
+          {
+            "icon": "file-medical",
+            "title": "Referral letters marked twice",
+            "body": "Once by a language examiner for the four criteria, once by a clinician for whether the letter would actually be useful to the receiving doctor.",
+            "href": ""
+          },
+          {
+            "icon": "stethoscope",
+            "title": "Registration pathway included",
+            "body": "GMC and NMC applications, PLAB and CBT preparation, and Italian and EU medical routes through Future MedsAcademy.",
+            "href": ""
+          },
+          {
+            "icon": "arrows-rotate",
+            "title": "One account across both academies",
+            "body": "Your Bloom profile and your FMA study record sit side by side — English on one side, clinical preparation on the other.",
+            "href": ""
+          }
+        ],
+        "side": {
+          "kind": "data_table",
+          "eyebrow": "Registration requirements",
+          "heading": "What each regulator asks for",
+          "columns": [
+            "Regulator",
+            "Country",
+            "OET",
+            "IELTS"
+          ],
+          "rows": [
+            [
+              {
+                "text": "GMC",
+                "sub": "Doctors",
+                "bold": true
+              },
+              "UK",
+              {
+                "text": "B each",
+                "mono": true
+              },
+              {
+                "text": "7.5 / 7.0",
+                "mono": true
+              }
+            ],
+            [
+              {
+                "text": "NMC",
+                "sub": "Nurses & midwives",
+                "bold": true
+              },
+              "UK",
+              {
+                "text": "B (C+ writing)",
+                "mono": true
+              },
+              {
+                "text": "7.0 / 6.5 writing",
+                "mono": true
+              }
+            ],
+            [
+              {
+                "text": "GDC",
+                "sub": "Dentists",
+                "bold": true
+              },
+              "UK",
+              {
+                "text": "B each",
+                "mono": true
+              },
+              {
+                "text": "7.0 each",
+                "mono": true
+              }
+            ],
+            [
+              {
+                "text": "GPhC",
+                "sub": "Pharmacists",
+                "bold": true
+              },
+              "UK",
+              {
+                "text": "B each",
+                "mono": true
+              },
+              {
+                "text": "7.0 each",
+                "mono": true
+              }
+            ],
+            [
+              {
+                "text": "AHPRA",
+                "sub": "All professions",
+                "bold": true
+              },
+              "Australia",
+              {
+                "text": "B each",
+                "mono": true
+              },
+              {
+                "text": "7.0 each",
+                "mono": true
+              }
+            ],
+            [
+              {
+                "text": "MCNZ",
+                "sub": "Doctors",
+                "bold": true
+              },
+              "New Zealand",
+              {
+                "text": "B each",
+                "mono": true
+              },
+              {
+                "text": "7.5 / 7.0",
+                "mono": true
+              }
+            ],
+            [
+              {
+                "text": "MCI",
+                "sub": "Doctors",
+                "bold": true
+              },
+              "Ireland",
+              {
+                "text": "B each",
+                "mono": true
+              },
+              {
+                "text": "7.0 each",
+                "mono": true
+              }
+            ]
+          ],
+          "footnote": "Requirements change. We confirm the current rule with the regulator before you book a test — and tell you if a single-skill retake would be cheaper than a full sitting."
+        },
+        "pad_top": 0
+      }
+    },
+    {
+      "id": "sec_contact",
+      "label": "Contact",
+      "type": "contact",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "heading": "Find out what band you would get today.",
+        "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
+        "phone": "+91 80 4718 2260",
+        "email": "hello@bloomielts.com",
+        "address": "Prestige Tech Park, Marathahalli, Bengaluru 560103, India",
+        "map_url": "",
+        "form_enabled": true,
+        "primary_btn": {
+          "label": "Take the free placement test",
+          "href": "/login?mode=signup",
+          "icon": "seedling"
+        },
+        "secondary_btn": {
+          "label": "Sign in to my account",
+          "href": "/login"
+        }
+      }
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { Section } from "./shared";
 import { Icon } from "./Icon";
 
@@ -6,16 +6,32 @@ interface JobFormProps {
   eyebrow: string;
   heading: string;
   lead: string;
-  tips_title: string;
+  tips_heading: string;
   tips: { title: string; body: string }[];
-  aside_note: string;
-  roles: { label: string }[];
-  countries: { label: string }[];
-  offices: { label: string }[];
-  examiner_statuses: { label: string }[];
+  note: string;
+  roles: { id: string; title?: string; label?: string }[];
+  offices: { id: string; label: string }[];
+  // T1 seeds ship plain string arrays; the site editor writes {label} items —
+  // accept both shapes.
+  countries: (string | { label: string })[];
+  examiner_options: (string | { label: string })[];
   submit_label: string;
   footnote: string;
-  whatsapp: string;
+  success: { title: string; body: string; cta_label: string };
+  whatsapp?: string;
+}
+
+/** Bold the "Applied" stage word inside the success lead sentence. */
+function boldApplied(text: string): ReactNode {
+  const i = text.indexOf("Applied");
+  if (i === -1) return text;
+  return (
+    <>
+      {text.slice(0, i)}
+      <b>Applied</b>
+      {text.slice(i + "Applied".length)}
+    </>
+  );
 }
 
 export function JobFormSection({ props }: { props: JobFormProps }) {
@@ -23,18 +39,49 @@ export function JobFormSection({ props }: { props: JobFormProps }) {
     eyebrow,
     heading,
     lead,
-    tips_title,
+    tips_heading,
     tips,
-    aside_note,
+    note,
     roles,
-    countries,
     offices,
-    examiner_statuses,
+    countries,
+    examiner_options,
     submit_label,
     footnote,
-    whatsapp,
+    success,
+    whatsapp = "+919008041720",
   } = props;
-  const [ref, setRef] = useState<string | null>(null);
+  const [done, setDone] = useState<{ ref: string; name: string; roleTitle: string } | null>(null);
+
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const roleId = String(fd.get("role") ?? "spec");
+    const roleTitle =
+      (roles ?? []).find((r) => r.id === roleId)?.title ??
+      (roles ?? []).find((r) => r.id === roleId)?.label ??
+      "Speculative application";
+    setDone({
+      ref: `BL-APP-${String(Date.now()).slice(-4)}`,
+      name: String(fd.get("name") ?? "").trim(),
+      roleTitle,
+    });
+  }
+
+  // Prototype splits the aside note into a bolded lead question + the rest.
+  const noteSplit = (note ?? "").split("? ");
+  const noteQ = noteSplit.length > 1 ? noteSplit[0] + "?" : null;
+  const noteRest = noteSplit.length > 1 ? noteSplit.slice(1).join("? ") : (note ?? "");
+
+  const successBody = success?.body ?? "";
+  const dot = successBody.indexOf(". ");
+  const successLead = dot === -1 ? successBody : successBody.slice(0, dot);
+  const successRest = dot === -1 ? "" : successBody.slice(dot + 2);
+  const waHref = done
+    ? `https://wa.me/${whatsapp.replace(/[^\d]/g, "")}?text=${encodeURIComponent(
+        `Hello Bloom HR, I have just applied for ${done.roleTitle}.\n\nName: ${done.name}\nRef: ${done.ref}`,
+      )}`
+    : "#";
 
   return (
     <Section id="apply">
@@ -55,13 +102,13 @@ export function JobFormSection({ props }: { props: JobFormProps }) {
                   marginBottom: 13,
                 }}
               >
-                {tips_title || "What helps your application"}
+                {tips_heading || "What helps your application"}
               </div>
               <div style={{ display: "grid", gap: 11 }}>
                 {tips.map((t, i) => (
                   <div key={i} style={{ display: "flex", gap: 11, alignItems: "flex-start" }}>
                     <span style={{ color: "var(--leaf-500)", marginTop: 3, fontSize: 12 }}>
-                      <Icon name="check" size={12} />
+                      <Icon name="circle-check" size={12} />
                     </span>
                     <div>
                       <b style={{ fontSize: 13, display: "block" }}>{t.title}</b>
@@ -74,7 +121,7 @@ export function JobFormSection({ props }: { props: JobFormProps }) {
               </div>
             </div>
           )}
-          {aside_note && (
+          {note && (
             <div
               className="card"
               style={{
@@ -85,79 +132,79 @@ export function JobFormSection({ props }: { props: JobFormProps }) {
               }}
             >
               <div style={{ fontSize: "12.5px", color: "var(--ink-2)", lineHeight: 1.7 }}>
-                {aside_note}
+                {noteQ && <b>{noteQ} </b>}
+                {noteRest}
               </div>
             </div>
           )}
         </div>
 
         <div className="card rv" style={{ padding: "26px 28px" }}>
-          {ref === null ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setRef(`BL-APP-${String(Date.now()).slice(-4)}`);
-              }}
-            >
+          {done === null ? (
+            <form onSubmit={handleSubmit}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div className="fg">
                   <label>Full name</label>
-                  <input required placeholder="Your name" />
+                  <input id="apName" name="name" required placeholder="Your name" />
                 </div>
                 <div className="fg">
                   <label>Email</label>
-                  <input type="email" required placeholder="you@email.com" />
+                  <input id="apEmail" name="email" type="email" required placeholder="you@email.com" />
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
                 <div className="fg">
                   <label>Phone / WhatsApp</label>
-                  <input placeholder="+91 98450 11234" />
+                  <input id="apPhone" name="phone" placeholder="+91 98450 11234" />
                 </div>
                 <div className="fg">
                   <label>Country</label>
-                  <select>
+                  <select id="apCountry" name="country" defaultValue="India">
                     {(countries ?? []).map((c, i) => (
-                      <option key={i}>{c.label}</option>
+                      <option key={i}>{typeof c === "string" ? c : c.label}</option>
                     ))}
                   </select>
                 </div>
               </div>
               <div className="fg" style={{ marginTop: 14 }}>
                 <label>Applying for</label>
-                <select>
+                <select id="apRole" name="role">
                   {(roles ?? []).map((r, i) => (
-                    <option key={i}>{r.label}</option>
+                    <option key={r.id ?? i} value={r.id}>
+                      {r.title ?? r.label}
+                    </option>
                   ))}
-                  <option>Speculative — no specific role</option>
                 </select>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
                 <div className="fg">
                   <label>Years of experience</label>
-                  <input type="number" min={0} max={50} defaultValue={3} />
+                  <input id="apYears" name="years" type="number" min={0} max={50} defaultValue={3} />
                 </div>
                 <div className="fg">
                   <label>Examiner status</label>
-                  <select>
-                    {(examiner_statuses ?? []).map((s, i) => (
-                      <option key={i}>{s.label}</option>
+                  <select id="apExaminer" name="examiner">
+                    {(examiner_options ?? []).map((s, i) => (
+                      <option key={i}>{typeof s === "string" ? s : s.label}</option>
                     ))}
                   </select>
                 </div>
               </div>
               <div className="fg" style={{ marginTop: 14 }}>
                 <label>Where can you teach from?</label>
-                <select>
-                  {(offices ?? []).map((o, i) => (
-                    <option key={i}>{o.label}</option>
+                <select id="apOffice" name="office">
+                  {(offices ?? []).map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
                   ))}
-                  <option>🌍 Remote — any time zone</option>
                 </select>
               </div>
               <div className="fg" style={{ marginTop: 14 }}>
                 <label>Tell us about yourself</label>
                 <textarea
+                  id="apNote"
+                  name="note"
                   rows={4}
                   required
                   placeholder="Which part of the exam you want to own, a number that shows your impact, and why Bloom."
@@ -177,7 +224,7 @@ export function JobFormSection({ props }: { props: JobFormProps }) {
                     (optional)
                   </span>
                 </label>
-                <input placeholder="Google Drive, Dropbox or LinkedIn URL" />
+                <input id="apCv" name="cv" placeholder="Google Drive, Dropbox or LinkedIn URL" />
               </div>
               <button
                 className="btn btn-p btn-lg"
@@ -209,7 +256,9 @@ export function JobFormSection({ props }: { props: JobFormProps }) {
               >
                 <Icon name="check" size={23} />
               </div>
-              <h3 style={{ fontSize: 23, marginBottom: 11 }}>Application received</h3>
+              <h3 style={{ fontSize: 23, marginBottom: 11 }}>
+                {success?.title || "Application received"}
+              </h3>
               <p
                 style={{
                   fontSize: 14,
@@ -219,30 +268,28 @@ export function JobFormSection({ props }: { props: JobFormProps }) {
                   margin: "0 auto",
                 }}
               >
-                Your application is in our hiring pipeline at the <b>Applied</b> stage, with
-                reference <b>{ref}</b>. We will be in touch within two working days.
+                {boldApplied(successLead)}, with reference <b>{done.ref}</b>.
+                {successRest ? ` ${successRest}` : ""}
               </p>
-              {whatsapp && (
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 9,
-                    justifyContent: "center",
-                    flexWrap: "wrap",
-                    marginTop: 20,
-                  }}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 9,
+                  justifyContent: "center",
+                  flexWrap: "wrap",
+                  marginTop: 20,
+                }}
+              >
+                <a
+                  className="btn btn-lg"
+                  style={{ background: "#25D366", color: "#fff" }}
+                  href={waHref}
+                  target="_blank"
+                  rel="noreferrer"
                 >
-                  <a
-                    className="btn btn-lg"
-                    style={{ background: "#25D366", color: "#fff" }}
-                    href={`https://wa.me/${whatsapp.replace(/[^\d]/g, "")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <Icon name="whatsapp" /> Message HR directly
-                  </a>
-                </div>
-              )}
+                  <Icon name="whatsapp" /> {success?.cta_label || "Message HR directly"}
+                </a>
+              </div>
             </div>
           )}
         </div>

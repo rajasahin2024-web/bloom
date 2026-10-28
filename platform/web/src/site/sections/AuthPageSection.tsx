@@ -1,4 +1,6 @@
-import { useState, type FormEvent, type MouseEvent } from "react";
+import { useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
+import { ApiError } from "@/lib/api";
+import { fetchMe, login, saveSession } from "@/lib/auth";
 import { Icon } from "./Icon";
 
 interface AuthFeature {
@@ -14,94 +16,288 @@ interface AuthRole {
   sub: string;
 }
 
+interface FooterLink {
+  label: string;
+  mode: string;
+}
+
 interface AuthPageProps {
-  brand_name: string;
-  brand_tagline: string;
-  logo_url: string;
-  home_href: string;
-  eyebrow: string;
-  heading: string;
-  lead: string;
-  features: AuthFeature[];
-  quote: string;
-  quote_author: string;
+  brand: { name: string; tagline: string; logo_url: string; href: string };
+  back_link: { label: string; href: string };
+  aside: {
+    eyebrow: string;
+    heading: string;
+    lead: string;
+    features: AuthFeature[];
+    quote: { text: string; author: string };
+  };
   roles: AuthRole[];
-  countries: { label: string }[];
-  languages: { label: string }[];
-  exams: { value: string; label: string }[];
-  plans: { value: string; label: string }[];
-  notice: string;
+  signin: {
+    heading: string;
+    lead: string;
+    sso: { provider: string; icon: string }[];
+    demo_note: string;
+    footer_text: string;
+    footer_link: FooterLink;
+  };
+  signup: {
+    heading: string;
+    lead: string;
+    countries: (string | { label?: string })[];
+    languages: (string | { label?: string })[];
+    exams: { value: string; label: string }[];
+    plans: { value: string; label: string }[];
+    terms: string;
+    submit_label: string;
+    footer_text: string;
+    footer_link: FooterLink;
+  };
+  forgot: {
+    heading: string;
+    lead: string;
+    submit_label: string;
+    success_heading: string;
+    success_body: string;
+  };
 }
 
 type Mode = "login" | "signup" | "forgot";
 
-function initialMode(): Mode {
-  if (typeof window === "undefined") return "login";
-  const m = new URLSearchParams(window.location.search).get("mode");
+function toMode(m: string | null): Mode {
   return m === "signup" ? "signup" : m === "forgot" ? "forgot" : "login";
 }
 
+function qs(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get(key);
+}
+
+const optLabel = (o: string | { label?: string }) =>
+  typeof o === "object" && o !== null ? (o.label ?? "") : String(o);
+
+/* Demo accounts from prototype/login.html — kept client-side so the page
+   behaves exactly like the prototype. Real accounts fall through to the
+   platform /api/auth/login below. */
+const DEMO_ACCOUNTS = [
+  { email: "student@bloomielts.com", pw: "bloom2026", role: "student", name: "Priya Sharma" },
+  { email: "teacher@bloomielts.com", pw: "bloom2026", role: "teacher", name: "Dr. Elena Marchetti" },
+  { email: "admin@bloomielts.com", pw: "bloom2026", role: "admin", name: "Administration" },
+];
+
+function SuccessPanel({
+  icon,
+  heading,
+  children,
+  onBack,
+}: {
+  icon: string;
+  heading: string;
+  children: ReactNode;
+  onBack: () => void;
+}) {
+  return (
+    <div style={{ textAlign: "center", padding: "20px 0" }}>
+      <div
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          background: "var(--ok-soft)",
+          color: "var(--ok)",
+          display: "grid",
+          placeItems: "center",
+          fontSize: 22,
+          margin: "0 auto 20px",
+        }}
+      >
+        <Icon name={icon} size={22} />
+      </div>
+      <h1 style={{ fontSize: 26, letterSpacing: "-1px" }}>{heading}</h1>
+      <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 11, lineHeight: 1.7 }}>
+        {children}
+      </p>
+      <button className="btn btn-ghost btn-lg" style={{ marginTop: 24 }} onClick={onBack}>
+        Back to sign in
+      </button>
+    </div>
+  );
+}
+
+/* The seed flattens the prototype's <b>/<code> demo note into plain text;
+   restore the styling: leading label bold, emails + password in <code>. */
+function DemoNote({ text }: { text: string }) {
+  const m = text.match(/^(.+?)\s[—–:]\s*(.*)$/s);
+  const head = m ? m[1] : null;
+  const rest = m ? m[2] : text;
+  const sep = text.match(/[—–:]/)?.[0] ?? "—";
+  return (
+    <div className="demo">
+      {head && (
+        <>
+          <b>{head}</b>
+          {` ${sep} `}
+        </>
+      )}
+      {rest.split(/(\S+@\S+|bloom2026)/g).map((part, i) =>
+        /\S+@\S+|bloom2026/.test(part) && part.length > 2 ? (
+          <code key={i}>{part}</code>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </div>
+  );
+}
+
 export function AuthPageSection({ props }: { props: AuthPageProps }) {
-  const {
-    brand_name,
-    brand_tagline,
-    logo_url,
-    home_href,
-    eyebrow,
-    heading,
-    lead,
-    features,
-    quote,
-    quote_author,
-    roles,
-    countries,
-    languages,
-    exams,
-    plans,
-    notice,
-  } = props;
-  const [mode, setMode] = useState<Mode>(initialMode);
-  const [role, setRole] = useState(roles?.[0]?.key || "student");
+  const { brand, back_link, aside, roles, signin, signup, forgot } = props;
+  const home = brand?.href || back_link?.href || "/";
+
+  const [mode, setMode] = useState<Mode>(() => toMode(qs("mode")));
+  const [role, setRole] = useState(() => {
+    const want = qs("role");
+    return roles?.some((r) => r.key === want) ? want! : roles?.[0]?.key || "student";
+  });
   const [show, setShow] = useState(false);
   const [errText, setErrText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState(`${role}@bloomielts.com`);
+  const [pw, setPw] = useState("bloom2026");
+  const [done, setDone] = useState<"signin" | "signup" | "forgot" | null>(null);
+  const [doneName, setDoneName] = useState("");
 
   const roleMeta = (roles ?? []).find((r) => r.key === role) ?? roles?.[0];
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    setErrText(notice || "");
-  };
-
   const switchMode = (m: Mode) => (e: MouseEvent) => {
     e.preventDefault();
     setErrText("");
+    setDone(null);
     setMode(m);
   };
+
+  const pickRole = (key: string) => {
+    setRole(key);
+    setEmail(`${key}@bloomielts.com`);
+    setPw("bloom2026");
+    setErrText("");
+  };
+
+  function signedIn(name: string, roleKey: string) {
+    if (roleKey === "admin") {
+      window.location.assign("/admin");
+      return;
+    }
+    setDoneName(name);
+    setDone("signin");
+    setBusy(false);
+  }
+
+  async function doLogin(e: FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    const em = email.trim().toLowerCase();
+    const demo = DEMO_ACCOUNTS.find((a) => a.email === em);
+    if (demo) {
+      if (demo.pw !== pw) {
+        setErrText("That password is not correct. Demo password: bloom2026");
+        return;
+      }
+      if (demo.role !== role) {
+        setErrText(
+          `That account signs in as ${(roles ?? []).find((r) => r.key === demo.role)?.name.toLowerCase() ?? demo.role}. Switch the role above.`,
+        );
+        return;
+      }
+      setErrText("");
+      setBusy(true);
+      try {
+        const res = await login(em, pw);
+        const me = await fetchMe(res.tokens.access_token);
+        saveSession({ user: me, tokens: res.tokens });
+        signedIn(me.full_name || demo.name, me.role);
+      } catch {
+        signedIn(demo.name, demo.role);
+      }
+      return;
+    }
+    setErrText("");
+    setBusy(true);
+    try {
+      const res = await login(em, pw);
+      const me = await fetchMe(res.tokens.access_token);
+      saveSession({ user: me, tokens: res.tokens });
+      signedIn(me.full_name || em, me.role);
+    } catch (err) {
+      setErrText(
+        err instanceof ApiError && (err.status === 401 || err.status === 400)
+          ? "No account found for that email address and password."
+          : err instanceof Error
+            ? err.message
+            : "Sign-in failed. Try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function doSignup(e: FormEvent) {
+    e.preventDefault();
+    const f = e.target as HTMLFormElement;
+    const val = (name: string) =>
+      (f.elements.namedItem(name) as HTMLInputElement | null)?.value.trim() ?? "";
+    const name = val("suName");
+    const em = val("suEmail");
+    if (!name || !em) {
+      setErrText("Please enter your name and email.");
+      return;
+    }
+    if (val("suPw").length < 8) {
+      setErrText("Your password needs at least eight characters.");
+      return;
+    }
+    setErrText("");
+    setBusy(true);
+    // The learner portal isn't part of this build — the demo completes the
+    // flow the way the prototype does instead of creating a real account.
+    window.setTimeout(() => {
+      setDoneName(name);
+      setDone("signup");
+      setBusy(false);
+    }, 700);
+  }
+
+  function doForgot(e: FormEvent) {
+    e.preventDefault();
+    const f = e.target as HTMLFormElement;
+    const em =
+      (f.elements.namedItem("fgEmail") as HTMLInputElement | null)?.value.trim() ?? "";
+    setDoneName(em);
+    setDone("forgot");
+  }
 
   return (
     <div className="auth">
       <aside className="aside">
-        <a className="brand" href={home_href || "/"} style={{ marginBottom: "auto" }}>
-          {logo_url && <img src={logo_url} alt={brand_name} />}
+        <a className="brand" href={home} style={{ marginBottom: "auto" }}>
+          {brand?.logo_url && <img src={brand.logo_url} alt={brand.name} />}
           <div>
-            <b style={{ color: "#fff" }}>{brand_name}</b>
-            <span style={{ color: "var(--leaf-300)" }}>{brand_tagline}</span>
+            <b style={{ color: "#fff" }}>{brand?.name}</b>
+            <span style={{ color: "var(--leaf-300)" }}>{brand?.tagline}</span>
           </div>
         </a>
 
         <div style={{ maxWidth: 420 }}>
           <div className="eb" style={{ color: "var(--leaf-300)" }}>
-            {eyebrow}
+            {aside?.eyebrow}
           </div>
-          <h2 style={{ color: "#fff" }}>{heading}</h2>
-          {lead && (
+          <h2 style={{ color: "#fff" }}>{aside?.heading}</h2>
+          {aside?.lead && (
             <p className="lead" style={{ color: "rgba(255,255,255,.7)", marginTop: 16 }}>
-              {lead}
+              {aside.lead}
             </p>
           )}
 
           <div style={{ display: "grid", gap: 14, marginTop: 34 }}>
-            {(features ?? []).map((f, i) => (
+            {(aside?.features ?? []).map((f, i) => (
               <div
                 key={i}
                 style={{
@@ -137,7 +333,7 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
           </div>
         </div>
 
-        {(quote || quote_author) && (
+        {aside?.quote && (aside.quote.text || aside.quote.author) && (
           <div
             style={{
               marginTop: "auto",
@@ -149,10 +345,10 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
             <span style={{ color: "var(--leaf-300)", marginRight: 8 }}>
               <Icon name="quote-left" />
             </span>
-            {quote}
-            {quote_author && (
+            {aside.quote.text}
+            {aside.quote.author && (
               <div style={{ marginTop: 9, color: "rgba(255,255,255,.72)", fontWeight: 700 }}>
-                {quote_author}
+                {aside.quote.author}
               </div>
             )}
           </div>
@@ -170,13 +366,15 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
             }}
           >
             <a
-              href={home_href || "/"}
+              href={back_link?.href || home}
               style={{ fontSize: 13, fontWeight: 700, color: "var(--ink-4)" }}
             >
-              <Icon name="arrow-left" /> Back to site
+              <Icon name="arrow-left" /> {back_link?.label || "Back to site"}
             </a>
-            <a className="brand" href={home_href || "/"} style={{ gap: 8 }}>
-              {logo_url && <img src={logo_url} alt={brand_name} style={{ width: 26, height: 26 }} />}
+            <a className="brand" href={home} style={{ gap: 8 }}>
+              {brand?.logo_url && (
+                <img src={brand.logo_url} alt={brand.name} style={{ width: 26, height: 26 }} />
+              )}
             </a>
           </div>
 
@@ -187,19 +385,57 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
             </div>
           )}
 
-          {mode === "login" && (
+          {done === "forgot" && (
+            <SuccessPanel
+              icon="envelope-circle-check"
+              heading={forgot?.success_heading || "Check your inbox"}
+              onBack={() => {
+                setDone(null);
+                setMode("login");
+              }}
+            >
+              {(forgot?.success_body || "If an account exists for {email}, a reset link is on its way.")
+                .split("{email}")
+                .map((part, i, arr) => (
+                  <span key={i}>
+                    {part}
+                    {i < arr.length - 1 && <b style={{ color: "var(--ink)" }}>{doneName}</b>}
+                  </span>
+                ))}
+            </SuccessPanel>
+          )}
+
+          {(done === "signin" || done === "signup") && (
+            <SuccessPanel
+              icon="envelope-circle-check"
+              heading={done === "signin" ? `Welcome back, ${doneName}.` : "Your account is ready."}
+              onBack={() => {
+                setDone(null);
+                setMode("login");
+              }}
+            >
+              This build covers the public site — the learner portal ships as a separate app.
+            </SuccessPanel>
+          )}
+
+          {!done && mode === "login" && (
             <div>
-              <h1 style={{ fontSize: 31, letterSpacing: "-1.3px" }}>Sign in</h1>
-              <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 9, marginBottom: 26 }}>
-                Choose how you are signing in, then enter your details.
-              </p>
+              <h1 style={{ fontSize: 31, letterSpacing: "-1.3px" }}>
+                {signin?.heading || "Sign in"}
+              </h1>
+              {signin?.lead && (
+                <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 9, marginBottom: 26 }}>
+                  {signin.lead}
+                </p>
+              )}
 
               <div className="roles">
                 {(roles ?? []).map((r) => (
                   <button
                     key={r.key}
+                    type="button"
                     className={`rolebtn${role === r.key ? " on" : ""}`}
-                    onClick={() => setRole(r.key)}
+                    onClick={() => pickRole(r.key)}
                   >
                     <i>
                       <Icon name={r.icon} size={17} />
@@ -210,10 +446,17 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
                 ))}
               </div>
 
-              <form onSubmit={submit}>
+              <form onSubmit={doLogin}>
                 <div className="fg">
                   <label>Email address</label>
-                  <input type="email" autoComplete="username" placeholder="you@email.com" required />
+                  <input
+                    type="email"
+                    autoComplete="username"
+                    placeholder="you@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
                 </div>
                 <div className="fg">
                   <label>Password</label>
@@ -222,6 +465,8 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
                       type={show ? "text" : "password"}
                       autoComplete="current-password"
                       placeholder="Your password"
+                      value={pw}
+                      onChange={(e) => setPw(e.target.value)}
                       required
                     />
                     <button type="button" onClick={() => setShow(!show)} aria-label="Show password">
@@ -256,70 +501,86 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
                 <button
                   className="btn btn-p btn-lg"
                   type="submit"
+                  disabled={busy}
                   style={{ width: "100%", justifyContent: "center" }}
                 >
-                  <Icon name="arrow-right-to-bracket" /> Sign in
-                  {roleMeta ? ` as ${roleMeta.name.toLowerCase()}` : ""}
+                  {busy ? (
+                    <>
+                      <Icon name="circle-notch" className="spin" /> Signing in…
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="arrow-right-to-bracket" /> Sign in
+                      {roleMeta ? ` as ${roleMeta.name.toLowerCase()}` : ""}
+                    </>
+                  )}
                 </button>
               </form>
 
-              <div className="hr">or</div>
-              <div style={{ display: "grid", gap: 9 }}>
-                <button
-                  className="btn btn-ghost"
-                  style={{ width: "100%", justifyContent: "center" }}
-                  onClick={() => setErrText("Single sign-on is not enabled on this demo account.")}
-                >
-                  <Icon name="google" /> Continue with Google
-                </button>
-                <button
-                  className="btn btn-ghost"
-                  style={{ width: "100%", justifyContent: "center" }}
-                  onClick={() => setErrText("Single sign-on is not enabled on this demo account.")}
-                >
-                  <Icon name="microsoft" /> Continue with Microsoft
-                </button>
-              </div>
+              {(signin?.sso ?? []).length > 0 && (
+                <>
+                  <div className="hr">or</div>
+                  <div style={{ display: "grid", gap: 9 }}>
+                    {(signin?.sso ?? []).map((s, i) => (
+                      <button
+                        key={i}
+                        className="btn btn-ghost"
+                        style={{ width: "100%", justifyContent: "center" }}
+                        onClick={() =>
+                          setErrText("Single sign-on is not enabled on this demo account.")
+                        }
+                      >
+                        <Icon name={s.icon} /> Continue with {s.provider}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
 
-              <div className="demo">
-                <b>Demo access</b> — all three accounts use the password <code>bloom2026</code>.
-                <br />
-                <code>student@bloomielts.com</code> · <code>teacher@bloomielts.com</code> ·{" "}
-                <code>admin@bloomielts.com</code>
-              </div>
+              {signin?.demo_note && <DemoNote text={signin.demo_note} />}
 
-              <div
-                style={{ textAlign: "center", marginTop: 24, fontSize: "13.5px", color: "var(--ink-3)" }}
-              >
-                New to Bloom?{" "}
-                <a href="#" onClick={switchMode("signup")} style={{ fontWeight: 700 }}>
-                  Take the free placement test
-                </a>
-              </div>
+              {signin?.footer_link && (
+                <div
+                  style={{ textAlign: "center", marginTop: 24, fontSize: "13.5px", color: "var(--ink-3)" }}
+                >
+                  {signin.footer_text}{" "}
+                  <a
+                    href="#"
+                    onClick={switchMode(toMode(signin.footer_link.mode))}
+                    style={{ fontWeight: 700 }}
+                  >
+                    {signin.footer_link.label}
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
-          {mode === "signup" && (
+          {!done && mode === "signup" && (
             <div>
-              <h1 style={{ fontSize: 31, letterSpacing: "-1.3px" }}>Create your account</h1>
-              <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 9, marginBottom: 24 }}>
-                The placement test and your English profile are free. You can decide about a course
-                afterwards.
-              </p>
+              <h1 style={{ fontSize: 31, letterSpacing: "-1.3px" }}>
+                {signup?.heading || "Create your account"}
+              </h1>
+              {signup?.lead && (
+                <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 9, marginBottom: 24 }}>
+                  {signup.lead}
+                </p>
+              )}
 
-              <form onSubmit={submit}>
+              <form onSubmit={doSignup}>
                 <div className="fg">
                   <label>Full name</label>
-                  <input placeholder="Your full name" autoComplete="name" required />
+                  <input name="suName" placeholder="Your full name" autoComplete="name" required />
                 </div>
                 <div className="fg">
                   <label>Email address</label>
-                  <input type="email" placeholder="you@email.com" autoComplete="email" required />
+                  <input name="suEmail" type="email" placeholder="you@email.com" autoComplete="email" required />
                 </div>
                 <div className="fg">
                   <label>Password</label>
                   <div className="pw">
                     <input
+                      name="suPw"
                       type={show ? "text" : "password"}
                       placeholder="At least 8 characters"
                       autoComplete="new-password"
@@ -334,25 +595,25 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   <div className="fg">
                     <label>Country</label>
-                    <select>
-                      {(countries ?? []).map((c, i) => (
-                        <option key={i}>{c.label}</option>
+                    <select name="suCountry">
+                      {(signup?.countries ?? []).map((c, i) => (
+                        <option key={i}>{optLabel(c)}</option>
                       ))}
                     </select>
                   </div>
                   <div className="fg">
                     <label>First language</label>
-                    <select>
-                      {(languages ?? []).map((l, i) => (
-                        <option key={i}>{l.label}</option>
+                    <select name="suL1">
+                      {(signup?.languages ?? []).map((l, i) => (
+                        <option key={i}>{optLabel(l)}</option>
                       ))}
                     </select>
                   </div>
                 </div>
                 <div className="fg">
                   <label>Which exam are you preparing for?</label>
-                  <select>
-                    {(exams ?? []).map((x, i) => (
+                  <select name="suExam">
+                    {(signup?.exams ?? []).map((x, i) => (
                       <option key={i} value={x.value}>
                         {x.label}
                       </option>
@@ -373,13 +634,12 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
                       (you can change this later)
                     </span>
                   </label>
-                  <select>
-                    {(plans ?? []).map((p, i) => (
+                  <select name="suPlan" defaultValue={qs("plan") || "PLUS"}>
+                    {(signup?.plans ?? []).map((p, i) => (
                       <option key={i} value={p.value}>
                         {p.label}
                       </option>
                     ))}
-                    <option value="">Just the free placement test for now</option>
                   </select>
                 </div>
 
@@ -396,50 +656,65 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
                   }}
                 >
                   <input type="checkbox" required style={{ marginTop: 3 }} />
-                  <span>
-                    I agree to Bloom's terms and privacy policy. My data is stored on my own device
-                    and I can export or erase it at any time.
-                  </span>
+                  <span>{signup?.terms}</span>
                 </label>
 
                 <button
                   className="btn btn-p btn-lg"
                   type="submit"
+                  disabled={busy}
                   style={{ width: "100%", justifyContent: "center" }}
                 >
-                  <Icon name="seedling" /> Create account & start placement test
+                  {busy ? (
+                    <>
+                      <Icon name="circle-notch" className="spin" /> Creating your account…
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="seedling" /> {signup?.submit_label || "Create account"}
+                    </>
+                  )}
                 </button>
               </form>
 
-              <div
-                style={{ textAlign: "center", marginTop: 24, fontSize: "13.5px", color: "var(--ink-3)" }}
-              >
-                Already have an account?{" "}
-                <a href="#" onClick={switchMode("login")} style={{ fontWeight: 700 }}>
-                  Sign in
-                </a>
-              </div>
+              {signup?.footer_link && (
+                <div
+                  style={{ textAlign: "center", marginTop: 24, fontSize: "13.5px", color: "var(--ink-3)" }}
+                >
+                  {signup.footer_text}{" "}
+                  <a
+                    href="#"
+                    onClick={switchMode(toMode(signup.footer_link.mode))}
+                    style={{ fontWeight: 700 }}
+                  >
+                    {signup.footer_link.label}
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
-          {mode === "forgot" && (
+          {!done && mode === "forgot" && (
             <div>
-              <h1 style={{ fontSize: 31, letterSpacing: "-1.3px" }}>Reset your password</h1>
-              <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 9, marginBottom: 24 }}>
-                Enter the email on your account and we will send a reset link. It is valid for one
-                hour.
-              </p>
-              <form onSubmit={submit}>
+              <h1 style={{ fontSize: 31, letterSpacing: "-1.3px" }}>
+                {forgot?.heading || "Reset your password"}
+              </h1>
+              {forgot?.lead && (
+                <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 9, marginBottom: 24 }}>
+                  {forgot.lead}
+                </p>
+              )}
+              <form onSubmit={doForgot}>
                 <div className="fg">
                   <label>Email address</label>
-                  <input type="email" placeholder="you@email.com" required />
+                  <input name="fgEmail" type="email" placeholder="you@email.com" required />
                 </div>
                 <button
                   className="btn btn-p btn-lg"
                   type="submit"
                   style={{ width: "100%", justifyContent: "center", marginTop: 8 }}
                 >
-                  <Icon name="paper-plane" /> Send reset link
+                  <Icon name="paper-plane" /> {forgot?.submit_label || "Send reset link"}
                 </button>
               </form>
               <div

@@ -18,11 +18,26 @@ interface Uni {
   photo_url: string;
 }
 
+interface GlobeCta {
+  label: string;
+  href: string;
+  icon?: string;
+  style?: string;
+}
+
 interface UniFilterProps {
   eyebrow: string;
   heading: string;
   lead: string;
+  all_label?: string;
   universities: Uni[];
+  globe?: {
+    eyebrow: string;
+    heading: string;
+    body: string;
+    flags: string[];
+    ctas: GlobeCta[];
+  };
 }
 
 /* A per-skill value is only a band rule if it reads like one ("6.0 each",
@@ -63,7 +78,7 @@ function perSkillChip(v: string) {
 }
 
 export function UniFilterSection({ props }: { props: UniFilterProps }) {
-  const { eyebrow, heading, lead, universities } = props;
+  const { eyebrow, heading, lead, all_label, universities, globe } = props;
   const [country, setCountry] = useState("all");
   const all = useMemo(() => universities ?? [], [universities]);
   const countries = useMemo(
@@ -78,7 +93,8 @@ export function UniFilterSection({ props }: { props: UniFilterProps }) {
       <Head eyebrow={eyebrow} heading={heading} lead={lead} mid />
       <div className="unifilt rv">
         <button className={country === "all" ? "on" : ""} onClick={() => setCountry("all")}>
-          <Icon name="globe" /> All destinations <span className="n">{all.length}</span>
+          <Icon name="globe" /> {all_label || "All destinations"}{" "}
+          <span className="n">{all.length}</span>
         </button>
         {countries.map((c) => (
           <button key={c} className={country === c ? "on" : ""} onClick={() => setCountry(c)}>
@@ -152,6 +168,29 @@ export function UniFilterSection({ props }: { props: UniFilterProps }) {
           </article>
         ))}
       </div>
+      {globe && (
+        <div className="globe rv" style={{ marginTop: 44 }}>
+          <div className="eb">{globe.eyebrow}</div>
+          <h3>{globe.heading}</h3>
+          <p>{globe.body}</p>
+          <div className="flags">
+            {(globe.flags ?? []).map((f, i) => (
+              <span key={i}>{f}</span>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 24 }}>
+            {(globe.ctas ?? []).map((c, i) => (
+              <a
+                key={i}
+                className={`btn ${c.style === "line" ? "btn-line" : "btn-white"}`}
+                href={c.href}
+              >
+                {c.icon && <Icon name={c.icon} />} {c.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </Section>
   );
 }

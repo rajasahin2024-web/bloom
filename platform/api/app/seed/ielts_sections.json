@@ -1,0 +1,723 @@
+{
+  "slug": "ielts",
+  "title": "The IELTS exam explained — every section, every question type",
+  "meta_description": "A complete guide to IELTS Listening, Reading, Writing and Speaking: timings, question types, band descriptors, raw-score tables and the mistakes that cost the most marks.",
+  "sections": [
+    {
+      "id": "sec_exam_table",
+      "label": "Exam format table",
+      "type": "data_table",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "eyebrow": "IELTS explained",
+        "heading": "Know the test before you sit it.",
+        "intro": "Most candidates lose marks to the format rather than to their English. Here is the whole exam laid out — what each section asks, how long you get, and what each band actually means to a university.",
+        "columns": [
+          "Section",
+          "Time",
+          "Questions",
+          "What it asks of you",
+          "Where marks go"
+        ],
+        "rows": [
+          [
+            {
+              "text": "Listening",
+              "sub": "Four recordings",
+              "bold": true
+            },
+            {
+              "text": "30 min",
+              "sub": "+10 transfer",
+              "mono": true
+            },
+            {
+              "text": "40",
+              "mono": true
+            },
+            "Two conversations and two monologues, from an everyday enquiry through to an academic lecture. Played once only.",
+            "Spelling and number formats — a correct answer written wrongly scores zero."
+          ],
+          [
+            {
+              "text": "Reading",
+              "sub": "Three passages",
+              "bold": true
+            },
+            {
+              "text": "60 min",
+              "sub": "no transfer time",
+              "mono": true
+            },
+            {
+              "text": "40",
+              "mono": true
+            },
+            "Academic: three long texts of increasing difficulty. General Training: notices, adverts and workplace documents.",
+            "Timing. You need roughly 200 words a minute to finish, and True/False/Not Given is the most-failed type."
+          ],
+          [
+            {
+              "text": "Writing",
+              "sub": "Two tasks",
+              "bold": true
+            },
+            {
+              "text": "60 min",
+              "sub": "20 + 40 split",
+              "mono": true
+            },
+            {
+              "text": "2 tasks",
+              "mono": true
+            },
+            "Task 1 — a report on a chart or process (Academic) or a letter (General). Task 2 — a 250-word argumentative essay, worth twice as much.",
+            "Answering a related question rather than the one asked. Task 2 has five question types and five different structures."
+          ],
+          [
+            {
+              "text": "Speaking",
+              "sub": "Three parts",
+              "bold": true
+            },
+            "11–14 min",
+            {
+              "text": "3 parts",
+              "mono": true
+            },
+            "Part 1 familiar questions, Part 2 a two-minute long turn from a cue card, Part 3 abstract discussion with the examiner.",
+            "Running out of things to say in Part 2, and one-line answers in Part 1 that cap you at Band 5."
+          ]
+        ],
+        "footnote": "Total test time about 2 hours 45 minutes. Listening, Reading and Writing are sat in one sitting with no breaks; Speaking may be the same day or up to seven days either side.",
+        "pad_bottom": 26
+      }
+    },
+    {
+      "id": "sec_band_scale",
+      "label": "The nine-band scale",
+      "type": "band_table",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "eyebrow": "The nine-band scale",
+        "heading": "What your band actually means.",
+        "lead": "Bands are reported in whole and half scores. Your overall is the average of the four skills, rounded to the nearest half — which is why a single weak skill drags everything down.",
+        "rows": [
+          {
+            "band": "9",
+            "title": "Expert user",
+            "description": "Full operational command. Appropriate, accurate and fluent with complete understanding.",
+            "used_for": "Rarely required. Some scholarships.",
+            "color": "#1f5230",
+            "text_color": "#ffffff"
+          },
+          {
+            "band": "8",
+            "title": "Very good user",
+            "description": "Fully operational with only occasional unsystematic inaccuracies. Handles complex argument well.",
+            "used_for": "Oxford, Cambridge, competitive law and medicine.",
+            "color": "#2f6b3a",
+            "text_color": "#ffffff"
+          },
+          {
+            "band": "7",
+            "title": "Good user",
+            "description": "Operational command with occasional inaccuracy. Handles complex language and detailed reasoning.",
+            "used_for": "Most Russell Group postgraduate. Nursing and medical registration. Australia and Canada PR.",
+            "color": "#458a4d",
+            "text_color": "#ffffff"
+          },
+          {
+            "band": "6.5",
+            "title": "Competent, upper",
+            "description": "Effective command despite some inaccuracy. The single most requested score.",
+            "used_for": "Standard postgraduate entry across the UK, Australia and Canada.",
+            "color": "#5da35f",
+            "text_color": "#ffffff"
+          },
+          {
+            "band": "6",
+            "title": "Competent user",
+            "description": "Generally effective command; can use and understand fairly complex language in familiar situations.",
+            "used_for": "Undergraduate entry, foundation and pathway programmes.",
+            "color": "#7fba7c",
+            "text_color": "#ffffff"
+          },
+          {
+            "band": "5.5",
+            "title": "Modest, upper",
+            "description": "Partial command. Copes with overall meaning but makes many mistakes.",
+            "used_for": "Foundation year, some vocational courses, pre-sessional English.",
+            "color": "#a3d199",
+            "text_color": "#ffffff"
+          },
+          {
+            "band": "5",
+            "title": "Modest user",
+            "description": "Partial command, handles basic communication in own field.",
+            "used_for": "Pre-sessional English. Below most academic requirements.",
+            "color": "#c9e5be",
+            "text_color": "#1f5230"
+          },
+          {
+            "band": "≤4.5",
+            "title": "Limited and below",
+            "description": "Basic competence limited to familiar situations; frequent problems with understanding and expression.",
+            "used_for": "Not accepted for academic study.",
+            "color": "#e4f1dc",
+            "text_color": "#2f6b3a"
+          }
+        ],
+        "notes": [
+          "Rounding: an average of 6.25 rounds up to 6.5; 6.1 rounds down to 6.0.",
+          "Validity: results are normally accepted for two years.",
+          "Retakes: unlimited, and single-skill retakes are now available at many centres."
+        ],
+        "pad_top": 26,
+        "pad_bottom": 26
+      }
+    },
+    {
+      "id": "sec_skills",
+      "label": "Skill by skill",
+      "type": "feature_grid",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "eyebrow": "Skill by skill",
+        "heading": "The question types that decide your score.",
+        "features": [
+          {
+            "icon": "headphones",
+            "title": "Listening",
+            "sub": "Same paper for Academic and General",
+            "body": "Predict the word type in each gap during the preview. Speakers correct themselves — the answer is almost always the second thing they say.",
+            "color": "linear-gradient(135deg,#1f6e9e,#3899d4)",
+            "rows": [
+              {
+                "label": "Part 1",
+                "value": "Everyday conversation"
+              },
+              {
+                "label": "Part 2",
+                "value": "Social monologue"
+              },
+              {
+                "label": "Part 3",
+                "value": "Academic discussion"
+              },
+              {
+                "label": "Part 4",
+                "value": "Lecture, no break"
+              },
+              {
+                "label": "Types",
+                "value": "Form and note completion, multiple choice, matching, maps and plans, sentence completion"
+              }
+            ],
+            "tip": "Predict the word type in each gap during the preview. Speakers correct themselves — the answer is almost always the second thing they say."
+          },
+          {
+            "icon": "book-open",
+            "title": "Reading",
+            "sub": "Academic and General differ",
+            "body": "Locate, do not read. Skim each paragraph for its single main idea first, then hunt the one keyword in the question that cannot be paraphrased.",
+            "color": "linear-gradient(135deg,#1f5230,#5da35f)",
+            "rows": [
+              {
+                "label": "Passage 1",
+                "value": "Descriptive, factual"
+              },
+              {
+                "label": "Passage 2",
+                "value": "Discursive"
+              },
+              {
+                "label": "Passage 3",
+                "value": "Argumentative"
+              },
+              {
+                "label": "Words",
+                "value": "2,150–2,750 total"
+              },
+              {
+                "label": "Types",
+                "value": "True/False/Not Given, Yes/No/Not Given, matching headings, matching information, multiple choice, summary and sentence completion"
+              }
+            ],
+            "tip": "Locate, do not read. Skim each paragraph for its single main idea first, then hunt the one keyword in the question that cannot be paraphrased."
+          },
+          {
+            "icon": "pen-nib",
+            "title": "Writing",
+            "sub": "Four marking criteria",
+            "body": "Identify the question type before writing — each one needs a different structure. Task 1 without a clear overview paragraph cannot pass Band 5 for Task Achievement.",
+            "color": "linear-gradient(135deg,#a86e14,#f0a13a)",
+            "rows": [
+              {
+                "label": "Task 1",
+                "value": "150+ words, 20 min, one third of the mark"
+              },
+              {
+                "label": "Task 2",
+                "value": "250+ words, 40 min, two thirds"
+              },
+              {
+                "label": "Criteria",
+                "value": "Task Response · Coherence & Cohesion · Lexical Resource · Grammatical Range & Accuracy"
+              },
+              {
+                "label": "Task 2 types",
+                "value": "Opinion, discussion, advantages/disadvantages, problem/solution, two-part"
+              }
+            ],
+            "tip": "Identify the question type before writing — each one needs a different structure. Task 1 without a clear overview paragraph cannot pass Band 5 for Task Achievement."
+          },
+          {
+            "icon": "microphone",
+            "title": "Speaking",
+            "sub": "Face to face with an examiner",
+            "body": "Answer, reason, example — every time. Pronunciation is a full quarter of the mark and the criterion candidates prepare for least; sentence stress matters more than individual sounds.",
+            "color": "linear-gradient(135deg,#b73f31,#ef6a5a)",
+            "rows": [
+              {
+                "label": "Part 1",
+                "value": "4–5 min, familiar topics"
+              },
+              {
+                "label": "Part 2",
+                "value": "1 min prep, 2 min talk"
+              },
+              {
+                "label": "Part 3",
+                "value": "4–5 min discussion"
+              },
+              {
+                "label": "Criteria",
+                "value": "Fluency & Coherence · Lexical Resource · Grammatical Range & Accuracy · Pronunciation"
+              },
+              {
+                "label": "Recorded",
+                "value": "Yes, always"
+              }
+            ],
+            "tip": "Answer, reason, example — every time. Pronunciation is a full quarter of the mark and the criterion candidates prepare for least; sentence stress matters more than individual sounds."
+          }
+        ],
+        "pad_top": 26,
+        "pad_bottom": 30
+      }
+    },
+    {
+      "id": "sec_academic_general",
+      "label": "Academic or General Training",
+      "type": "rich_block",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "eyebrow": "Academic or General Training?",
+        "heading": "Choosing the wrong one is expensive.",
+        "body": "Listening and Speaking are identical. Reading and Writing are not — and a university will not accept a General Training result, however high the band.",
+        "cards": [
+          {
+            "icon": "graduation-cap",
+            "title": "Take Academic for study",
+            "body": "University at any level, and professional registration in medicine, nursing, law, engineering and accountancy.",
+            "href": ""
+          },
+          {
+            "icon": "plane-departure",
+            "title": "Take General Training for migration",
+            "body": "Permanent residency and work visas for Australia, Canada, New Zealand and the UK, plus secondary school and vocational training.",
+            "href": ""
+          },
+          {
+            "icon": "circle-question",
+            "title": "If you are not certain, take Academic",
+            "body": "It is accepted for almost everything General is, but not the reverse. We check your target institution's requirement before you book.",
+            "href": ""
+          }
+        ],
+        "side": {
+          "kind": "data_table",
+          "eyebrow": "Score conversions",
+          "intro": "The same level of English on every scale — useful when a university lists a TOEFL requirement and you have an IELTS band.",
+          "columns": [
+            "IELTS",
+            "CEFR",
+            "TOEFL iBT",
+            "PTE",
+            "Duolingo"
+          ],
+          "rows": [
+            [
+              {
+                "text": "8.5–9.0",
+                "mono": true,
+                "bold": true
+              },
+              {
+                "text": "C2",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "115–120",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "87–90",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "150–160",
+                "mono": true,
+                "bold": false
+              }
+            ],
+            [
+              {
+                "text": "8.0",
+                "mono": true,
+                "bold": true
+              },
+              {
+                "text": "C1",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "109–114",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "84–86",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "140–145",
+                "mono": true,
+                "bold": false
+              }
+            ],
+            [
+              {
+                "text": "7.5",
+                "mono": true,
+                "bold": true
+              },
+              {
+                "text": "C1",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "101–108",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "79–83",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "130–135",
+                "mono": true,
+                "bold": false
+              }
+            ],
+            [
+              {
+                "text": "7.0",
+                "mono": true,
+                "bold": true
+              },
+              {
+                "text": "C1",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "94–100",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "72–78",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "120–125",
+                "mono": true,
+                "bold": false
+              }
+            ],
+            [
+              {
+                "text": "6.5",
+                "mono": true,
+                "bold": true
+              },
+              {
+                "text": "B2",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "84–93",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "65–71",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "105–115",
+                "mono": true,
+                "bold": false
+              }
+            ],
+            [
+              {
+                "text": "6.0",
+                "mono": true,
+                "bold": true
+              },
+              {
+                "text": "B2",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "72–83",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "58–64",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "95–100",
+                "mono": true,
+                "bold": false
+              }
+            ],
+            [
+              {
+                "text": "5.5",
+                "mono": true,
+                "bold": true
+              },
+              {
+                "text": "B2",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "59–71",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "50–57",
+                "mono": true,
+                "bold": false
+              },
+              {
+                "text": "85–90",
+                "mono": true,
+                "bold": false
+              }
+            ]
+          ],
+          "footnote": "Approximate concordance for planning. Always confirm the exact requirement with the institution — many set a minimum per skill as well as an overall."
+        },
+        "pad_top": 30
+      }
+    },
+    {
+      "id": "sec_how",
+      "label": "How we do it",
+      "type": "steps",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "eyebrow": "How we do it",
+        "heading": "Five stages. Nothing is guessed.",
+        "lead": "Most preparation fails for one reason: students practise without ever checking what they got wrong. Bloom is built to make that impossible.",
+        "variant": "paper",
+        "steps": [
+          {
+            "n": 1,
+            "title": "Placement test",
+            "body": "Twenty-five minutes across grammar, vocabulary, reading, listening, writing and speaking. It returns a CEFR level, a band per skill, and your strongest and weakest areas — from what you actually did, not from what you told us."
+          },
+          {
+            "n": 2,
+            "title": "Your English profile",
+            "body": "An honest picture: where you sit on the CEFR scale, what your estimated band is on every exam scale, and which first-language errors we will be watching for as a speaker of your language."
+          },
+          {
+            "n": 3,
+            "title": "A plan built from it",
+            "body": "A day-by-day schedule to your test date, weighted towards your weakest skill, with a mock every Saturday and a checkpoint every fortnight. Tick each block off as you do it."
+          },
+          {
+            "n": 4,
+            "title": "Practice with real feedback",
+            "body": "Write an essay, get a band against all four descriptors and every error explained. Record a cue card, get fluency, vocabulary, grammar and pronunciation scored separately. Your recurring mistakes are collected into an error bank."
+          },
+          {
+            "n": 5,
+            "title": "Measured, then adjusted",
+            "body": "Every scored activity moves your estimate. When a mock says your reading is the problem, next week's plan changes. You always know what to revise today and what you have already mastered."
+          }
+        ],
+        "pad_bottom": 38
+      }
+    },
+    {
+      "id": "sec_difference",
+      "label": "The difference",
+      "type": "rich_block",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "eyebrow": "The difference",
+        "heading": "Feedback is the whole product.",
+        "body": "Anyone can sell you practice papers. Half a band takes roughly a hundred focused hours — and those hours only count if something tells you, precisely, what went wrong.",
+        "variant": "paper",
+        "cards": [
+          {
+            "icon": "check",
+            "title": "Every essay marked against the four official criteria",
+            "body": "Task Response, Coherence and Cohesion, Lexical Resource, Grammatical Range and Accuracy — separately, with a band each.",
+            "href": ""
+          },
+          {
+            "icon": "check",
+            "title": "Sentence-level corrections, not a grade",
+            "body": "The wrong version, the right version, and why. Repeat offenders go into your personal error bank.",
+            "href": ""
+          },
+          {
+            "icon": "check",
+            "title": "Errors targeted to your first language",
+            "body": "Articles for Hindi and Urdu speakers, plural and tense endings for Mandarin speakers, final consonants for Vietnamese speakers.",
+            "href": ""
+          },
+          {
+            "icon": "check",
+            "title": "Spaced repetition that decides for you",
+            "body": "570 academic words scheduled so the ones you miss come back tomorrow and the ones you know disappear for a month.",
+            "href": ""
+          }
+        ],
+        "side": {
+          "kind": "feedback",
+          "tags": [
+            {
+              "text": "Task 2",
+              "tone": "amb"
+            },
+            {
+              "text": "Band 6.5"
+            },
+            {
+              "text": "4 issues found",
+              "tone": "cor"
+            }
+          ],
+          "wrong": "People is becoming more dependent on technology.",
+          "right": "People are becoming increasingly dependent on technology.",
+          "why": "“People” is an irregular plural and always takes a plural verb. “Increasingly” is also more precise than “more” here.",
+          "bands": [
+            {
+              "label": "Task Response",
+              "score": "7.0",
+              "pct": 78,
+              "tone": "leaf"
+            },
+            {
+              "label": "Coherence & Cohesion",
+              "score": "6.5",
+              "pct": 72,
+              "tone": "leaf"
+            },
+            {
+              "label": "Lexical Resource",
+              "score": "6.5",
+              "pct": 72,
+              "tone": "amber"
+            },
+            {
+              "label": "Grammatical Range",
+              "score": "6.0",
+              "pct": 66,
+              "tone": "coral"
+            }
+          ]
+        },
+        "pad_top": 38
+      }
+    },
+    {
+      "id": "sec_contact",
+      "label": "Contact",
+      "type": "contact",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "heading": "Find out what band you would get today.",
+        "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
+        "phone": "+91 80 4718 2260",
+        "email": "hello@bloomielts.com",
+        "address": "Prestige Tech Park, Marathahalli, Bengaluru 560103, India",
+        "map_url": "",
+        "form_enabled": true,
+        "primary_btn": {
+          "label": "Take the free placement test",
+          "href": "/login?mode=signup",
+          "icon": "seedling"
+        },
+        "secondary_btn": {
+          "label": "Sign in to my account",
+          "href": "/login"
+        }
+      }
+    }
+  ]
+}

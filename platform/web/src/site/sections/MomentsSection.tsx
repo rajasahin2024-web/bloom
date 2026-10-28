@@ -4,7 +4,8 @@ import { Icon } from "./Icon";
 interface Moment {
   size: string;
   media_url: string;
-  caption: string;
+  title?: string;
+  caption?: string;
   sub: string;
 }
 
@@ -27,12 +28,12 @@ export function MomentsSection({ props }: { props: MomentsProps }) {
             {m.media_url && (
               <img
                 src={m.media_url}
-                alt={m.caption}
+                alt={m.title ?? m.caption}
                 style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
               />
             )}
             <Cap>
-              {m.caption}
+              {m.title ?? m.caption}
               {m.sub && <small>{m.sub}</small>}
             </Cap>
           </div>

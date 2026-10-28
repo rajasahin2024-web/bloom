@@ -99,14 +99,6 @@
 .site-root .top .sp{flex:1}
 .site-root .wrap{padding:26px 30px 60px;max-width:1360px;width:100%;margin:0 auto}
 .site-root .icobtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink-3);cursor:pointer;display:grid;place-items:center;font-size:13px;transition:.14s;flex:0 0 auto;position:relative}
-.site-root .roles{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
-.site-root .roles button{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;padding:6px 11px;border-radius:8px;font-family:inherit;font-size:11.5px;font-weight:700;color:var(--ink-4);cursor:pointer;transition:.14s;white-space:nowrap}
-.site-root .roles button:hover{color:var(--ink-2)}
-.site-root .roles button.on{background:var(--leaf-700);color:#fff}
-.site-root .roles button i{font-size:11px}
-@media (max-width:1080px){.site-root .roles button .rl{display:none}
-.site-root .roles button{padding:7px 10px}}
-@media (max-width:640px){.site-root .roles{display:none}}
 .site-root .icobtn:hover{border-color:var(--leaf-400);color:var(--leaf-700);background:var(--leaf-50)}
 .site-root .icobtn .dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--coral);border:2px solid var(--surface)}
 .site-root .who{display:flex;align-items:center;gap:9px;padding:5px 12px 5px 5px;border-radius:30px;border:1px solid var(--line);background:var(--surface);cursor:pointer;transition:.14s}
@@ -287,17 +279,6 @@
 .site-root .cefr div.now{background:var(--leaf-700);color:#fff;transform:scale(1.06);box-shadow:var(--sh-2)}
 .site-root .cefr div.goal{background:var(--surface);border:1.5px dashed var(--amber);color:var(--amber)}
 .site-root .cefr div small{display:block;font-size:7.5px;letter-spacing:.6px;font-weight:700;opacity:.75;margin-top:2px}
-.site-root .hero{background:linear-gradient(135deg,var(--leaf-900),var(--leaf-700) 55%,var(--leaf-600));border-radius:var(--r-xl);padding:28px 32px;color:#fff;position:relative;overflow:hidden}
-.site-root .hero:before{content:'';position:absolute;right:-70px;top:-70px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.05)}
-.site-root .hero:after{content:'';position:absolute;right:40px;bottom:-110px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.04)}
-.site-root .hero>*{position:relative;z-index:1}
-.site-root .hero h3{font-family:var(--display);font-size:25px;font-weight:700;letter-spacing:-.7px;line-height:1.14}
-.site-root .hero p{font-size:13px;color:rgba(255,255,255,.72);margin-top:8px;max-width:480px;text-wrap:pretty}
-.site-root .hero .eb{font-size:9px;letter-spacing:1.8px;text-transform:uppercase;color:var(--leaf-300);font-weight:800;margin-bottom:9px}
-.site-root .hero-chips{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
-.site-root .hero-chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px 15px;min-width:96px}
-.site-root .hero-chip b{display:block;font-family:var(--display);font-size:19px;font-weight:700;line-height:1}
-.site-root .hero-chip span{font-size:8.5px;letter-spacing:1.3px;text-transform:uppercase;color:rgba(255,255,255,.6);font-weight:800}
 .site-root .row{display:flex;align-items:center;gap:13px;padding:13px 21px;border-bottom:1px solid var(--line)}
 .site-root .row:last-child{border-bottom:none}
 .site-root .row .ic{width:36px;height:36px;flex:0 0 36px;border-radius:11px;display:grid;place-items:center;font-size:14px;background:var(--leaf-100);color:var(--leaf-700)}
@@ -321,7 +302,7 @@
 .site-root .top{padding:10px 14px}
 .site-root .phead h2{font-size:25px}
 .site-root .stage{padding:22px 18px;border-radius:var(--r-lg)}
-.site-root .hero{padding:22px 20px}}
+}
 .site-root .nav-home{display:flex;align-items:center;gap:11px;margin:12px 12px 0;padding:10px 12px;border-radius:10px;background:var(--leaf-50);border:1px solid var(--leaf-200);color:var(--leaf-800);font-size:13.5px;font-weight:700;text-decoration:none;transition:.15s}
 .site-root .nav-home:hover{background:var(--leaf-100);border-color:var(--leaf-300);color:var(--leaf-900)}
 .site-root .nav-home i:first-child{width:17px;text-align:center;font-size:14px;flex:0 0 17px}
@@ -939,6 +920,8 @@
 .site-root .pband .ph image-slot{position:absolute;inset:0}
 .site-root .pband .ph cap{position:absolute;left:0;right:0;bottom:0;display:block;padding:26px 14px 12px;background:linear-gradient(to top,rgba(12,33,20,.86),rgba(12,33,20,.35) 55%,transparent);color:#fff;font-size:12.5px;font-weight:700;line-height:1.35;pointer-events:none;z-index:2}
 .site-root .pband .ph cap small{display:block;font-size:10.5px;font-weight:500;color:rgba(255,255,255,.74);margin-top:2px}
+.site-root .pband .ph .lc{position:absolute;left:0;right:0;bottom:0;display:block;padding:26px 14px 12px;background:linear-gradient(to top,rgba(12,33,20,.86),rgba(12,33,20,.35) 55%,transparent);color:#fff;font-size:12.5px;font-weight:700;line-height:1.35;pointer-events:none;z-index:2}
+.site-root .pband .ph .lc small{display:block;font-size:10.5px;font-weight:500;color:rgba(255,255,255,.74);margin-top:2px}
 .site-root .pband.tall .ph{aspect-ratio:3/4}
 .site-root .globe{background:linear-gradient(135deg,var(--leaf-900),var(--leaf-700) 58%,var(--leaf-600));color:#fff;border-radius:var(--r-xl);padding:30px 34px;position:relative;overflow:hidden}
 .site-root .globe:before{content:'';position:absolute;right:-80px;top:-80px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.055)}
@@ -995,3 +978,15 @@
 .site-root .uni-marquee:hover{animation-play-state:paused}
 .site-root .uni-marquee .uni{flex:0 0 auto}
 @keyframes uni-marquee-ltr{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* Announcement banner — fixed above the nav, ported from prototype
+   bloom-site-cms.js. --banner-h is measured at runtime; .has-banner offsets
+   the fixed nav and pads the page top so nothing is covered. */
+#cmsBanner{position:fixed;top:0;left:0;right:0;z-index:901;background:var(--leaf-800);color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:14px;font-size:13px;font-weight:600;flex-wrap:wrap;text-align:center;line-height:1.45}
+#cmsBanner i{color:var(--leaf-300)}
+#cmsBanner a.cta{background:#fff;color:var(--leaf-800);border-radius:8px;padding:5px 13px;font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}
+#cmsBanner .x{background:transparent;border:none;color:rgba(255,255,255,.55);cursor:pointer;font-size:13px;padding:2px 4px;margin-left:2px}
+#cmsBanner .x:hover{color:#fff}
+.site-root.has-banner{padding-top:var(--banner-h)}
+.site-root.has-banner .nav{top:var(--banner-h)}
+.site-root.has-banner .mob{top:calc(var(--nav-h) + var(--banner-h))}

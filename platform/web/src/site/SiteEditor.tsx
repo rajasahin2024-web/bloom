@@ -326,7 +326,7 @@ function ListField({
   function add() {
     const item: Record<string, unknown> = {};
     spec.itemFields?.forEach((f) => {
-      item[f.key] = f.kind === "toggle" ? false : f.kind === "list" ? [] : "";
+      item[f.key] = f.kind === "toggle" ? false : f.list ? [] : "";
     });
     onChange([...value, item]);
   }

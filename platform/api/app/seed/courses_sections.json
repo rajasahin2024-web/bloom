@@ -1,0 +1,126 @@
+{
+  "slug": "courses",
+  "title": "Courses and pricing — IELTS, TOEFL, PTE, Duolingo, Cambridge and OET",
+  "meta_description": "Eight-week intensives, evening cohorts and one-to-one tuition. Every course includes the full platform, the School library and live classes across four time zones.",
+  "sections": [
+    {
+      "id": "sec_plans",
+      "label": "Courses",
+      "type": "course_grid",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Courses",
+        "heading": "Three ways in. All include the full platform.",
+        "lead": "Monthly, cancel any time. The placement test and your English profile are free, whether you enrol or not.",
+        "courses": [
+          {
+            "icon": "seedling",
+            "icon_tone": "sky",
+            "name": "Core",
+            "price": "£190",
+            "period": "month",
+            "blurb": "Self-study with the full curriculum and group classes.",
+            "features": [
+              { "text": "All School notes, audio and lectures", "included": true },
+              { "text": "Vocabulary and grammar trainers", "included": true },
+              { "text": "Two mock exams a month", "included": true },
+              { "text": "Group classes, three a week", "included": true },
+              { "text": "One-to-one tutoring", "included": false },
+              { "text": "Writing and speaking evaluation", "included": false }
+            ],
+            "cta_label": "Choose Core",
+            "cta_href": "/login?mode=signup&plan=CORE",
+            "highlighted": false,
+            "ribbon": ""
+          },
+          {
+            "icon": "star",
+            "icon_tone": "leaf",
+            "name": "Plus",
+            "price": "£340",
+            "period": "month",
+            "blurb": "The full method — practice plus real feedback on everything.",
+            "features": [
+              { "text": "Everything in Core", "included": true },
+              { "text": "Unlimited writing evaluation", "included": true },
+              { "text": "Unlimited speaking evaluation", "included": true },
+              { "text": "Weekly mock exams", "included": true },
+              { "text": "One 1-on-1 session a month", "included": true },
+              { "text": "Personal error bank", "included": true }
+            ],
+            "cta_label": "Choose Plus",
+            "cta_href": "/login?mode=signup&plan=PLUS",
+            "highlighted": true,
+            "ribbon": "Most popular"
+          },
+          {
+            "icon": "crown",
+            "icon_tone": "amber",
+            "name": "Premium",
+            "price": "£520",
+            "period": "month",
+            "blurb": "Examiner-led, for a deadline that cannot move.",
+            "features": [
+              { "text": "Everything in Plus", "included": true },
+              { "text": "Four 1-on-1 sessions a month", "included": true },
+              { "text": "Priority marking within 12 hours", "included": true },
+              { "text": "Examiner-led mock interviews", "included": true },
+              { "text": "Monthly study plan review", "included": true },
+              { "text": "Test entry and document support", "included": true }
+            ],
+            "cta_label": "Choose Premium",
+            "cta_href": "/login?mode=signup&plan=PREMIUM",
+            "highlighted": false,
+            "ribbon": ""
+          }
+        ],
+        "footnote": "Deposit of 25% secures a place · free cancellation up to 14 days before your cohort starts · student and group discounts available"
+      }
+    },
+    {
+      "id": "sec_faq",
+      "label": "Questions",
+      "type": "faq",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Questions",
+        "heading": "Asked before every enrolment.",
+        "variant": "paper",
+        "mid": true,
+        "items": [
+          { "q": "How long will it take me to gain a band?", "a": "Roughly a hundred focused hours per half band, for most students. At two hours a day that is about eight weeks. Your placement test gives you a specific figure based on your actual starting level, your target and the time you say you can give — and we would rather tell you eighteen weeks honestly than six weeks optimistically.", "open": true },
+          { "q": "Is the placement test really free?", "a": "Yes, and so is the English profile it produces — the CEFR level, the band estimate for each of the four skills, your strongest and weakest area, and a recommended programme length. You can take it, read the result and walk away. Most people do not, but you can.", "open": false },
+          { "q": "Do you handle the English exam doctors and nurses need?", "a": "Yes — the Occupational English Test, delivered jointly with Future MedsAcademy. OET is the healthcare-specific alternative to IELTS, accepted by the GMC, NMC, GDC, GPhC, AHPRA, the Medical Council of Ireland and others, and it covers all twelve OET professions. Because every task is clinical, our role-plays are run with practising medics and our referral letters are marked twice: once by a language examiner and once by a clinician. If your only goal is registration, OET is usually the faster route; if you also plan to study, IELTS Academic covers both.", "open": false },
+          { "q": "Can you help me actually get into a university abroad?", "a": "That is what our partnership with FMA Overseas is for. Once you have your band, an FMA counsellor shortlists institutions against your real transcript and budget, then handles applications, statements of purpose, credential evaluation, scholarship search, visa filing and interview preparation, accommodation and arrival. Your Bloom score report and mock history attach to the application file automatically, so you are not repeating yourself. 340 placements across nine countries so far, with a 96% visa approval rate. The first consultation is free for every Bloom student, at any band.", "open": false },
+          { "q": "Should I take IELTS Academic or General Training?", "a": "Listening and Speaking are identical; Reading and Writing are not. Take Academic for university study at any level and for professional registration in medicine, nursing, law, engineering or accountancy. Take General Training for permanent residency and work visas in Australia, Canada, New Zealand and the UK, and for secondary or vocational study. If you are not certain, take Academic — it is accepted for almost everything General is, but not the reverse. We check your target institution's exact requirement, including any per-skill minimum, before you book anything.", "open": false },
+          { "q": "Are your teachers actual IELTS examiners?", "a": "Three of the eight are former official examiners — Listening and Reading for the British Council, and Writing for Cambridge Assessment, one of whom now trains examiners. The other five are specialists in one exam part, one language group, or medical English. Examiner status is stated on every profile; we do not blur it.", "open": false },
+          { "q": "What if I do not reach my target band?", "a": "If you complete the study plan we set — attendance above 80% and every assigned task marked — and you miss your target on the official test, your next month is free while we re-plan. That said, we will also tell you before you sit the exam if we do not think you are ready, because sitting too early costs you money and confidence.", "open": false },
+          { "q": "Do you teach TOEFL, PTE and Duolingo too?", "a": "Yes. The underlying skills are the same but the formats and the scoring are not, and format errors cost more marks than language errors. Every band estimate in the platform converts to a TOEFL score out of 120, a PTE score out of 90, a Duolingo score out of 160 and a Cambridge level.", "open": false },
+          { "q": "Can I study entirely online?", "a": "Most of our students do. Live classes run on Google Meet and Zoom across three time zones, one-to-one sessions are video or text chat, and the whole platform works in a browser. Our Manchester rooms are there if you want them, not required.", "open": false },
+          { "q": "How does the one-to-one booking work?", "a": "Pick the skill or the exact exam part, and the calendar shows only the teachers who specialise in it, with live availability. Sessions are 45 minutes. You send a note beforehand saying what you are stuck on, so the time is spent solving rather than explaining. Free cancellation up to three hours before.", "open": false },
+          { "q": "Is my work and data private?", "a": "Your essays, recordings, transcripts and results are visible to you and to the teachers assigned to your cohort — nobody else. You can export everything as a single file or erase your account entirely from your settings at any time.", "open": false }
+        ]
+      }
+    },
+    {
+      "id": "sec_contact",
+      "label": "Contact",
+      "type": "contact",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "heading": "Find out what band you would get today.",
+        "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
+        "phone": "+91 80 4718 2260",
+        "email": "hello@bloomielts.com",
+        "address": "Prestige Tech Park, Marathahalli, Bengaluru 560103, India",
+        "map_url": "",
+        "form_enabled": true,
+        "primary_btn": { "label": "Take the free placement test", "href": "/login?mode=signup", "icon": "seedling" },
+        "secondary_btn": { "label": "Sign in to my account", "href": "/login" }
+      }
+    }
+  ]
+}

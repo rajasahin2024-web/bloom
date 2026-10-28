@@ -1,0 +1,61 @@
+{
+  "slug": "blog",
+  "title": "IELTS guides and strategy — the Bloom blog",
+  "meta_description": "Long-form guides from former examiners on writing structure, speaking fluency, reading timing and the band descriptors that decide your score.",
+  "sections": [
+    {
+      "id": "sec_blog_filter",
+      "label": "Blog filter",
+      "type": "blog_filter",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Blog & guides",
+        "heading": "Written by the people who mark the papers.",
+        "lead": "Strategy, format updates and requirement news. No listicles, no motivational filler — every post exists because a student asked the question in a lesson.",
+        "all_label": "All",
+        "categories": ["Strategy", "Reading", "Speaking", "Grammar", "Study abroad", "Medical", "Listening"]
+      }
+    },
+    {
+      "id": "sec_blog_grid",
+      "label": "Blog grid",
+      "type": "blog_grid",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "variant": "tight",
+        "posts": [
+          { "slug": "band-65-to-7", "title": "Band 6.5 to 7.0: the four things that actually move the needle", "category": "Strategy", "author": "Dr. Elena Marchetti", "date": "2026-08-28", "read_minutes": 8, "hero_url": "", "excerpt": "Half a band is roughly a hundred focused hours — but only if those hours target the right four things. Here is what separates a 6.5 script from a 7.0 one, criterion by criterion.", "featured": true, "tags": ["Writing", "Band descriptors"] },
+          { "slug": "tfng-procedure", "title": "True / False / Not Given: a three-question procedure that removes the guesswork", "category": "Reading", "author": "James Okonkwo", "date": "2026-08-21", "read_minutes": 6, "hero_url": "", "excerpt": "The most-failed question type in IELTS Reading, reduced to three questions you ask in order. Plus the qualifier words that turn a TRUE into a FALSE.", "featured": true, "tags": ["Reading", "Question types"] },
+          { "slug": "part-2-extension", "title": "Why your Part 2 answer runs out at 70 seconds — and four ways to fix it", "category": "Speaking", "author": "Michael Chen", "date": "2026-08-14", "read_minutes": 7, "hero_url": "", "excerpt": "Almost every candidate who fails Part 2 fails it the same way: they say everything they planned in seventy seconds and then stop. Four extension techniques that hold two minutes.", "featured": false, "tags": ["Speaking", "Fluency"] },
+          { "slug": "articles-decision-tree", "title": "Articles for Hindi, Urdu and Bengali speakers: the decision tree", "category": "Grammar", "author": "Anjali Prasad", "date": "2026-08-06", "read_minutes": 9, "hero_url": "", "excerpt": "If your first language has no article system, a/an/the is probably costing you more marks than anything else in your writing. Three questions, asked in order, fix most of it.", "featured": false, "tags": ["Grammar", "First language"] },
+          { "slug": "uk-requirements-2027", "title": "UK university IELTS requirements 2027: what changed", "category": "Study abroad", "author": "Paulo Mendes", "date": "2026-07-30", "read_minutes": 5, "hero_url": "", "excerpt": "Several Russell Group departments have raised their per-skill minimums for 2027 entry. A department-by-department summary, and what it means if you are sitting this autumn.", "featured": true, "tags": ["Requirements", "UK"] },
+          { "slug": "oet-or-ielts-gmc", "title": "OET or IELTS for GMC registration? An honest comparison", "category": "Medical", "author": "Dr. Rana Yusuf", "date": "2026-07-22", "read_minutes": 10, "hero_url": "", "excerpt": "Both are accepted. One is dramatically easier if you already work in a clinical setting. The difference in what each exam asks you to do, and how to choose.", "featured": false, "tags": ["OET", "Registration"] },
+          { "slug": "listening-part-1-formats", "title": "Listening Part 1: the six formats that cost candidates ten marks", "category": "Listening", "author": "Dr. Sarah Whitfield", "date": "2026-07-15", "read_minutes": 6, "hero_url": "", "excerpt": "A correct answer written in the wrong format scores zero. Dates, money, phone numbers, plurals, postcodes and spelled names — every accepted variant.", "featured": false, "tags": ["Listening", "Accuracy"] }
+        ],
+        "empty": { "title": "Nothing published in this category yet", "body": "Try another filter." }
+      }
+    },
+    {
+      "id": "sec_news",
+      "label": "News & updates",
+      "type": "feature_grid",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "News & updates",
+        "heading": "What is happening at Bloom.",
+        "variant": "paper",
+        "mid": true,
+        "columns": 2,
+        "features": [
+          { "icon": "tag", "title": "Single-skill retakes now available at our partner centres", "body": "Candidates who miss one skill can now retake that skill alone within 60 days of the original sitting, at our Bengaluru, Muscat and Shanghai partner centres.", "kind": "Exam update", "date": "2026-09-02" },
+          { "icon": "tag", "title": "Autumn intake open — six cohorts, 96 places", "body": "Morning and evening IELTS Intensive, General Training, Speaking Confidence, TOEFL and Foundation English. Placement testing runs from 9 September.", "kind": "Admissions", "date": "2026-08-25" },
+          { "icon": "tag", "title": "New: OET pathway with Future MedsAcademy", "body": "Healthcare English for GMC, NMC and AHPRA registration, with role-plays run by practising clinicians and referral letters marked twice.", "kind": "Course launch", "date": "2026-08-11" },
+          { "icon": "tag", "title": "Bloom named a British Council preparation partner", "body": "Formal recognition of our examiner-led marking standards. Students can now book test sittings directly through their Bloom account.", "kind": "Announcement", "date": "2026-07-19" }
+        ]
+      }
+    }
+  ]
+}

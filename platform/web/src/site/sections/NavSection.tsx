@@ -3,11 +3,14 @@ import { Icon } from "./Icon";
 interface NavProps {
   brand: { name: string; tagline: string; logo_url: string };
   links: { label: string; href: string }[];
+  /** Mobile menu links (prototype adds Home + Contact). Falls back to links. */
+  mobile_links?: { label: string; href: string }[];
   cta: { signin_href: string; signup_href: string; signup_label: string };
 }
 
 export function NavSection({ props }: { props: NavProps }) {
-  const { brand, links, cta } = props;
+  const { brand, links, mobile_links, cta } = props;
+  const mob = mobile_links ?? links;
   return (
     <>
       <nav className="nav" id="siteNav">
@@ -49,7 +52,7 @@ export function NavSection({ props }: { props: NavProps }) {
         </div>
       </nav>
       <div className="mob" id="mob">
-        {links.map((l) => (
+        {mob.map((l) => (
           <a key={l.href + l.label} href={l.href}>
             {l.label}
           </a>

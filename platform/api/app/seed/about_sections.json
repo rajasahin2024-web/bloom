@@ -1,0 +1,144 @@
+{
+  "slug": "about",
+  "title": "About Bloom — founded in 2025 across Oman, Italy and China",
+  "meta_description": "Three teaching practices that merged and moved to Bengaluru. Meet Meriam Friaa and the former examiners who teach every part of the exam.",
+  "sections": [
+    {
+      "id": "sec_about",
+      "label": "About Bloom",
+      "type": "rich_block",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "About Bloom",
+        "heading": "Founded because good students kept failing for bad reasons.",
+        "body": "Bloom started in 2025 as three separate teaching practices — one in Muscat, one in Milan, one in Shanghai — each run by former IELTS examiners who had spent years watching capable candidates lose marks on things nobody had ever told them about: a missing article, a date written the wrong way, thirty seconds of silence in Part 2.\n\nThe three merged that same year and moved operations to Bengaluru. Across 2,840 students the method has not changed. Test honestly. Teach the specific thing. Mark it against the real criteria. Repeat until the number moves.",
+        "variant": "paper",
+        "cards": [],
+        "stats": [
+          { "value": "2025", "label": "Founded · Oman, Italy, China" },
+          { "value": "3", "label": "Former official examiners on staff" },
+          { "value": "34", "label": "Countries our students come from" },
+          { "value": "11,400", "label": "Essays marked against the descriptors" }
+        ],
+        "side": {
+          "kind": "beliefs",
+          "eyebrow": "What we believe",
+          "items": [
+            { "icon": "1", "title": "An honest level beats a flattering one", "body": "A placement test that tells you what you want to hear produces a study plan that wastes your time." },
+            { "icon": "2", "title": "Practice without feedback is not practice", "body": "It is the single biggest waste of preparation time we see, and it is why most self-study plateaus." },
+            { "icon": "3", "title": "Your first language predicts your errors", "body": "Not your ability. Targeting interference patterns is faster than general grammar revision." },
+            { "icon": "4", "title": "Consistency beats intensity", "body": "Twenty focused minutes a day beats four hours on a Sunday. The streak is the best predictor we have." },
+            { "icon": "5", "title": "We will tell you if you are not ready", "body": "Sitting the test too early costs money and confidence. We would rather lose the entry fee than your trust." }
+          ]
+        }
+      }
+    },
+    {
+      "id": "sec_staff",
+      "label": "Academic staff",
+      "type": "staff_cards",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "anchor_id": "staff",
+        "eyebrow": "Leadership & academic staff",
+        "heading": "The people who make the academy run.",
+        "lead": "One operational leader, three former examiners and four specialists. Every teacher marks a single part of the exam for a living.",
+        "mid": true,
+        "staff": [
+          { "name": "Meriam Friaa", "role": "Operational Leader", "photo_url": "", "bio": "Runs everything that is not a lesson — admissions, timetabling, teacher allocation, exam entries and the FMA Overseas partnership. Rebuilt the academy around measurement rather than goodwill; retention went from 71% to 94%.", "from": "Tunisia · based in Bengaluru", "spec": "Operations · Admissions · Student success", "langs": "English · French · Arabic · Italian", "years": "9", "lead": true, "slot": "leader-meriam" },
+          { "name": "Dr. Sarah Whitfield", "role": "Former IELTS Examiner · Listening & Reading Lead", "photo_url": "", "bio": "Fourteen years marking IELTS Listening and Reading. Specialises in students who understand the content but lose marks on transfer and timing.", "from": "United Kingdom", "spec": "Listening accuracy · Reading speed", "langs": "English · French", "years": "14", "lead": false, "slot": "staff-sw" },
+          { "name": "Dr. Elena Marchetti", "role": "Writing Examiner & Trainer", "photo_url": "", "bio": "Trains IELTS writing examiners. Marks your essay against the official descriptors line by line, then rewrites one paragraph with you so you can see the difference.", "from": "Italy · Milan centre", "spec": "Task 2 structure · Band 7 grammar", "langs": "English · Italian · Spanish", "years": "11", "lead": false, "slot": "staff-em" },
+          { "name": "Michael Chen", "role": "Speaking Examiner & Pronunciation Coach", "photo_url": "", "bio": "Full mock interviews under exam conditions with immediate criterion-by-criterion feedback. Particularly strong on pronunciation for Mandarin, Cantonese and Vietnamese speakers.", "from": "Singapore · Shanghai centre", "spec": "Part 2 fluency · Pronunciation", "langs": "English · Mandarin", "years": "9", "lead": false, "slot": "staff-mc" },
+          { "name": "James Okonkwo", "role": "IELTS Trainer · Reading Strategy", "photo_url": "", "bio": "Reading strategy specialist. If you understand the passages but never finish the paper, this is the teacher to book.", "from": "Nigeria", "spec": "Reading timing · Task 1 reports", "langs": "English", "years": "12", "lead": false, "slot": "staff-jo" },
+          { "name": "Anjali Prasad", "role": "Senior Tutor · South Asia Programme", "photo_url": "", "bio": "Works almost exclusively with Hindi, Urdu, Bengali and Tamil speakers. Targets articles, tense consistency and the direct-translation habits that cap students at Band 6.", "from": "India · Bengaluru HQ", "spec": "Articles & tenses · Essay planning", "langs": "English · Hindi · Bengali", "years": "8", "lead": false, "slot": "staff-ap" },
+          { "name": "Dr. Hana Al-Balushi", "role": "OET & Medical English Lead", "photo_url": "", "bio": "Leads the medical track for doctors, nurses and dentists sitting OET or the IELTS 7.0-each requirement for GMC, NMC and DHA registration.", "from": "Oman · Muscat centre", "spec": "OET · Medical English · IELTS 7.0 each", "langs": "English · Arabic", "years": "10", "lead": false, "slot": "staff-hb" },
+          { "name": "Li Wei", "role": "Senior Tutor · East Asia Programme", "photo_url": "", "bio": "Focuses on the obstacles specific to Mandarin and Cantonese speakers: final consonants, plural and past-tense endings, and extending answers past one sentence.", "from": "China · Shanghai centre", "spec": "Speaking extension · Final consonants", "langs": "English · Mandarin · Cantonese", "years": "7", "lead": false, "slot": "staff-lw" }
+        ]
+      }
+    },
+    {
+      "id": "sec_moments",
+      "label": "Moments in Bloom",
+      "type": "moments",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Moments in Bloom",
+        "heading": "2,840 students, four cities, one method.",
+        "lead": "Results days, speaking workshops, the first Muscat classroom, and the students who came back to teach. Photographs from the academy.",
+        "variant": "paper",
+        "items": [
+          { "slot": "mo-1", "media_url": "", "title": "Results day, July 2026", "sub": "Sixteen students, eleven at Band 7 or above", "size": "a" },
+          { "slot": "mo-2", "media_url": "", "title": "Speaking workshop", "sub": "Part 2 long turns, recorded and reviewed", "size": "b" },
+          { "slot": "mo-3", "media_url": "", "title": "Muscat, our first classroom", "sub": "Where Bloom started in 2025", "size": "c" },
+          { "slot": "mo-4", "media_url": "", "title": "The teaching team", "sub": "Three former examiners, four specialists", "size": "e" },
+          { "slot": "mo-5", "media_url": "", "title": "Marking session", "sub": "Every essay against all four descriptors", "size": "d" },
+          { "slot": "mo-6", "media_url": "", "title": "Send-off before departure", "sub": "Milan, Toronto, Sydney and Delft", "size": "f" },
+          { "slot": "mo-7", "media_url": "", "title": "Autumn intake, first week", "sub": "Twenty-four students, fourteen countries", "size": "g" }
+        ],
+        "footnote": "Drag your own photographs onto any frame above to fill it — they save with the page."
+      }
+    },
+    {
+      "id": "sec_reach",
+      "label": "Our reach",
+      "type": "map_block",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Our reach",
+        "heading": "India-based. Everywhere taught.",
+        "lead": "2,840 students in 34 countries, taught out of Bengaluru, Muscat, Milan and Shanghai. Classes run across four time zones, so a live session is always within reach of your evening.",
+        "variant": "dark",
+        "map": {
+          "dots": [
+            { "left": "22%", "top": "27%", "size": 12, "delay": 0, "color": "amber" },
+            { "left": "63%", "top": "47%", "size": 10, "delay": 0.4, "color": "" },
+            { "left": "76%", "top": "39%", "size": 11, "delay": 0.8, "color": "" },
+            { "left": "58%", "top": "56%", "size": 9, "delay": 1.2, "color": "" },
+            { "left": "70%", "top": "62%", "size": 8, "delay": 1.6, "color": "" },
+            { "left": "35%", "top": "58%", "size": 8, "delay": 2, "color": "" },
+            { "left": "18%", "top": "63%", "size": 7, "delay": 2.4, "color": "" }
+          ],
+          "label": { "text": "MANCHESTER · HQ", "left": "22%", "top": "27%" }
+        },
+        "countries": [
+          { "flag": "🇮🇳", "name": "India", "students": "712", "pct": 100 },
+          { "flag": "🇨🇳", "name": "China", "students": "564", "pct": 79 },
+          { "flag": "🇵🇰", "name": "Pakistan", "students": "398", "pct": 56 },
+          { "flag": "🇻🇳", "name": "Vietnam", "students": "291", "pct": 41 },
+          { "flag": "🇧🇩", "name": "Bangladesh", "students": "236", "pct": 33 },
+          { "flag": "🇳🇬", "name": "Nigeria", "students": "172", "pct": 24 },
+          { "flag": "🇵🇭", "name": "Philippines", "students": "138", "pct": 19 },
+          { "flag": "🇹🇷", "name": "Türkiye", "students": "104", "pct": 14 },
+          { "flag": "🌍", "name": "26 other countries", "students": "225", "pct": 31, "bar_color": "rgba(255,255,255,.32)" }
+        ],
+        "stats": [
+          { "value": "3", "label": "Time zones served daily" },
+          { "value": "6", "label": "Languages our staff speak" },
+          { "value": "24/7", "label": "Platform access" }
+        ]
+      }
+    },
+    {
+      "id": "sec_contact",
+      "label": "Contact",
+      "type": "contact",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "heading": "Find out what band you would get today.",
+        "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
+        "phone": "+91 80 4718 2260",
+        "email": "hello@bloomielts.com",
+        "address": "Prestige Tech Park, Marathahalli, Bengaluru 560103, India",
+        "map_url": "",
+        "form_enabled": true,
+        "primary_btn": { "label": "Take the free placement test", "href": "/login?mode=signup", "icon": "seedling" },
+        "secondary_btn": { "label": "Sign in to my account", "href": "/login" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "slug": "login",
+  "title": "Sign in — Bloom IELTS Academy",
+  "meta_description": "Sign in to the Bloom student portal, faculty dashboard or administration panel.",
+  "sections": [
+    {
+      "id": "sec_auth",
+      "label": "Auth page",
+      "type": "auth_page",
+      "enabled": true,
+      "animation": null,
+      "props": {
+        "brand": {
+          "name": "Bloom",
+          "tagline": "IELTS Academy",
+          "logo_url": "assets/bloom-mark.png",
+          "href": "/"
+        },
+        "back_link": { "label": "Back to site", "href": "/" },
+        "aside": {
+          "eyebrow": "Welcome back",
+          "heading": "Your band, your plan, your next session.",
+          "lead": "Everything picks up exactly where you left it — the study plan for today, the words due for review, and whatever your last mock said you should fix.",
+          "features": [
+            { "icon": "calendar-day", "title": "Today's plan is waiting", "body": "Four blocks, weighted to your weakest skill" },
+            { "icon": "fire", "title": "Keep your streak alive", "body": "Twenty focused minutes is enough" },
+            { "icon": "video", "title": "Live classes and 1-on-1s", "body": "Join straight from your dashboard" }
+          ],
+          "quote": {
+            "text": "Eleven weeks from Band 6.0 to 7.5. Having a real number instead of encouragement was what kept me going.",
+            "author": "Priya Sharma · IELTS 7.5"
+          }
+        },
+        "roles": [
+          { "key": "student", "name": "Student", "icon": "user-graduate", "sub": "Study & practise" },
+          { "key": "teacher", "name": "Teacher", "icon": "chalkboard-user", "sub": "Teach & mark" },
+          { "key": "admin", "name": "Admin", "icon": "shield-halved", "sub": "Run the school" }
+        ],
+        "signin": {
+          "heading": "Sign in",
+          "lead": "Choose how you are signing in, then enter your details.",
+          "sso": [
+            { "provider": "Google", "icon": "google" },
+            { "provider": "Microsoft", "icon": "microsoft" }
+          ],
+          "demo_note": "Demo access — all three accounts use the password bloom2026. student@bloomielts.com · teacher@bloomielts.com · admin@bloomielts.com",
+          "footer_text": "New to Bloom?",
+          "footer_link": { "label": "Take the free placement test", "mode": "signup" }
+        },
+        "signup": {
+          "heading": "Create your account",
+          "lead": "The placement test and your English profile are free. You can decide about a course afterwards.",
+          "countries": ["India", "Pakistan", "Bangladesh", "Nepal", "Sri Lanka", "China", "Vietnam", "Philippines", "Indonesia", "Thailand", "Nigeria", "Egypt", "Iran", "Uzbekistan", "Brazil", "Colombia", "Türkiye", "Other"],
+          "languages": ["Hindi", "Urdu", "Bengali", "Punjabi", "Tamil", "Telugu", "Nepali", "Sinhala", "Mandarin", "Cantonese", "Vietnamese", "Tagalog", "Indonesian", "Thai", "Arabic", "Persian", "Uzbek", "Portuguese", "Spanish", "Turkish", "Other"],
+          "exams": [
+            { "value": "ielts-a", "label": "IELTS Academic" },
+            { "value": "ielts-g", "label": "IELTS General Training" },
+            { "value": "toefl", "label": "TOEFL iBT" },
+            { "value": "pte", "label": "PTE Academic" },
+            { "value": "duolingo", "label": "Duolingo English Test" },
+            { "value": "cambridge", "label": "Cambridge English" },
+            { "value": "oet", "label": "OET — medical registration" },
+            { "value": "general", "label": "General & Spoken English" }
+          ],
+          "plans": [
+            { "value": "CORE", "label": "Core — £190 / month" },
+            { "value": "PLUS", "label": "Plus — £340 / month" },
+            { "value": "PREMIUM", "label": "Premium — £520 / month" },
+            { "value": "", "label": "Just the free placement test for now" }
+          ],
+          "terms": "I agree to Bloom's terms and privacy policy. My data is stored on my own device and I can export or erase it at any time.",
+          "submit_label": "Create account & start placement test",
+          "footer_text": "Already have an account?",
+          "footer_link": { "label": "Sign in", "mode": "login" }
+        },
+        "forgot": {
+          "heading": "Reset your password",
+          "lead": "Enter the email on your account and we will send a reset link. It is valid for one hour.",
+          "submit_label": "Send reset link",
+          "success_heading": "Check your inbox",
+          "success_body": "If an account exists for {email}, a reset link is on its way. It expires in one hour."
+        }
+      }
+    }
+  ]
+}

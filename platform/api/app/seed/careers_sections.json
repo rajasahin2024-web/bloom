@@ -1,0 +1,145 @@
+{
+  "slug": "careers",
+  "title": "Careers at Bloom — teach with former IELTS examiners",
+  "meta_description": "Open roles for examiners, teachers and academic staff across Bengaluru, Muscat, Milan and Shanghai. You specialise in one part of the exam and you mark it properly.",
+  "sections": [
+    {
+      "id": "sec_hero",
+      "label": "Careers hero",
+      "type": "rich_block",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Careers at Bloom",
+        "heading": "Pursue your career with us.",
+        "body": "We are a small academy with an unusual standard: every teacher marks one part of the exam for a living. If you are a former examiner, a specialist tutor or someone who wants education operations done properly, we want to hear from you.",
+        "layout": "hero",
+        "cards": [],
+        "primary_btn": { "label": "See open roles", "href": "#openings", "icon": "briefcase" },
+        "secondary_btn": { "label": "Send a speculative application", "href": "#apply" },
+        "stats": [
+          { "value": "3", "label": "Open roles" },
+          { "value": "4", "label": "Offices" },
+          { "value": "15", "label": "People" },
+          { "value": "2025", "label": "Founded" }
+        ],
+        "photos": [
+          { "slot": "car-1", "media_url": "", "caption": "Our team", "sub": "Bengaluru head office" },
+          { "slot": "car-2", "media_url": "", "caption": "Marking day", "sub": "Against the official descriptors" },
+          { "slot": "car-3", "media_url": "", "caption": "Staff workshop", "sub": "Muscat centre" },
+          { "slot": "car-4", "media_url": "", "caption": "Best Faculty", "sub": "Presented quarterly" }
+        ]
+      }
+    },
+    {
+      "id": "sec_why",
+      "label": "Why Bloom",
+      "type": "feature_grid",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Why Bloom",
+        "heading": "What the job is actually like.",
+        "lead": "No inflated claims. This is how the academy runs, and the parts people tell us they value.",
+        "variant": "paper",
+        "mid": true,
+        "features": [
+          { "icon": "bullseye", "title": "You specialise", "body": "Nobody here teaches all four skills. You own one part of the exam and become the person the others come to about it." },
+          { "icon": "chalkboard-user", "title": "Small cohorts", "body": "Ten to eighteen students, never more. You know every name and every weakness by week two." },
+          { "icon": "clock", "title": "48-hour marking", "body": "It is a standard, not an aspiration. In return, marking time is timetabled — you are not doing it at midnight." },
+          { "icon": "earth-asia", "title": "Four time zones", "body": "Bengaluru, Muscat, Milan and Shanghai. Remote and hybrid contracts are normal, not a concession." },
+          { "icon": "trophy", "title": "Recognition on record", "body": "Best Faculty is quarterly and measured on student band gain, not popularity. It comes with a certificate and a revision." },
+          { "icon": "graduation-cap", "title": "Paid development", "body": "DELTA, examiner training and conference attendance are funded, with study leave to sit the exams." }
+        ]
+      }
+    },
+    {
+      "id": "sec_openings",
+      "label": "Open positions",
+      "type": "job_list",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Open positions",
+        "heading": "Roles we are hiring for.",
+        "lead": "Apply below and your application enters our hiring pipeline the same minute. We read every one, and reply either way.",
+        "mid": true,
+        "jobs": [
+          { "id": "v1", "title": "IELTS Writing Examiner", "dept": "Academic", "dept_icon": "chalkboard-user", "office": "Bengaluru", "office_flag": "🇮🇳", "contract": "Permanent", "ctc": "₹16–19 lakh", "need": "Former examiner, five years minimum, able to mark against all four descriptors.", "posted": "2026-08-18", "band": "L4" },
+          { "id": "v2", "title": "Speaking Tutor · Gulf", "dept": "Academic", "dept_icon": "chalkboard-user", "office": "Muscat", "office_flag": "🇴🇲", "contract": "Part time", "ctc": "₹6–8 lakh", "need": "Arabic-speaking, strong on pronunciation for Arabic L1 learners.", "posted": "2026-08-25", "band": "L2" },
+          { "id": "v3", "title": "Admissions Counsellor", "dept": "Admissions", "dept_icon": "user-plus", "office": "Bengaluru", "office_flag": "🇮🇳", "contract": "Permanent", "ctc": "₹6–7.5 lakh", "need": "Two years in overseas education counselling; UK and Australia pathways.", "posted": "2026-09-01", "band": "L2" }
+        ],
+        "empty": {
+          "heading": "No roles open right now",
+          "body": "We hire on need rather than on a calendar. Send a speculative application and we will come back to you when something opens.",
+          "cta_label": "Send a speculative application",
+          "cta_href": "#apply"
+        }
+      }
+    },
+    {
+      "id": "sec_hiring",
+      "label": "How hiring works",
+      "type": "steps",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "How hiring works",
+        "heading": "Six stages, no ghosting.",
+        "lead": "You will know which stage you are at, and roughly how long the next one takes.",
+        "variant": "paper",
+        "mid": true,
+        "steps": [
+          { "n": 1, "title": "Applied", "body": "We confirm receipt the same day.", "icon": "paper-plane" },
+          { "n": 2, "title": "Screening", "body": "A look at your experience and qualifications. Two to three days.", "icon": "magnifying-glass" },
+          { "n": 3, "title": "Demo lesson", "body": "Teaching roles only. Forty-five minutes with real students.", "icon": "chalkboard" },
+          { "n": 4, "title": "Interview", "body": "With the Operational Leader and the relevant department head.", "icon": "comments" },
+          { "n": 5, "title": "Offer", "body": "Written offer, terms and start date. Valid fourteen days.", "icon": "file-signature" },
+          { "n": 6, "title": "Onboarding", "body": "Contract, induction, and a named mentor for your first term.", "icon": "user-check" }
+        ]
+      }
+    },
+    {
+      "id": "sec_apply",
+      "label": "Apply",
+      "type": "job_form",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Apply",
+        "heading": "Send us your application.",
+        "lead": "Pick a role, or send a speculative application and we will keep you on file. Everything here goes straight into our hiring pipeline — no third-party job board in between.",
+        "tips_heading": "What helps your application",
+        "tips": [
+          { "title": "Name the exam part you want to own", "body": "\"IELTS Writing Task 2\" beats \"English teaching\"." },
+          { "title": "Tell us a number", "body": "A band gain, a cohort size, a pass rate. Specifics are persuasive." },
+          { "title": "Say where you can teach from", "body": "Which office, or which time zone if remote." },
+          { "title": "Mention your examiner status", "body": "Current, lapsed, or never — all three are fine, we just need to know." }
+        ],
+        "note": "Not seeing your role? Send a speculative application anyway. Three of our current team joined that way — we hold applications on file and come back to them when a vacancy opens.",
+        "roles": [
+          { "id": "v1", "title": "IELTS Writing Examiner" },
+          { "id": "v2", "title": "Speaking Tutor · Gulf" },
+          { "id": "v3", "title": "Admissions Counsellor" },
+          { "id": "spec", "title": "Speculative — no specific role" }
+        ],
+        "offices": [
+          { "id": "blr", "label": "🇮🇳 Bengaluru, India" },
+          { "id": "mct", "label": "🇴🇲 Muscat, Oman" },
+          { "id": "mil", "label": "🇮🇹 Milan, Italy" },
+          { "id": "sha", "label": "🇨🇳 Shanghai, China" },
+          { "id": "remote", "label": "🌍 Remote — any time zone" }
+        ],
+        "countries": ["India", "Pakistan", "Bangladesh", "Nepal", "Sri Lanka", "China", "Vietnam", "Philippines", "Indonesia", "Thailand", "Nigeria", "Egypt", "Iran", "Uzbekistan", "Brazil", "Colombia", "Türkiye", "Other"],
+        "examiner_options": ["Never been an examiner", "Current examiner", "Former examiner", "In training"],
+        "submit_label": "Submit application",
+        "footnote": "We confirm receipt the same day and reply either way.",
+        "success": {
+          "title": "Application received",
+          "body": "Your application is in our hiring pipeline at the Applied stage. We will be in touch within two working days.",
+          "cta_label": "Message HR directly"
+        }
+      }
+    }
+  ]
+}

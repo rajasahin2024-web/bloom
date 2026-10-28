@@ -2,7 +2,9 @@ import { Head, Section } from "./shared";
 import { Icon } from "./Icon";
 
 interface TestimonialCardsProps {
+  eyebrow?: string;
   heading: string;
+  lead?: string;
   students: {
     name: string;
     photo_url: string;
@@ -14,10 +16,10 @@ interface TestimonialCardsProps {
 }
 
 export function TestimonialCardsSection({ props }: { props: TestimonialCardsProps }) {
-  const { heading, students } = props;
+  const { eyebrow = "Our students", heading, lead, students } = props;
   return (
     <Section id="students">
-      <Head eyebrow="Our students" heading={heading} />
+      <Head eyebrow={eyebrow} heading={heading} lead={lead} />
       <div className="grid g3">
         {students.map((s, i) => {
           const ini = s.name

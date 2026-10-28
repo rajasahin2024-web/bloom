@@ -12,6 +12,7 @@
  * to /api/cms/pages/{id} — live immediately.
  */
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import { apiFetch, ApiError } from "@/lib/api";
 import { fetchMe, loadSession } from "@/lib/auth";
 import { SECTION_REGISTRY, SECTION_TYPES } from "./sections/registry";
@@ -39,7 +40,9 @@ function blankSection(type: string, index: number): SiteSection {
   };
 }
 
-export function SitePage({ slug = "home" }: { slug?: string }) {
+export function SitePage({ slug: slugProp }: { slug?: string }) {
+  const params = useParams();
+  const slug = slugProp ?? params.slug ?? "home";
   const [page, setPage] = useState<SitePageData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adminToken, setAdminToken] = useState<string | null>(null);
@@ -49,10 +52,20 @@ export function SitePage({ slug = "home" }: { slug?: string }) {
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
+    setPage(null);
+    setError(null);
     document.title =
       "Bloom IELTS Academy — the school for English, accepted all over the globe";
     apiFetch<SitePageData>(`/api/content/pages/${slug}`)
-      .then(({ data }) => setPage(data))
+      .then(({ data }) => {
+        setPage(data);
+        if (data.title) document.title = data.title;
+        if (data.meta_description) {
+          document
+            .querySelector('meta[name="description"]')
+            ?.setAttribute("content", data.meta_description);
+        }
+      })
       .catch((e: unknown) =>
         setError(e instanceof ApiError ? e.message : "Could not load the page."),
       );
@@ -60,6 +73,19 @@ export function SitePage({ slug = "home" }: { slug?: string }) {
 
   useEffect(() => {
     initSiteRuntime();
+  }, [page]);
+
+  // Deep links like /about#staff must scroll after async content renders —
+  // the target element does not exist at initial navigation time.
+  useEffect(() => {
+    if (!page || !window.location.hash) return;
+    try {
+      document
+        .querySelector(window.location.hash)
+        ?.scrollIntoView();
+    } catch {
+      /* malformed hash — ignore */
+    }
   }, [page]);
 
   useEffect(() => {
@@ -78,7 +104,13 @@ export function SitePage({ slug = "home" }: { slug?: string }) {
     return () => window.clearTimeout(t);
   }, [note]);
 
-  const sections = useMemo(() => page?.sections ?? [], [page]);
+  const sections = useMemo(
+    () =>
+      (page?.sections ?? []).filter(
+        (s) => s.type !== "nav" && s.type !== "footer",
+      ),
+    [page],
+  );
   const current = sections.find((s) => s.id === openId) ?? null;
 
   async function persist(next: SiteSection[], notify: boolean) {

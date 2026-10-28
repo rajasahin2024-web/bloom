@@ -66,7 +66,18 @@ SECTION_TYPES: dict[str, dict[str, Any]] = {
     },
     "certificate_list": {
         "heading": _ANY,
-        "items": [{"name": _ANY, "logo_url": _ANY, "blurb": _ANY}],
+        "eyebrow": _ANY,
+        "items": [
+            {
+                "name": _ANY,
+                "org": _ANY,
+                "overall": _ANY,
+                "cefr": _ANY,
+                "skills": [{"label": _ANY, "value": _ANY}],
+                "logo_url": _ANY,
+                "blurb": _ANY,
+            }
+        ],
     },
     "staff_cards": {
         "heading": _ANY,
@@ -139,6 +150,248 @@ SECTION_TYPES: dict[str, dict[str, Any]] = {
         "columns": [{"heading": _ANY, "links": [{"label": _ANY, "href": _ANY}]}],
         "social": [{"icon": _ANY, "href": _ANY}],
         "copyright": _ANY,
+    },
+    # ── TEC-134: section types for the 11 remaining prototype pages ──
+    # The nine-band scale on /ielts. Each row is a coloured band chip with
+    # descriptor text and the institutions that typically require it.
+    "band_table": {
+        "eyebrow": _ANY,
+        "heading": _ANY,
+        "lead": _ANY,
+        "rows": [
+            {
+                "band": _ANY,
+                "title": _ANY,
+                "description": _ANY,
+                "used_for": _ANY,
+                "color": _ANY,
+                "text_color": _ANY,
+            }
+        ],
+        "notes": [_ANY],
+    },
+    # Accordion of <details> Q&A items (courses page and reuse elsewhere).
+    "faq": {
+        "eyebrow": _ANY,
+        "heading": _ANY,
+        "items": [{"q": _ANY, "a": _ANY, "open": _ANY}],
+    },
+    # Priced course/plan cards (courses page .plans grid).
+    "course_grid": {
+        "eyebrow": _ANY,
+        "heading": _ANY,
+        "lead": _ANY,
+        "courses": [
+            {
+                "icon": _ANY,
+                "icon_tone": _ANY,
+                "name": _ANY,
+                "price": _ANY,
+                "period": _ANY,
+                "blurb": _ANY,
+                "features": [{"text": _ANY, "included": _ANY}],
+                "cta_label": _ANY,
+                "cta_href": _ANY,
+                "highlighted": _ANY,
+                "ribbon": _ANY,
+            }
+        ],
+        "footnote": _ANY,
+    },
+    # Filterable university directory (abroad page): country filter buttons
+    # plus rich .unic cards with per-skill English requirements.
+    "uni_filter": {
+        "eyebrow": _ANY,
+        "heading": _ANY,
+        "lead": _ANY,
+        "all_label": _ANY,
+        "universities": [
+            {
+                "id": _ANY,
+                "name": _ANY,
+                "country": _ANY,
+                "flag": _ANY,
+                "city": _ANY,
+                "rank": _ANY,
+                "tuition": _ANY,
+                "intake": _ANY,
+                "course": _ANY,
+                "ielts": _ANY,
+                "per_skill": _ANY,
+                "toefl": _ANY,
+                "photo_url": _ANY,
+                "featured": _ANY,
+                "note": _ANY,
+            }
+        ],
+    },
+    # A single data table (.tbl): column headers + body rows. Each row is a
+    # list of cells; a cell may be a plain value or {text, sub} for the
+    # two-line cells the prototype uses.
+    "data_table": {
+        "eyebrow": _ANY,
+        "heading": _ANY,
+        "intro": _ANY,
+        "columns": [_ANY],
+        "rows": [_ANY],
+        "footnote": _ANY,
+    },
+    # Photo collage (.moments grid) on the about page — tiles carry the
+    # prototype's a–g size letters so the mosaic layout is reproducible.
+    "moments": {
+        "eyebrow": _ANY,
+        "heading": _ANY,
+        "lead": _ANY,
+        "items": [
+            {
+                "slot": _ANY,
+                "media_url": _ANY,
+                "title": _ANY,
+                "sub": _ANY,
+                "size": _ANY,
+            }
+        ],
+        "footnote": _ANY,
+    },
+    # Dark reach block (about page): abstract map with pulsing dots plus the
+    # per-country student bars and summary stats.
+    "map_block": {
+        "eyebrow": _ANY,
+        "heading": _ANY,
+        "lead": _ANY,
+        "map": {
+            "dots": [
+                {
+                    "left": _ANY,
+                    "top": _ANY,
+                    "size": _ANY,
+                    "delay": _ANY,
+                    "color": _ANY,
+                }
+            ],
+            "label": {"text": _ANY, "left": _ANY, "top": _ANY},
+        },
+        "countries": [
+            {"flag": _ANY, "name": _ANY, "students": _ANY, "pct": _ANY}
+        ],
+        "stats": [{"value": _ANY, "label": _ANY}],
+    },
+    # Open vacancies list (careers page) — resolved card data, not the raw
+    # HR ids: dept/office/contract are pre-resolved to display values.
+    "job_list": {
+        "eyebrow": _ANY,
+        "heading": _ANY,
+        "lead": _ANY,
+        "jobs": [
+            {
+                "id": _ANY,
+                "title": _ANY,
+                "dept": _ANY,
+                "dept_icon": _ANY,
+                "office": _ANY,
+                "office_flag": _ANY,
+                "contract": _ANY,
+                "ctc": _ANY,
+                "need": _ANY,
+                "posted": _ANY,
+                "band": _ANY,
+            }
+        ],
+        "empty": {
+            "heading": _ANY,
+            "body": _ANY,
+            "cta_label": _ANY,
+            "cta_href": _ANY,
+        },
+    },
+    # Careers application form + the "what helps" tips sidebar.
+    "job_form": {
+        "eyebrow": _ANY,
+        "heading": _ANY,
+        "lead": _ANY,
+        "tips_heading": _ANY,
+        "tips": [{"title": _ANY, "body": _ANY}],
+        "note": _ANY,
+        "roles": [{"id": _ANY, "title": _ANY}],
+        "offices": [{"id": _ANY, "label": _ANY}],
+        "countries": [_ANY],
+        "examiner_options": [_ANY],
+        "submit_label": _ANY,
+        "footnote": _ANY,
+        "success": {"title": _ANY, "body": _ANY, "cta_label": _ANY},
+    },
+    # Blog index grid: featured card + post cards (data cloned from the
+    # prototype's cms() blogs collection).
+    "blog_grid": {
+        "posts": [
+            {
+                "slug": _ANY,
+                "title": _ANY,
+                "category": _ANY,
+                "author": _ANY,
+                "date": _ANY,
+                "read_minutes": _ANY,
+                "hero_url": _ANY,
+                "excerpt": _ANY,
+                "featured": _ANY,
+                "tags": [_ANY],
+            }
+        ],
+        "empty": {"title": _ANY, "body": _ANY},
+    },
+    # Blog head + category filter pills (rendered just above blog_grid).
+    "blog_filter": {
+        "eyebrow": _ANY,
+        "heading": _ANY,
+        "lead": _ANY,
+        "all_label": _ANY,
+        "categories": [_ANY],
+    },
+    # Standalone sign-in / sign-up / reset page (no site chrome). Left aside
+    # panel + the three auth modes, switched by ?mode=.
+    "auth_page": {
+        "brand": {
+            "name": _ANY,
+            "tagline": _ANY,
+            "logo_url": _ANY,
+            "href": _ANY,
+        },
+        "back_link": {"label": _ANY, "href": _ANY},
+        "aside": {
+            "eyebrow": _ANY,
+            "heading": _ANY,
+            "lead": _ANY,
+            "features": [{"icon": _ANY, "title": _ANY, "body": _ANY}],
+            "quote": {"text": _ANY, "author": _ANY},
+        },
+        "roles": [{"key": _ANY, "name": _ANY, "icon": _ANY, "sub": _ANY}],
+        "signin": {
+            "heading": _ANY,
+            "lead": _ANY,
+            "sso": [{"provider": _ANY, "icon": _ANY}],
+            "demo_note": _ANY,
+            "footer_text": _ANY,
+            "footer_link": {"label": _ANY, "mode": _ANY},
+        },
+        "signup": {
+            "heading": _ANY,
+            "lead": _ANY,
+            "countries": [_ANY],
+            "languages": [_ANY],
+            "exams": [{"value": _ANY, "label": _ANY}],
+            "plans": [{"value": _ANY, "label": _ANY}],
+            "terms": _ANY,
+            "submit_label": _ANY,
+            "footer_text": _ANY,
+            "footer_link": {"label": _ANY, "mode": _ANY},
+        },
+        "forgot": {
+            "heading": _ANY,
+            "lead": _ANY,
+            "submit_label": _ANY,
+            "success_heading": _ANY,
+            "success_body": _ANY,
+        },
     },
 }
 

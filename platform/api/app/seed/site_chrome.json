@@ -1,0 +1,231 @@
+{
+  "nav": {
+    "brand": {
+      "name": "Bloom",
+      "tagline": "IELTS Academy",
+      "logo_url": "/site/bloom-mark.png"
+    },
+    "links": [
+      {
+        "label": "The exam",
+        "href": "/ielts"
+      },
+      {
+        "label": "Platform",
+        "href": "/platform"
+      },
+      {
+        "label": "Courses",
+        "href": "/courses"
+      },
+      {
+        "label": "Results",
+        "href": "/results"
+      },
+      {
+        "label": "Study abroad",
+        "href": "/abroad"
+      },
+      {
+        "label": "Medical",
+        "href": "/medical"
+      },
+      {
+        "label": "Blog",
+        "href": "/blog"
+      },
+      {
+        "label": "About",
+        "href": "/about"
+      },
+      {
+        "label": "Careers",
+        "href": "/careers"
+      }
+    ],
+    "mobile_links": [
+      {
+        "label": "Home",
+        "href": "/"
+      },
+      {
+        "label": "The exam",
+        "href": "/ielts"
+      },
+      {
+        "label": "Platform",
+        "href": "/platform"
+      },
+      {
+        "label": "Courses",
+        "href": "/courses"
+      },
+      {
+        "label": "Results",
+        "href": "/results"
+      },
+      {
+        "label": "Study abroad",
+        "href": "/abroad"
+      },
+      {
+        "label": "Medical",
+        "href": "/medical"
+      },
+      {
+        "label": "Blog",
+        "href": "/blog"
+      },
+      {
+        "label": "About",
+        "href": "/about"
+      },
+      {
+        "label": "Contact",
+        "href": "/contact"
+      }
+    ],
+    "cta": {
+      "signin_href": "/login",
+      "signup_href": "/login?mode=signup",
+      "signup_label": "Start free"
+    }
+  },
+  "footer": {
+    "brand": {
+      "name": "Bloom",
+      "tagline": "IELTS Academy",
+      "logo_url": "/site/bloom-mark.png",
+      "blurb": "The school for English, accepted all over the globe. English exam preparation for students across Asia, the Gulf and Europe. Founded in 2025 across Oman, Italy and China; headquartered in India."
+    },
+    "columns": [
+      {
+        "heading": "Courses",
+        "links": [
+          {
+            "label": "IELTS Academic",
+            "href": "/courses"
+          },
+          {
+            "label": "IELTS General Training",
+            "href": "/courses"
+          },
+          {
+            "label": "TOEFL iBT",
+            "href": "/courses"
+          },
+          {
+            "label": "PTE Academic",
+            "href": "/courses"
+          },
+          {
+            "label": "OET · Medical English",
+            "href": "/medical"
+          },
+          {
+            "label": "General English",
+            "href": "/courses"
+          }
+        ]
+      },
+      {
+        "heading": "Academy",
+        "links": [
+          {
+            "label": "About Bloom",
+            "href": "/about"
+          },
+          {
+            "label": "How we teach",
+            "href": "/ielts#how"
+          },
+          {
+            "label": "Academic staff",
+            "href": "/about#staff"
+          },
+          {
+            "label": "Results",
+            "href": "/results"
+          },
+          {
+            "label": "Our reach",
+            "href": "/about#reach"
+          },
+          {
+            "label": "Blog",
+            "href": "/blog"
+          }
+        ]
+      },
+      {
+        "heading": "Platform",
+        "links": [
+          {
+            "label": "Free placement test",
+            "href": "/login?mode=signup"
+          },
+          {
+            "label": "The School",
+            "href": "/platform"
+          },
+          {
+            "label": "Writing Lab",
+            "href": "/platform"
+          },
+          {
+            "label": "Study abroad",
+            "href": "/abroad"
+          },
+          {
+            "label": "Student sign in",
+            "href": "/login"
+          },
+          {
+            "label": "Site admin",
+            "href": "/site-admin"
+          }
+        ]
+      }
+    ],
+    "social": [
+      {
+        "icon": "instagram",
+        "href": "/contact"
+      },
+      {
+        "icon": "youtube",
+        "href": "/contact"
+      },
+      {
+        "icon": "linkedin",
+        "href": "/contact"
+      },
+      {
+        "icon": "whatsapp",
+        "href": "/contact"
+      }
+    ],
+    "copyright": "© 2026 Bloom IELTS Academy Pvt Ltd · Registered in India · CIN U85499KA2025PTC198420 · GSTIN 29ABMCB4821K1ZP",
+    "legal": "IELTS is a registered trademark of the British Council, IDP: IELTS Australia and Cambridge Assessment English. TOEFL is a registered trademark of ETS. Bloom IELTS Academy is an independent preparation provider and is not affiliated with, endorsed by or a test centre for any of these organisations.",
+    "legal_links": [
+      {
+        "label": "Privacy",
+        "href": "/contact"
+      },
+      {
+        "label": "Terms",
+        "href": "/contact"
+      },
+      {
+        "label": "Contact",
+        "href": "/contact"
+      }
+    ]
+  },
+  "banner": {
+    "on": true,
+    "text": "Autumn intake open — six cohorts, 96 places. Placement testing from 9 September.",
+    "cta_label": "See courses",
+    "href": "/courses"
+  }
+}

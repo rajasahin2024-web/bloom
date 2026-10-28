@@ -1,0 +1,127 @@
+{
+  "slug": "results",
+  "title": "Results and our students — average gain of 1.4 bands",
+  "meta_description": "Real band jumps from Bloom students, with certificates, testimonials and the measured outcomes behind them. 92% of students reach their target band.",
+  "sections": [
+    {
+      "id": "sec_certificates",
+      "label": "Certificates",
+      "type": "certificate_list",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "IELTS certificates",
+        "heading": "Verified results, not marketing numbers.",
+        "lead": "A selection of official Test Report Forms achieved by Bloom students this year. Every entry below corresponds to a certificate we have seen.",
+        "variant": "paper",
+        "mid": true,
+        "stats": [
+          { "value": "7.2", "label": "Average overall band achieved this year" },
+          { "value": "92%", "label": "Reached or exceeded their target band" },
+          { "value": "68%", "label": "Achieved Band 7.0 or above" },
+          { "value": "1.4", "label": "Average band gain from placement" }
+        ],
+        "items": [
+          {
+            "name": "Priya Sharma",
+            "org": "IELTS Academic · Test Report Form",
+            "overall": "7.5",
+            "cefr": "C1 · Advanced",
+            "skills": [
+              { "label": "Listening", "value": "8.0" },
+              { "label": "Reading", "value": "8.0" },
+              { "label": "Writing", "value": "7.0" },
+              { "label": "Speaking", "value": "7.0" },
+              { "label": "Test date", "value": "12 Jul 2026" }
+            ],
+            "logo_url": "",
+            "blurb": ""
+          },
+          {
+            "name": "Li Chen",
+            "org": "IELTS Academic · Test Report Form",
+            "overall": "7.5",
+            "cefr": "C1 · Advanced",
+            "skills": [
+              { "label": "Listening", "value": "8.5" },
+              { "label": "Reading", "value": "7.5" },
+              { "label": "Writing", "value": "7.0" },
+              { "label": "Speaking", "value": "7.0" },
+              { "label": "Test date", "value": "28 Jun 2026" }
+            ],
+            "logo_url": "",
+            "blurb": ""
+          },
+          {
+            "name": "Yusuf Demir",
+            "org": "IELTS General Training · TRF",
+            "overall": "7.0",
+            "cefr": "C1 · Advanced",
+            "skills": [
+              { "label": "Listening", "value": "8.0" },
+              { "label": "Reading", "value": "7.5" },
+              { "label": "Writing", "value": "7.0" },
+              { "label": "Speaking", "value": "7.0" },
+              { "label": "Test date", "value": "3 Aug 2026" }
+            ],
+            "logo_url": "",
+            "blurb": ""
+          },
+          {
+            "name": "Aisha Khan",
+            "org": "IELTS Academic · Test Report Form",
+            "overall": "7.5",
+            "cefr": "C1 · Advanced",
+            "skills": [
+              { "label": "Listening", "value": "7.5" },
+              { "label": "Reading", "value": "7.5" },
+              { "label": "Writing", "value": "7.0" },
+              { "label": "Speaking", "value": "7.5" },
+              { "label": "Test date", "value": "19 Jul 2026" }
+            ],
+            "logo_url": "",
+            "blurb": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "sec_students",
+      "label": "Our students",
+      "type": "testimonial_cards",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Our students",
+        "heading": "Where they started, and where they got to.",
+        "lead": "Every band here was verified against an official test result. We do not publish an outcome we have not seen the certificate for.",
+        "students": [
+          { "name": "Priya Sharma", "photo_url": "", "before_band": "6.0", "after_band": "7.5", "quote": "I had taken IELTS twice and got 6.0 for writing both times without ever understanding why. Bloom marked my first essay against the four criteria and the problem was obvious in ten minutes.", "course": "Delhi, India · Manchester MSc" },
+          { "name": "Li Chen", "photo_url": "", "before_band": "6.5", "after_band": "7.5", "quote": "My reading comprehension was fine — I just never finished the paper. James timed my skim and taught me to locate rather than read. That single change was worth a band.", "course": "Shanghai, China · UNSW Engineering" },
+          { "name": "Aisha Khan", "photo_url": "", "before_band": "6.0", "after_band": "7.5", "quote": "I needed 7.0 in every band for nursing registration and speaking was holding me back. Michael showed me I was stopping at seventy seconds in Part 2.", "course": "Lahore, Pakistan · NHS Registration" },
+          { "name": "Nguyen Tran", "photo_url": "", "before_band": "6.0", "after_band": "7.0", "quote": "Nobody had ever told me that Vietnamese speakers drop final consonants, and that it reads as a grammar error rather than an accent. Once I knew, I could hear it.", "course": "Hanoi, Vietnam · TU Delft MSc" },
+          { "name": "Yusuf Demir", "photo_url": "", "before_band": "5.5", "after_band": "7.0", "quote": "I stopped deciding what to study every morning and just did what the plan said. Thirty-four day streak, and my mock scores went up every fortnight.", "course": "Istanbul, Türkiye · Canada PR" },
+          { "name": "Fatima Ahmed", "photo_url": "", "before_band": "4.5", "after_band": "7.0", "quote": "I started at B1 and thought Band 7 was years away. The placement test said eighteen weeks. Having a real number instead of encouragement kept me going.", "course": "Dhaka, Bangladesh · King's College London" }
+        ]
+      }
+    },
+    {
+      "id": "sec_contact",
+      "label": "Contact",
+      "type": "contact",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "heading": "Find out what band you would get today.",
+        "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
+        "phone": "+91 80 4718 2260",
+        "email": "hello@bloomielts.com",
+        "address": "Prestige Tech Park, Marathahalli, Bengaluru 560103, India",
+        "map_url": "",
+        "form_enabled": true,
+        "primary_btn": { "label": "Take the free placement test", "href": "/login?mode=signup", "icon": "seedling" },
+        "secondary_btn": { "label": "Sign in to my account", "href": "/login" }
+      }
+    }
+  ]
+}

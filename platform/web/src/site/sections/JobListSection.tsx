@@ -2,40 +2,57 @@ import { Head, Section } from "./shared";
 import { Icon } from "./Icon";
 
 interface Job {
-  icon: string;
+  id: string;
   title: string;
-  department: string;
+  dept: string;
+  dept_icon: string;
   office: string;
+  office_flag: string;
   contract: string;
   ctc: string;
-  summary: string;
+  need: string;
   posted: string;
   band: string;
-  apply_label: string;
-  apply_href: string;
 }
 
 interface JobListProps {
   eyebrow: string;
   heading: string;
   lead: string;
+  mid?: boolean;
   jobs: Job[];
-  empty_heading: string;
-  empty_body: string;
-  empty_cta_label: string;
-  empty_cta_href: string;
+  empty: { heading: string; body: string; cta_label: string; cta_href: string };
+}
+
+/**
+ * Prototype `applyFor(id)` — pre-select the role in the application form and
+ * smooth-scroll down to it, then focus the name field (careers.html).
+ */
+function applyFor(id: string) {
+  const sel = document.getElementById("apRole") as HTMLSelectElement | null;
+  if (sel) sel.value = id;
+  const el = document.getElementById("apply");
+  if (el) {
+    window.scrollTo({
+      top: el.getBoundingClientRect().top + window.scrollY - 70,
+      behavior: "smooth",
+    });
+  }
+  window.setTimeout(() => {
+    (document.getElementById("apName") as HTMLInputElement | null)?.focus();
+  }, 500);
 }
 
 export function JobListSection({ props }: { props: JobListProps }) {
-  const { eyebrow, heading, lead, jobs, empty_heading, empty_body, empty_cta_label, empty_cta_href } = props;
+  const { eyebrow, heading, lead, mid, jobs, empty } = props;
   return (
     <Section id="openings">
-      <Head eyebrow={eyebrow} heading={heading} lead={lead} mid />
+      <Head eyebrow={eyebrow} heading={heading} lead={lead} mid={mid} />
       <div className="rv">
         {(jobs ?? []).length ? (
           <div style={{ display: "grid", gap: 14 }}>
             {jobs.map((v, i) => (
-              <div key={i} className="card" style={{ padding: "22px 24px" }}>
+              <div key={v.id ?? i} className="card" style={{ padding: "22px 24px" }}>
                 <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
                   <div
                     style={{
@@ -50,7 +67,7 @@ export function JobListSection({ props }: { props: JobListProps }) {
                       fontSize: 17,
                     }}
                   >
-                    <Icon name={v.icon || "briefcase"} size={17} />
+                    <Icon name={v.dept_icon || "briefcase"} size={17} />
                   </div>
                   <div style={{ flex: 1, minWidth: 220 }}>
                     <b
@@ -66,13 +83,18 @@ export function JobListSection({ props }: { props: JobListProps }) {
                       {v.title}
                     </b>
                     <div style={{ display: "flex", gap: 7, flexWrap: "wrap", margin: "9px 0 12px" }}>
-                      {v.department && <span className="tag leaf">{v.department}</span>}
-                      {v.office && <span className="tag">{v.office}</span>}
+                      {v.dept && <span className="tag leaf">{v.dept}</span>}
+                      {v.office && (
+                        <span className="tag">
+                          {v.office_flag ? `${v.office_flag} ` : ""}
+                          {v.office}
+                        </span>
+                      )}
                       {v.contract && <span className="tag">{v.contract}</span>}
                       {v.ctc && <span className="tag amb">{v.ctc}</span>}
                     </div>
                     <div style={{ fontSize: "13.5px", color: "var(--ink-2)", lineHeight: 1.65 }}>
-                      {v.summary}
+                      {v.need}
                     </div>
                     <div
                       style={{
@@ -87,9 +109,9 @@ export function JobListSection({ props }: { props: JobListProps }) {
                       {v.band && <>band {v.band}</>}
                     </div>
                   </div>
-                  <a className="btn btn-p" href={v.apply_href || "#apply"}>
-                    <Icon name="paper-plane" /> {v.apply_label || "Apply"}
-                  </a>
+                  <button className="btn btn-p" type="button" onClick={() => applyFor(v.id)}>
+                    <Icon name="paper-plane" /> Apply
+                  </button>
                 </div>
               </div>
             ))}
@@ -97,7 +119,7 @@ export function JobListSection({ props }: { props: JobListProps }) {
         ) : (
           <div className="card" style={{ padding: 34, textAlign: "center" }}>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
-              {empty_heading || "No roles open right now"}
+              {empty?.heading || "No roles open right now"}
             </div>
             <div
               style={{
@@ -108,10 +130,10 @@ export function JobListSection({ props }: { props: JobListProps }) {
                 margin: "0 auto 18px",
               }}
             >
-              {empty_body}
+              {empty?.body}
             </div>
-            <a className="btn btn-p" href={empty_cta_href || "#apply"}>
-              {empty_cta_label || "Send a speculative application"}
+            <a className="btn btn-p" href={empty?.cta_href || "#apply"}>
+              {empty?.cta_label || "Send a speculative application"}
             </a>
           </div>
         )}

@@ -1,0 +1,60 @@
+{
+  "slug": "contact",
+  "title": "Contact Bloom — book a free consultation",
+  "meta_description": "Talk to an adviser about your target band, your deadline and which course fits. We reply within one working day, and you can reach us on WhatsApp.",
+  "sections": [
+    {
+      "id": "sec_contact",
+      "label": "Contact",
+      "type": "contact",
+      "enabled": true,
+      "animation": { "type": "fade", "delay_ms": 0 },
+      "props": {
+        "eyebrow": "Talk to us",
+        "heading": "A free consultation, whatever your current band.",
+        "body": "Tell us where you are and what you need. We will tell you honestly how far that is and how long it usually takes — before anyone mentions a course.",
+        "phone": "+91 80 4718 2260",
+        "email": "hello@bloomielts.com",
+        "address": "Prestige Tech Park, Marathahalli, Bengaluru 560103, India",
+        "map_url": "",
+        "form_enabled": true,
+        "layout": "page",
+        "top_pad": true,
+        "form": {
+          "fields": [
+            { "key": "name", "label": "Full name", "kind": "text", "placeholder": "Your name", "required": true, "half": true },
+            { "key": "email", "label": "Email", "kind": "email", "placeholder": "you@email.com", "required": true, "half": true },
+            { "key": "country", "label": "Country", "kind": "select", "options": ["India", "Pakistan", "Bangladesh", "Nepal", "Sri Lanka", "China", "Vietnam", "Philippines", "Indonesia", "Thailand", "Nigeria", "Egypt", "Iran", "Uzbekistan", "Brazil", "Colombia", "Türkiye", "Other"], "required": false, "half": true },
+            { "key": "interest", "label": "What do you need?", "kind": "select", "options": ["IELTS Academic", "IELTS General Training", "TOEFL iBT", "PTE Academic", "Duolingo English Test", "OET · medical registration", "General & Spoken English", "Study abroad advice"], "required": false, "half": true },
+            { "key": "band", "label": "Current band", "hint": "if tested", "kind": "text", "placeholder": "e.g. 6.0 — or leave blank", "required": false, "half": true },
+            { "key": "target", "label": "Target", "kind": "text", "placeholder": "e.g. 7.0 overall", "required": false, "half": true },
+            { "key": "phone", "label": "WhatsApp number", "hint": "fastest way to reach you", "kind": "text", "placeholder": "+91 98450 11234", "required": false, "half": false },
+            { "key": "message", "label": "Anything else we should know?", "kind": "textarea", "placeholder": "Which skill worries you, when your deadline is, what you have already tried…", "required": false, "half": false }
+          ],
+          "submit_label": "Request my free consultation",
+          "footnote": "We reply within one working day. No automated sales sequence.",
+          "success": {
+            "title": "Thank you — that is with us",
+            "body": "Your enquiry has gone straight to our team's WhatsApp. We reply within one working day — or start the conversation yourself right now.",
+            "cta_label": "Message us on WhatsApp",
+            "alt_cta": { "label": "Take the placement test", "href": "/login?mode=signup", "icon": "seedling" }
+          }
+        },
+        "details": [
+          { "icon": "envelope", "label": "Email", "value": "hello@bloomielts.com", "href": "mailto:hello@bloomielts.com" },
+          { "icon": "phone", "label": "Phone", "value": "+91 80 4718 2260", "href": "tel:+918047182260" },
+          { "icon": "whatsapp", "label": "WhatsApp", "value": "+91 90080 41720", "href": "#" },
+          { "icon": "instagram", "label": "Instagram", "value": "@bloomielts", "href": "#" }
+        ],
+        "hours": [
+          { "days": "Monday – Thursday", "time": "08:00 – 21:00 GMT" },
+          { "days": "Friday", "time": "08:00 – 18:00 GMT" },
+          { "days": "Saturday", "time": "09:00 – 15:00 GMT" },
+          { "days": "Sunday", "time": "Closed · platform always open" }
+        ],
+        "hours_note": "Live classes and one-to-one sessions run across three time zones — there is almost always a slot in your evening.",
+        "office": { "heading": "Visit us", "photo_slot": "office-photo", "photo_url": "" }
+      }
+    }
+  ]
+}

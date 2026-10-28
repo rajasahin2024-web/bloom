@@ -1,0 +1,161 @@
+{
+  "slug": "platform",
+  "title": "The Bloom platform — Writing Lab, Speaking Lab and spaced repetition",
+  "meta_description": "See inside the student portal: essays marked against all four band descriptors, speaking scored for fluency and pronunciation, and a study plan weighted to your weakest skill.",
+  "sections": [
+    {
+      "id": "sec_features",
+      "label": "Platform features",
+      "type": "feature_grid",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "eyebrow": "The platform",
+        "heading": "Everything a serious candidate needs, in one place.",
+        "lead": "Your school, your practice, your feedback and your teacher — organised by the part of the exam each thing belongs to.",
+        "variant": "dark",
+        "mid": true,
+        "cta": {
+          "label": "Try the platform free",
+          "href": "/login?mode=signup",
+          "icon": "arrow-right"
+        },
+        "features": [
+          {
+            "icon": "graduation-cap",
+            "title": "The School",
+            "body": "Class notes, printable PDFs, audio drills and video lectures — all filed under Listening Part 4, Writing Task 1 and the thirteen other parts of the exam."
+          },
+          {
+            "icon": "pen-nib",
+            "title": "Writing Lab",
+            "body": "Write under exam timing, get a band per criterion, sentence-level corrections, a model answer and a persistent error bank."
+          },
+          {
+            "icon": "microphone",
+            "title": "Speaking Lab",
+            "body": "Parts 1, 2 and 3 with a real preparation timer, recording, and analysis of fluency, filler words, idiomatic range and grammar."
+          },
+          {
+            "icon": "spell-check",
+            "title": "Vocabulary engine",
+            "body": "570 band-tagged words across nine essay topics, with six study modes and spaced repetition that schedules itself."
+          },
+          {
+            "icon": "diagram-project",
+            "title": "Grammar Academy",
+            "body": "Twelve lessons — concept, real IELTS examples, then a test — ordered so the errors most common for your first language come first."
+          },
+          {
+            "icon": "wand-magic-sparkles",
+            "title": "Bloom Tutor",
+            "body": "Knows your level, your target, your weakest skill and every error pattern in your writing — so its advice is specific, never generic."
+          }
+        ]
+      }
+    },
+    {
+      "id": "sec_tour",
+      "label": "Portal tour",
+      "type": "showcase",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "eyebrow": "Inside the student portal",
+        "heading": "This is what you log into every day.",
+        "body": "Not a video library with a login. A working platform that knows your level, marks your work and decides what you study today.",
+        "media": {
+          "url": "",
+          "type": "image"
+        },
+        "cta": {
+          "label": "Open the live portal",
+          "href": "/login"
+        },
+        "tabs": [
+          {
+            "key": "dash",
+            "icon": "house",
+            "title": "Your dashboard",
+            "body": "Estimated band, days to your test, today's four study blocks and your streak — the first thing you see.",
+            "shot_slot": "portal-dash",
+            "url": "bloomielts.com/portal/dashboard",
+            "shot_label": "Drop a dashboard screenshot"
+          },
+          {
+            "key": "write",
+            "icon": "pen-nib",
+            "title": "Writing Lab",
+            "body": "Submit an essay, get a band on all four criteria, every error corrected and a model answer to compare against.",
+            "shot_slot": "portal-write",
+            "url": "bloomielts.com/portal/writing-lab",
+            "shot_label": "Drop a Writing Lab screenshot"
+          },
+          {
+            "key": "speak",
+            "icon": "microphone",
+            "title": "Speaking Lab",
+            "body": "Real cue cards, a one-minute prep timer, recording, then fluency, vocabulary, grammar and pronunciation scored separately.",
+            "shot_slot": "portal-speak",
+            "url": "bloomielts.com/portal/speaking-lab",
+            "shot_label": "Drop a Speaking Lab screenshot"
+          },
+          {
+            "key": "school",
+            "icon": "graduation-cap",
+            "title": "The School",
+            "body": "Class notes, PDFs, audio drills and video lectures, filed under the exact part of the exam they belong to.",
+            "shot_slot": "portal-school",
+            "url": "bloomielts.com/portal/school",
+            "shot_label": "Drop a School screenshot"
+          },
+          {
+            "key": "plan",
+            "icon": "calendar-days",
+            "title": "Your study plan",
+            "body": "Every day to your test date, weighted to your weakest skill, with a mock every Saturday. Tick blocks off as you go.",
+            "shot_slot": "portal-plan",
+            "url": "bloomielts.com/portal/study-plan",
+            "shot_label": "Drop a Study Plan screenshot"
+          }
+        ],
+        "note": "Also inside: vocabulary with spaced repetition, twelve grammar lessons, ten mock papers, Bloom Tutor, 1-on-1 booking, progress analytics and your receipts.",
+        "demo_note": "Demo account: student@bloomielts.com · bloom2026"
+      }
+    },
+    {
+      "id": "sec_contact",
+      "label": "Contact",
+      "type": "contact",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "heading": "Find out what band you would get today.",
+        "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
+        "phone": "+91 80 4718 2260",
+        "email": "hello@bloomielts.com",
+        "address": "Prestige Tech Park, Marathahalli, Bengaluru 560103, India",
+        "map_url": "",
+        "form_enabled": true,
+        "primary_btn": {
+          "label": "Take the free placement test",
+          "href": "/login?mode=signup",
+          "icon": "seedling"
+        },
+        "secondary_btn": {
+          "label": "Sign in to my account",
+          "href": "/login"
+        }
+      }
+    }
+  ]
+}

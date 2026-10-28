@@ -4,124 +4,6 @@
   "meta_description": "Prepare for IELTS, TOEFL, PTE, Duolingo, Cambridge or OET with former examiners. Free placement test, AI-marked writing and speaking labs, and a study plan built from your real level.",
   "sections": [
     {
-      "id": "site_nav",
-      "label": "Site navigation",
-      "type": "nav",
-      "enabled": true,
-      "animation": null,
-      "props": {
-        "brand": {
-          "name": "Bloom",
-          "tagline": "IELTS Academy",
-          "logo_url": "/site/bloom-mark.png"
-        },
-        "links": [
-          {
-            "label": "The exam",
-            "href": "/ielts"
-          },
-          {
-            "label": "Platform",
-            "href": "/platform"
-          },
-          {
-            "label": "Courses",
-            "href": "/courses"
-          },
-          {
-            "label": "Results",
-            "href": "/results"
-          },
-          {
-            "label": "Study abroad",
-            "href": "/abroad"
-          },
-          {
-            "label": "Medical",
-            "href": "/medical"
-          },
-          {
-            "label": "Blog",
-            "href": "/blog"
-          },
-          {
-            "label": "About",
-            "href": "/about"
-          },
-          {
-            "label": "Careers",
-            "href": "/careers"
-          }
-        ],
-        "cta": {
-          "signin_href": "/login",
-          "signup_href": "/login?mode=signup",
-          "signup_label": "Start free"
-        }
-      }
-    },
-    {
-      "id": "site_mobile_nav",
-      "label": "Mobile menu",
-      "type": "nav",
-      "enabled": true,
-      "animation": null,
-      "props": {
-        "brand": {
-          "name": "Bloom",
-          "tagline": "IELTS Academy",
-          "logo_url": "/site/bloom-mark.png"
-        },
-        "links": [
-          {
-            "label": "Home",
-            "href": "/"
-          },
-          {
-            "label": "The exam",
-            "href": "/ielts"
-          },
-          {
-            "label": "Platform",
-            "href": "/platform"
-          },
-          {
-            "label": "Courses",
-            "href": "/courses"
-          },
-          {
-            "label": "Results",
-            "href": "/results"
-          },
-          {
-            "label": "Study abroad",
-            "href": "/abroad"
-          },
-          {
-            "label": "Medical",
-            "href": "/medical"
-          },
-          {
-            "label": "Blog",
-            "href": "/blog"
-          },
-          {
-            "label": "About",
-            "href": "/about"
-          },
-          {
-            "label": "Contact",
-            "href": "/contact"
-          }
-        ],
-        "cta": {
-          "signin_href": "/login",
-          "signup_href": "/login?mode=signup",
-          "signup_label": "Start free"
-        }
-      }
-    },
-    {
       "id": "hero",
       "label": "Hero",
       "type": "hero",
@@ -468,7 +350,8 @@
         "cta": {
           "label": "Open the live portal",
           "href": "/login"
-        }
+        },
+        "eyebrow": "Inside the student portal"
       }
     },
     {
@@ -485,25 +368,126 @@
         "items": [
           {
             "name": "Priya Sharma",
-            "logo_url": "",
-            "blurb": "IELTS Academic · Overall 7.5 · Listening 8.0, Reading 8.0, Writing 7.0, Speaking 7.0"
+            "org": "IELTS Academic · Test Report Form",
+            "overall": "7.5",
+            "cefr": "C1 · Advanced",
+            "skills": [
+              {
+                "label": "Listening",
+                "value": "8.0"
+              },
+              {
+                "label": "Reading",
+                "value": "8.0"
+              },
+              {
+                "label": "Writing",
+                "value": "7.0"
+              },
+              {
+                "label": "Speaking",
+                "value": "7.0"
+              },
+              {
+                "label": "Test date",
+                "value": "12 Jul 2026"
+              }
+            ],
+            "blurb": "IELTS Academic · Test Report Form · Overall 7.5",
+            "logo_url": ""
           },
           {
             "name": "Li Chen",
-            "logo_url": "",
-            "blurb": "IELTS Academic · Overall 7.5 · Listening 8.5, Reading 7.5, Writing 7.0, Speaking 7.0"
+            "org": "IELTS Academic · Test Report Form",
+            "overall": "7.5",
+            "cefr": "C1 · Advanced",
+            "skills": [
+              {
+                "label": "Listening",
+                "value": "8.5"
+              },
+              {
+                "label": "Reading",
+                "value": "7.5"
+              },
+              {
+                "label": "Writing",
+                "value": "7.0"
+              },
+              {
+                "label": "Speaking",
+                "value": "7.0"
+              },
+              {
+                "label": "Test date",
+                "value": "28 Jun 2026"
+              }
+            ],
+            "blurb": "IELTS Academic · Test Report Form · Overall 7.5",
+            "logo_url": ""
           },
           {
             "name": "Yusuf Demir",
-            "logo_url": "",
-            "blurb": "IELTS General Training · Overall 7.0 · Listening 8.0, Reading 7.5, Writing 7.0, Speaking 7.0"
+            "org": "IELTS General Training · TRF",
+            "overall": "7.0",
+            "cefr": "C1 · Advanced",
+            "skills": [
+              {
+                "label": "Listening",
+                "value": "8.0"
+              },
+              {
+                "label": "Reading",
+                "value": "7.5"
+              },
+              {
+                "label": "Writing",
+                "value": "7.0"
+              },
+              {
+                "label": "Speaking",
+                "value": "7.0"
+              },
+              {
+                "label": "Test date",
+                "value": "3 Aug 2026"
+              }
+            ],
+            "blurb": "IELTS General Training · TRF · Overall 7.0",
+            "logo_url": ""
           },
           {
             "name": "Aisha Khan",
-            "logo_url": "",
-            "blurb": "IELTS Academic · Overall 7.5 · Listening 7.5, Reading 7.5, Writing 7.0, Speaking 7.5"
+            "org": "IELTS Academic · Test Report Form",
+            "overall": "7.5",
+            "cefr": "C1 · Advanced",
+            "skills": [
+              {
+                "label": "Listening",
+                "value": "7.5"
+              },
+              {
+                "label": "Reading",
+                "value": "7.5"
+              },
+              {
+                "label": "Writing",
+                "value": "7.0"
+              },
+              {
+                "label": "Speaking",
+                "value": "7.5"
+              },
+              {
+                "label": "Test date",
+                "value": "19 Jul 2026"
+              }
+            ],
+            "blurb": "IELTS Academic · Test Report Form · Overall 7.5",
+            "logo_url": ""
           }
-        ]
+        ],
+        "eyebrow": "IELTS certificates"
       }
     },
     {
@@ -618,8 +602,23 @@
         "delay_ms": 0
       },
       "props": {
+        "eyebrow": "Study abroad · in partnership with FMA Overseas",
         "heading": "A band is not the goal. The offer letter is.",
         "body": "Getting Band 7 is half the journey. Turning it into a place at a university abroad — the application, the credential check, the visa, the accommodation — is the other half. That is what FMA Overseas does, and Bloom students go straight through to them.",
+        "variant": "dark",
+        "lockup": {
+          "bloom": {
+            "name": "Bloom",
+            "sub": "IELTS Academy",
+            "logo_url": "/site/bloom-mark.png"
+          },
+          "partner": {
+            "name": "FMA Overseas",
+            "sub": "Future MedsAcademy",
+            "mark": "FMA"
+          },
+          "note": "Your Bloom score report transfers directly into an FMA Overseas application file. One team, one set of documents, no repeating yourself."
+        },
         "items": [
           {
             "title": "Reach your band",
@@ -641,7 +640,130 @@
             "title": "Arrive settled",
             "body": "Accommodation, airport pickup, bank account, registration and a Bloom alumni contact already studying on your campus."
           }
-        ]
+        ],
+        "checklist": {
+          "eyebrow": "What the partnership covers",
+          "title": "Everything between your result and your first lecture.",
+          "items": [
+            {
+              "icon": "check",
+              "title": "Requirement checking before you sit",
+              "body": "We confirm the exact overall and per-skill minimum your shortlist demands, so you do not pass the test and still miss the offer."
+            },
+            {
+              "icon": "check",
+              "title": "Credential evaluation",
+              "body": "Degree and transcript assessment for the UK, Ireland, Canada, Australia, Germany and Italy — including ECTS conversion."
+            },
+            {
+              "icon": "check",
+              "title": "Pathway and foundation routes",
+              "body": "If your band is not there yet, a pre-sessional English or foundation route that still leads to the same degree."
+            },
+            {
+              "icon": "check",
+              "title": "Scholarship and funding search",
+              "body": "Merit awards, regional bursaries and assistantships matched to your profile — most students never find these alone."
+            },
+            {
+              "icon": "check",
+              "title": "Visa filing and interview prep",
+              "body": "Financial evidence, the credibility interview, and the English-language part of the visa rules that changes most often."
+            },
+            {
+              "icon": "check",
+              "title": "One file, both teams",
+              "body": "Your Bloom band history, mock reports and score conversions attach to your FMA application automatically."
+            }
+          ]
+        },
+        "unis_title": "Where our students went",
+        "universities": [
+          {
+            "name": "University of Manchester",
+            "country": "United Kingdom",
+            "flag": "🇬🇧",
+            "course": "MSc Data Science",
+            "ielts": "6.5",
+            "per_skill": "no band below 6.0"
+          },
+          {
+            "name": "King's College London",
+            "country": "United Kingdom",
+            "flag": "🇬🇧",
+            "course": "MSc Public Health",
+            "ielts": "7.0",
+            "per_skill": "6.5 in writing"
+          },
+          {
+            "name": "UNSW Sydney",
+            "country": "Australia",
+            "flag": "🇦🇺",
+            "course": "MEng Civil",
+            "ielts": "6.5",
+            "per_skill": "6.0 each"
+          },
+          {
+            "name": "University of Toronto",
+            "country": "Canada",
+            "flag": "🇨🇦",
+            "course": "MA Economics",
+            "ielts": "7.0",
+            "per_skill": "no minimum stated"
+          },
+          {
+            "name": "TU Delft",
+            "country": "Netherlands",
+            "flag": "🇳🇱",
+            "course": "MSc Aerospace Engineering",
+            "ielts": "6.5",
+            "per_skill": "6.0 each"
+          },
+          {
+            "name": "Trinity College Dublin",
+            "country": "Ireland",
+            "flag": "🇮🇪",
+            "course": "MSc Computer Science",
+            "ielts": "6.5",
+            "per_skill": "6.0 each"
+          },
+          {
+            "name": "University of Pavia",
+            "country": "Italy",
+            "flag": "🇮🇹",
+            "course": "Medicine & Surgery (English)",
+            "ielts": "B2 equivalent",
+            "per_skill": "IMAT entrance exam required"
+          },
+          {
+            "name": "RWTH Aachen",
+            "country": "Germany",
+            "flag": "🇩🇪",
+            "course": "MSc Mechanical Engineering",
+            "ielts": "6.5",
+            "per_skill": "no minimum stated"
+          }
+        ],
+        "stats": [
+          {
+            "value": "340+",
+            "label": "Placements via FMA Overseas"
+          },
+          {
+            "value": "9",
+            "label": "Destination countries"
+          },
+          {
+            "value": "96%",
+            "label": "Visa approval rate"
+          }
+        ],
+        "cta": {
+          "label": "Talk to an overseas counsellor",
+          "href": "#contact",
+          "icon": "plane-departure"
+        },
+        "cta_note": "Free consultation for every Bloom student, whatever your current band."
       }
     },
     {
@@ -894,124 +1016,16 @@
         "email": "hello@bloomielts.com",
         "address": "Prestige Tech Park, Marathahalli, Bengaluru 560103, India",
         "map_url": "",
-        "form_enabled": true
-      }
-    },
-    {
-      "id": "site_footer",
-      "label": "Footer",
-      "type": "footer",
-      "enabled": true,
-      "animation": null,
-      "props": {
-        "columns": [
-          {
-            "heading": "Courses",
-            "links": [
-              {
-                "label": "IELTS Academic",
-                "href": "/courses"
-              },
-              {
-                "label": "IELTS General Training",
-                "href": "/courses"
-              },
-              {
-                "label": "TOEFL iBT",
-                "href": "/courses"
-              },
-              {
-                "label": "PTE Academic",
-                "href": "/courses"
-              },
-              {
-                "label": "OET · Medical English",
-                "href": "/medical"
-              },
-              {
-                "label": "General English",
-                "href": "/courses"
-              }
-            ]
-          },
-          {
-            "heading": "Academy",
-            "links": [
-              {
-                "label": "About Bloom",
-                "href": "/about"
-              },
-              {
-                "label": "How we teach",
-                "href": "/ielts#how"
-              },
-              {
-                "label": "Academic staff",
-                "href": "/about#staff"
-              },
-              {
-                "label": "Results",
-                "href": "/results"
-              },
-              {
-                "label": "Our reach",
-                "href": "/about#reach"
-              },
-              {
-                "label": "Blog",
-                "href": "/blog"
-              }
-            ]
-          },
-          {
-            "heading": "Platform",
-            "links": [
-              {
-                "label": "Free placement test",
-                "href": "/login?mode=signup"
-              },
-              {
-                "label": "The School",
-                "href": "/platform"
-              },
-              {
-                "label": "Writing Lab",
-                "href": "/platform"
-              },
-              {
-                "label": "Study abroad",
-                "href": "/abroad"
-              },
-              {
-                "label": "Student sign in",
-                "href": "/login"
-              },
-              {
-                "label": "Site admin",
-                "href": "/site-admin"
-              }
-            ]
-          }
-        ],
-        "social": [
-          {
-            "icon": "instagram",
-            "href": "/contact"
-          },
-          {
-            "icon": "youtube",
-            "href": "/contact"
-          },
-          {
-            "icon": "linkedin",
-            "href": "/contact"
-          },
-          {
-            "icon": "whatsapp",
-            "href": "/contact"
-          }
-        ],
-        "copyright": "© 2026 Bloom IELTS Academy Pvt Ltd · Registered in India · CIN U85499KA2025PTC198420 · GSTIN 29ABMCB4821K1ZP"
+        "form_enabled": true,
+        "primary_btn": {
+          "label": "Take the free placement test",
+          "href": "/login?mode=signup",
+          "icon": "seedling"
+        },
+        "secondary_btn": {
+          "label": "Sign in to my account",
+          "href": "/login"
+        }
       }
     }
   ]
