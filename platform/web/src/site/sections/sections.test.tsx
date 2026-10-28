@@ -47,8 +47,8 @@ describe("FaqSection", () => {
         props={{
           ...base,
           items: [
-            { question: "Q1?", answer: "A1", open: true },
-            { question: "Q2?", answer: "A2", open: false },
+            { q: "Q1?", a: "A1", open: true },
+            { q: "Q2?", a: "A2", open: false },
           ],
         }}
       />,
@@ -62,22 +62,54 @@ describe("FaqSection", () => {
 });
 
 describe("CourseGridSection", () => {
-  it("renders feature cards with tags and price", () => {
+  it("renders priced plan cards with feature lists and CTAs", () => {
     const { container } = render(
       <CourseGridSection
         props={{
           ...base,
           courses: [
-            { icon: "book-open", name: "IELTS Academic", blurb: "b", level: "B2+", weeks: "12", tier: "Core", price: "£190" },
+            {
+              icon: "seedling",
+              icon_tone: "sky",
+              name: "Core",
+              price: "£190",
+              period: "month",
+              blurb: "Self-study",
+              features: [
+                { text: "Group classes", included: true },
+                { text: "1-on-1 tutoring", included: false },
+              ],
+              cta_label: "Choose Core",
+              cta_href: "/login?plan=CORE",
+              highlighted: false,
+              ribbon: "",
+            },
+            {
+              icon: "star",
+              icon_tone: "leaf",
+              name: "Plus",
+              price: "£340",
+              period: "month",
+              blurb: "Full method",
+              features: [{ text: "Everything in Core", included: true }],
+              cta_label: "Choose Plus",
+              cta_href: "/login?plan=PLUS",
+              highlighted: true,
+              ribbon: "Most popular",
+            },
           ],
+          footnote: "Deposit of 25%",
         }}
       />,
     );
-    expect(container.querySelectorAll(".grid.g3 .feat")).toHaveLength(1);
-    expect(container.textContent).toContain("IELTS Academic");
-    expect(container.querySelector(".tag.leaf")?.textContent).toBe("B2+");
-    expect(container.querySelector(".tag.amb")?.textContent).toBe("Core");
-    expect(container.textContent).toContain("£190");
+    const plans = container.querySelectorAll(".plans .plan");
+    expect(plans).toHaveLength(2);
+    expect(container.querySelector(".plan.pop .rib")?.textContent).toBe("Most popular");
+    expect(plans[0].querySelector(".pr b")?.textContent).toBe("£190");
+    expect(plans[0].querySelector("li.no")?.textContent).toContain("1-on-1 tutoring");
+    expect(plans[0].querySelector("a.btn-ghost")?.textContent).toContain("Choose Core");
+    expect(plans[1].querySelector("a.btn-p")?.textContent).toContain("Choose Plus");
+    expect(container.textContent).toContain("Deposit of 25%");
   });
 });
 

@@ -404,8 +404,8 @@
 .site-root .hero{padding:calc(var(--nav-h) + 66px) 0 90px;position:relative;overflow:hidden}
 .site-root .hero:before{content:'';position:absolute;top:-240px;right:-180px;width:760px;height:760px;border-radius:50%;background:radial-gradient(circle,var(--leaf-100) 0%,rgba(228,241,220,0) 68%);z-index:0}
 .site-root .hero:after{content:'';position:absolute;bottom:-300px;left:-200px;width:620px;height:620px;border-radius:50%;background:radial-gradient(circle,var(--amber-soft) 0%,rgba(253,233,203,0) 68%);z-index:0}
-.site-root .hero .in{position:relative;z-index:1;display:grid;grid-template-columns:1.08fr .92fr;gap:56px;align-items:center}
-@media(max-width:940px){.site-root .hero .in{grid-template-columns:1fr;gap:44px}
+.site-root .hero > .in{position:relative;z-index:1;display:grid;grid-template-columns:1.08fr .92fr;gap:56px;align-items:center}
+@media(max-width:940px){.site-root .hero > .in{grid-template-columns:1fr;gap:44px}
 .site-root .hero{padding:calc(var(--nav-h) + 40px) 0 64px}}
 .site-root .badge{display:inline-flex;align-items:center;gap:10px;background:var(--leaf-50);border:1px solid var(--leaf-200);border-radius:30px;padding:7px 15px 7px 8px;font-size:12.5px;font-weight:700;color:var(--leaf-800);margin-bottom:22px}
 .site-root .badge span{background:var(--leaf-700);color:#fff;border-radius:20px;padding:3px 9px;font-size:10px;letter-spacing:.6px}
@@ -709,7 +709,7 @@
 .site-root .sec{padding:112px 0}
 .site-root .sec.tight{padding:82px 0}
 .site-root .hero{padding:calc(var(--nav-h) + 78px) 0 104px}
-.site-root .hero .in{gap:64px}
+.site-root .hero > .in{gap:64px}
 .site-root .head{max-width:760px;margin-bottom:56px}
 .site-root .lead{max-width:700px}
 .site-root .grid{gap:24px}
@@ -726,7 +726,7 @@
 .site-root .sec{padding:132px 0}
 .site-root .sec.tight{padding:94px 0}
 .site-root .hero{padding:calc(var(--nav-h) + 90px) 0 120px}
-.site-root .hero .in{gap:76px}
+.site-root .hero > .in{gap:76px}
 .site-root .head{max-width:830px;margin-bottom:64px}
 .site-root .grid{gap:26px}
 .site-root .g2{grid-template-columns:repeat(auto-fit,minmax(380px,1fr))}
