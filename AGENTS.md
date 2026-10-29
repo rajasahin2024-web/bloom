@@ -17,6 +17,8 @@ Project: **Bloom Academy IELTS Learning Platform** (Techfly client engagement, p
 3. Project docs live in `docs/` — read those before proposing scope/architecture changes.
 4. Tech stack is fixed (proposal v5.1): React+Vite+TS, FastAPI, Postgres+pgvector+PgBouncer, Redis, LangGraph `ai-tutor`, Docker Compose. Architecture decision A1: modular monolith; carve-outs only `ai-tutor` and mail engine.
 5. Boss communicates in Banglish and often wants a direct answer only — in ask-mode issues, answer in the thread; don't implement.
+6. **Ported CSS must be committed pre-scoped.** Any CSS block ported from `prototype/` must be scoped under its own shell root (e.g., `.site-root .app`), never bare `.site-root` — bare ported selectors leak onto site elements sharing the class name (regression class: TEC-139, TEC-142).
+   - Review-time gate before merging stylesheet changes: `npx vitest run src/styles/css-scope.test.ts` in `platform/web` must pass — it fails on any new bare `.site-root <app-shell-class>` selector that could match markup outside its intended shell. Also check for class-name collisions with existing site components.
 
 ## Deploy / preview ports (host: 82.112.226.111)
 
