@@ -6,6 +6,7 @@ Run locally (after `docker compose up -d` for infra):
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import FastAPI
@@ -30,8 +31,17 @@ from app.services import setup as setup_service
 
 _settings = get_settings()
 
+logger = logging.getLogger(__name__)
+
 
 def create_app() -> FastAPI:
+    if _settings.jwt_secret_insecure:
+        logger.critical(
+            "JWT_SECRET is not configured — the built-in dev secret is refused "
+            "outside development/test; no tokens will be issued or verified "
+            "until a real JWT_SECRET is set (API_ENV=%s)",
+            _settings.api_env,
+        )
     app = FastAPI(
         title="Bloom Academy API",
         description="Bloom Academy IELTS platform — FastAPI backend.",

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
+from redis import Redis
+from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -20,6 +23,49 @@ from app.core.security import (
 from app.models.enums import UserRole
 from app.models.user import RefreshToken, Student, User
 from app.schemas.auth import LoginIn, RegisterIn, TokenPair, UserOut
+from app.services import rate_limit
+
+logger = logging.getLogger(__name__)
+
+
+def enforce_login_rate_limit(redis: Redis, client_ip: str | None, email: str) -> None:
+    """Brute-force guard for POST /api/auth/login.
+
+    Fixed-window limits on BOTH the caller IP and the target email. On a trip
+    the response is a generic 429 — identical regardless of which bucket
+    fired — so the limiter can't be used to enumerate anything. Fails closed
+    (503) when Redis is unreachable: a brute-force control that silently
+    disables itself is worse than a login outage.
+    """
+    settings = get_settings()
+    window = settings.login_rate_limit_window_seconds
+    try:
+        ip_ok = rate_limit.hit(
+            redis,
+            "login:ip",
+            client_ip or "unknown",
+            settings.login_rate_limit_ip,
+            window,
+        )
+        email_ok = rate_limit.hit(
+            redis,
+            "login:email",
+            email.strip().lower(),
+            settings.login_rate_limit_email,
+            window,
+        )
+    except RedisError:
+        logger.exception("Login rate limiter unavailable — refusing attempt")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Login is temporarily unavailable",
+        ) from None
+    if not (ip_ok and email_ok):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts — please try again later.",
+            headers={"Retry-After": str(window)},
+        )
 
 
 def _issue_token_pair(db: Session, user: User) -> TokenPair:

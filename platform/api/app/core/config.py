@@ -24,6 +24,12 @@ PLATFORM_ENV_FILE = Path(
     os.environ.get("BLOOM_ENV_FILE") or Path(__file__).resolve().parents[3] / ".env"
 )
 
+# Built-in JWT_SECRET default — public knowledge, so any token it signs is
+# forgeable. Tolerated only in development/test; elsewhere the app refuses to
+# issue or verify tokens until a real JWT_SECRET is configured (the setup
+# wizard writes one at apply).
+DEV_ONLY_JWT_SECRET = "dev-only-insecure-secret"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -48,10 +54,18 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://redis:6379/0", alias="REDIS_URL")
 
     # Auth / JWT
-    jwt_secret: str = Field(default="dev-only-insecure-secret", alias="JWT_SECRET")
+    jwt_secret: str = Field(default=DEV_ONLY_JWT_SECRET, alias="JWT_SECRET")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     access_token_ttl_minutes: int = Field(default=30, alias="ACCESS_TOKEN_TTL_MINUTES")
     refresh_token_ttl_days: int = Field(default=30, alias="REFRESH_TOKEN_TTL_DAYS")
+
+    # Login brute-force throttle — fixed-window Redis counters on
+    # POST /api/auth/login, per caller IP and per target email.
+    login_rate_limit_ip: int = Field(default=20, alias="LOGIN_RATE_LIMIT_IP")
+    login_rate_limit_email: int = Field(default=5, alias="LOGIN_RATE_LIMIT_EMAIL")
+    login_rate_limit_window_seconds: int = Field(
+        default=300, alias="LOGIN_RATE_LIMIT_WINDOW_SECONDS"
+    )
 
     # OTP (phone/email verification hooks)
     otp_ttl_seconds: int = Field(default=300, alias="OTP_TTL_SECONDS")
@@ -95,6 +109,14 @@ class Settings(BaseSettings):
     @property
     def is_test(self) -> bool:
         return self.api_env == "test"
+
+    @property
+    def jwt_secret_insecure(self) -> bool:
+        """True when the app would sign/verify JWTs with the public built-in
+        secret outside development/test. In that state token issue and
+        verification are refused (see app.core.security) and startup logs a
+        CRITICAL — an unsigned-but-running API beats a forgeable one."""
+        return self.jwt_secret == DEV_ONLY_JWT_SECRET and not (self.is_dev or self.is_test)
 
 
 @lru_cache

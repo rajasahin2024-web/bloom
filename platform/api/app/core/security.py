@@ -37,6 +37,11 @@ def verify_password(password: str, password_hash: str) -> bool:
 def create_access_token(user_id: uuid.UUID, role: UserRole) -> tuple[str, int]:
     """Return (signed JWT, expires_in seconds)."""
     settings = get_settings()
+    if settings.jwt_secret_insecure:
+        raise RuntimeError(
+            "JWT_SECRET is not configured — refusing to sign tokens with the "
+            "built-in dev secret outside development/test"
+        )
     ttl = settings.access_token_ttl_minutes * 60
     now = datetime.now(UTC)
     claims: dict[str, Any] = {
@@ -52,6 +57,8 @@ def create_access_token(user_id: uuid.UUID, role: UserRole) -> tuple[str, int]:
 def decode_access_token(token: str) -> dict[str, Any] | None:
     """Decode and validate an access token; return claims or None."""
     settings = get_settings()
+    if settings.jwt_secret_insecure:
+        return None
     try:
         claims: dict[str, Any] = jwt.decode(
             token,

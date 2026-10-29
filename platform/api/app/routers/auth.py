@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from redis import Redis
 from sqlalchemy.orm import Session
 
@@ -37,7 +37,15 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)) -> RegisterOut:
 
 
 @router.post("/login", response_model=RegisterOut)
-def login(payload: LoginIn, db: Session = Depends(get_db)) -> RegisterOut:
+def login(
+    payload: LoginIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+) -> RegisterOut:
+    auth_service.enforce_login_rate_limit(
+        redis, request.client.host if request.client else None, payload.email
+    )
     user, tokens = auth_service.login(db, payload)
     return RegisterOut(user=UserOut.model_validate(user), tokens=tokens)
 
