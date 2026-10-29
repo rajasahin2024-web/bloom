@@ -183,7 +183,7 @@
           },
           {
             "label": "Site admin",
-            "href": "/site-admin"
+            "href": "/admin"
           }
         ]
       }
