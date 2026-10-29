@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from app import __version__
 from app.core.config import get_settings
 from app.routers import (
+    applications,
     auth,
     branding,
     cms,
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(branding.router)
     app.include_router(auth.router)
     app.include_router(enquiries.router)
+    app.include_router(applications.router)
     app.include_router(cms.router)
     app.include_router(content.router)
     app.include_router(settings.router)

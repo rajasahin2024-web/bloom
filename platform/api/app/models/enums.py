@@ -41,6 +41,18 @@ class EnquiryStatus(StrEnum):
     closed = "closed"
 
 
+class ApplicationStage(StrEnum):
+    """Hiring pipeline stages (prototype bloom-data-hr.js HIRE_STAGES)."""
+
+    applied = "applied"
+    screen = "screen"
+    demo = "demo"
+    interview = "interview"
+    offer = "offer"
+    hired = "hired"
+    declined = "declined"
+
+
 class CmsStatus(StrEnum):
     draft = "draft"
     published = "published"

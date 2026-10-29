@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, waitFor } from "@testing-library/react";
+
+vi.mock("@/lib/api", () => ({ apiFetch: vi.fn() }));
+
+import { apiFetch } from "@/lib/api";
 
 import { BandTableSection } from "./BandTableSection";
 import { FaqSection } from "./FaqSection";
@@ -288,10 +292,34 @@ describe("JobFormSection", () => {
     expect(container.textContent).toContain("Name the exam part");
   });
 
-  it("shows the done panel with a reference after submit", () => {
+  it("POSTs the application and shows the done panel with the stored ref", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      status: 201,
+      data: { application: { ref: "BL-APP-10042" }, alert: "sent" },
+    });
     const { container } = render(<JobFormSection props={formProps} />);
     fireEvent.submit(container.querySelector("form")!);
-    expect(container.textContent).toContain("Application received");
+    await waitFor(() =>
+      expect(container.textContent).toContain("Application received"),
+    );
+    expect(container.textContent).toContain("BL-APP-10042");
+    expect(container.querySelector("form")).toBeNull();
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/api/applications",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.objectContaining({ source: "careers page" }),
+      }),
+    );
+  });
+
+  it("still confirms when intake fails — the prototype's can't-fail UX", async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error("API down"));
+    const { container } = render(<JobFormSection props={formProps} />);
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() =>
+      expect(container.textContent).toContain("Application received"),
+    );
     expect(container.textContent).toMatch(/BL-APP-\d+/);
     expect(container.querySelector("form")).toBeNull();
   });

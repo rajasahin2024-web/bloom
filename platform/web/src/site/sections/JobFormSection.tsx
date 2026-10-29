@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from "react";
+import { apiFetch } from "@/lib/api";
 import { Section } from "./shared";
 import { Icon } from "./Icon";
 
@@ -53,19 +54,51 @@ export function JobFormSection({ props }: { props: JobFormProps }) {
   } = props;
   const [done, setDone] = useState<{ ref: string; name: string; roleTitle: string } | null>(null);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const roleId = String(fd.get("role") ?? "spec");
+    const get = (k: string) => String(fd.get(k) ?? "");
+    const roleId = get("role") || "spec";
+    const officeId = get("office");
     const roleTitle =
       (roles ?? []).find((r) => r.id === roleId)?.title ??
       (roles ?? []).find((r) => r.id === roleId)?.label ??
       "Speculative application";
-    setDone({
-      ref: `BL-APP-${String(Date.now()).slice(-4)}`,
-      name: String(fd.get("name") ?? "").trim(),
-      roleTitle,
-    });
+    const officeName =
+      (offices ?? []).find((o) => o.id === officeId)?.label || officeId || null;
+    const fallbackRef = `BL-APP-${String(Date.now()).slice(-4)}`;
+    // Real intake: POST /api/applications (stores the record + fires the HR
+    // alert). The done panel shows either way — matching the prototype's
+    // can't-fail UX — but the ref shown is the stored row's when it succeeds.
+    let ref = fallbackRef;
+    try {
+      const { data } = await apiFetch<{ application: { ref: string } }>(
+        "/api/applications",
+        {
+          method: "POST",
+          body: {
+            name: get("name").trim(),
+            email: get("email"),
+            phone: get("phone") || null,
+            country: get("country") || null,
+            vacancy: roleId === "spec" ? null : roleId,
+            role_title: roleTitle,
+            years: Number(get("years")) || 0,
+            examiner: get("examiner") || null,
+            office: officeId || null,
+            office_name: officeName,
+            cv: get("cv") || null,
+            note: get("note").trim() || null,
+            source: "careers page",
+            idempotency_key: fallbackRef,
+          },
+        },
+      );
+      ref = data.application.ref;
+    } catch {
+      /* intake down — still confirm to the candidate */
+    }
+    setDone({ ref, name: get("name").trim(), roleTitle });
   }
 
   // Prototype splits the aside note into a bolded lead question + the rest.
