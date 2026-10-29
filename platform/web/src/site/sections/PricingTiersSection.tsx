@@ -1,4 +1,4 @@
-import { Head, Section } from "./shared";
+import { Head, Inline, Section } from "./shared";
 import { Icon } from "./Icon";
 
 interface PricingTiersProps {
@@ -24,7 +24,7 @@ export function PricingTiersSection({ props }: { props: PricingTiersProps }) {
           <div key={i} className={`plan rv${t.highlighted ? " pop" : ""}`}>
             {t.highlighted && <span className="rib">Most popular</span>}
             <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-              <h3>{t.name}</h3>
+              <h3><Inline text={t.name} /></h3>
             </div>
             <div className="pr">
               <b>{t.price}</b>

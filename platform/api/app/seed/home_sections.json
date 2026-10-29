@@ -14,7 +14,7 @@
       },
       "props": {
         "badge": "New — Placement test now gives a CEFR level and a band per skill",
-        "headline": "Reach your band with teachers who marked the real exam.",
+        "headline": "Reach your band with teachers who <em>marked the real exam</em>.",
         "subhead": "Bloom is an English school and a study platform in one. We start with a placement test that gives you an honest level, then build the plan, the practice and the feedback around whatever that test says you are weakest at.",
         "primary_btn": {
           "label": "Take the free placement test",
@@ -156,7 +156,7 @@
       },
       "props": {
         "eyebrow": "What we do",
-        "heading": "We prepare you for one exam, properly.",
+        "heading": "We prepare you for one exam, <em>properly</em>.",
         "body": "Not general English lessons with an exam bolted on. Every hour you spend with Bloom is aimed at a specific part of a specific paper, chosen because your own test results say that is where your marks are going.",
         "cards": [
           {
@@ -215,7 +215,7 @@
       },
       "props": {
         "eyebrow": "Where Bloom came from",
-        "heading": "Founded in 2025, in three countries at once.",
+        "heading": "Founded in <em>2025</em>, in three countries at once.",
         "body": "Bloom began as three separate teaching practices — one in Muscat, one in Milan and one in Shanghai — run by examiners who kept meeting the same problem: students who understood English but could not show it under exam conditions. In 2025 the three merged and moved their operations to Bengaluru, India, where the academy is now headquartered.",
         "cards": [
           {
@@ -256,7 +256,10 @@
       },
       "props": {
         "eyebrow": "How we do it",
-        "heading": "Five stages. Nothing is guessed.",
+        "heading": "Five stages. Nothing is <em>guessed</em>.",
+        "lead": "Most preparation fails for one reason: students practise without ever checking what they got wrong. Bloom is built to make that impossible.",
+        "variant": "paper",
+        "pad_bottom": 38,
         "steps": [
           {
             "n": 1,
@@ -287,6 +290,94 @@
       }
     },
     {
+      "id": "sec_difference",
+      "label": "The difference",
+      "type": "rich_block",
+      "enabled": true,
+      "animation": {
+        "type": "fade",
+        "delay_ms": 0
+      },
+      "props": {
+        "eyebrow": "The difference",
+        "heading": "Feedback is the <em>whole</em> product.",
+        "body": "Anyone can sell you practice papers. Half a band takes roughly a hundred focused hours — and those hours only count if something tells you, precisely, what went wrong.",
+        "variant": "paper",
+        "cards": [
+          {
+            "icon": "check",
+            "title": "Every essay marked against the four official criteria",
+            "body": "Task Response, Coherence and Cohesion, Lexical Resource, Grammatical Range and Accuracy — separately, with a band each.",
+            "href": ""
+          },
+          {
+            "icon": "check",
+            "title": "Sentence-level corrections, not a grade",
+            "body": "The wrong version, the right version, and why. Repeat offenders go into your personal error bank.",
+            "href": ""
+          },
+          {
+            "icon": "check",
+            "title": "Errors targeted to your first language",
+            "body": "Articles for Hindi and Urdu speakers, plural and tense endings for Mandarin speakers, final consonants for Vietnamese speakers.",
+            "href": ""
+          },
+          {
+            "icon": "check",
+            "title": "Spaced repetition that decides for you",
+            "body": "570 academic words scheduled so the ones you miss come back tomorrow and the ones you know disappear for a month.",
+            "href": ""
+          }
+        ],
+        "side": {
+          "kind": "feedback",
+          "tags": [
+            {
+              "text": "Task 2",
+              "tone": "amb"
+            },
+            {
+              "text": "Band 6.5"
+            },
+            {
+              "text": "4 issues found",
+              "tone": "cor"
+            }
+          ],
+          "wrong": "People is becoming more dependent on technology.",
+          "right": "People are becoming increasingly dependent on technology.",
+          "why": "“People” is an irregular plural and always takes a plural verb. “Increasingly” is also more precise than “more” here.",
+          "bands": [
+            {
+              "label": "Task Response",
+              "score": "7.0",
+              "pct": 78,
+              "tone": "leaf"
+            },
+            {
+              "label": "Coherence & Cohesion",
+              "score": "6.5",
+              "pct": 72,
+              "tone": "leaf"
+            },
+            {
+              "label": "Lexical Resource",
+              "score": "6.5",
+              "pct": 72,
+              "tone": "amber"
+            },
+            {
+              "label": "Grammatical Range",
+              "score": "6.0",
+              "pct": 66,
+              "tone": "coral"
+            }
+          ]
+        },
+        "pad_top": 38
+      }
+    },
+    {
       "id": "sec_features",
       "label": "Features",
       "type": "feature_grid",
@@ -296,7 +387,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "Everything a serious candidate needs, in one place.",
+        "heading": "Everything a serious candidate <em>needs</em>, in one place.",
         "features": [
           {
             "icon": "graduation-cap",
@@ -341,7 +432,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "This is what you log into every day.",
+        "heading": "This is what you log into <em>every day</em>.",
         "body": "Not a video library with a login. A working platform that knows your level, marks your work and decides what you study today.",
         "media": {
           "url": "",
@@ -364,7 +455,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "Verified results, not marketing numbers.",
+        "heading": "Verified results, not <em>marketing numbers</em>.",
         "items": [
           {
             "name": "Priya Sharma",
@@ -500,7 +591,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "Three former examiners. Four specialists.",
+        "heading": "Three former examiners. <em>Four specialists</em>.",
         "staff": [
           {
             "name": "Meriam Friaa",
@@ -563,7 +654,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "Where they started, and where they got to.",
+        "heading": "Where they started, and where they <em>got to</em>.",
         "students": [
           {
             "name": "Priya Sharma",
@@ -603,7 +694,7 @@
       },
       "props": {
         "eyebrow": "Study abroad · in partnership with FMA Overseas",
-        "heading": "A band is not the goal. The offer letter is.",
+        "heading": "A band is not the goal. The <em>offer letter</em> is.",
         "body": "Getting Band 7 is half the journey. Turning it into a place at a university abroad — the application, the credential check, the visa, the accommodation — is the other half. That is what FMA Overseas does, and Bloom students go straight through to them.",
         "variant": "dark",
         "lockup": {
@@ -776,7 +867,7 @@
         "speed_s": 30
       },
       "props": {
-        "heading": "Universities that have admitted Bloom students.",
+        "heading": "Universities that have <em>admitted Bloom students</em>.",
         "universities": [
           {
             "name": "University of Manchester",
@@ -849,7 +940,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "Three ways in. All include the full platform.",
+        "heading": "Three ways in. All include the <em>full platform</em>.",
         "tiers": [
           {
             "name": "Core",
@@ -910,7 +1001,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "India-based. Everywhere taught.",
+        "heading": "India-based. <em>Everywhere</em> taught.",
         "items": [
           {
             "label": "India",
@@ -961,7 +1052,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "Four cities, one classroom culture.",
+        "heading": "Four cities, one <em>classroom culture</em>.",
         "gallery": [
           {
             "media_url": "",
@@ -992,7 +1083,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "Go deeper.",
+        "heading": "Go <em>deeper</em>.",
         "body": "Every part of Bloom has its own page — the exam, the platform, the results, the pathways.",
         "cta": {
           "label": "Explore the platform",
@@ -1010,7 +1101,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "Find out what band you would get today.",
+        "heading": "Find out what band you would get <em>today</em>.",
         "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
         "phone": "+91 80 4718 2260",
         "email": "hello@bloomielts.com",

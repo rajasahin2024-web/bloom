@@ -11,7 +11,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "About Bloom",
-        "heading": "Founded because good students kept failing for bad reasons.",
+        "heading": "Founded because good students kept <em>failing for bad reasons</em>.",
         "body": "Bloom started in 2025 as three separate teaching practices — one in Muscat, one in Milan, one in Shanghai — each run by former IELTS examiners who had spent years watching capable candidates lose marks on things nobody had ever told them about: a missing article, a date written the wrong way, thirty seconds of silence in Part 2.\n\nThe three merged that same year and moved operations to Bengaluru. Across 2,840 students the method has not changed. Test honestly. Teach the specific thing. Mark it against the real criteria. Repeat until the number moves.",
         "variant": "paper",
         "cards": [],
@@ -43,7 +43,7 @@
       "props": {
         "anchor_id": "staff",
         "eyebrow": "Leadership & academic staff",
-        "heading": "The people who make the academy run.",
+        "heading": "The people who <em>make the academy run</em>.",
         "lead": "One operational leader, three former examiners and four specialists. Every teacher marks a single part of the exam for a living.",
         "mid": true,
         "staff": [
@@ -66,7 +66,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Moments in Bloom",
-        "heading": "2,840 students, four cities, one method.",
+        "heading": "2,840 students, <em>four cities</em>, one method.",
         "lead": "Results days, speaking workshops, the first Muscat classroom, and the students who came back to teach. Photographs from the academy.",
         "variant": "paper",
         "items": [
@@ -89,7 +89,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Our reach",
-        "heading": "India-based. Everywhere taught.",
+        "heading": "India-based. <em>Everywhere</em> taught.",
         "lead": "2,840 students in 34 countries, taught out of Bengaluru, Muscat, Milan and Shanghai. Classes run across four time zones, so a live session is always within reach of your evening.",
         "variant": "dark",
         "map": {
@@ -129,7 +129,7 @@
       "enabled": true,
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
-        "heading": "Find out what band you would get today.",
+        "heading": "Find out what band you would get <em>today</em>.",
         "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
         "phone": "+91 80 4718 2260",
         "email": "hello@bloomielts.com",

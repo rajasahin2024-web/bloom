@@ -11,7 +11,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Study abroad · in partnership with FMA Overseas",
-        "heading": "A band is not the goal. The offer letter is.",
+        "heading": "A band is not the goal. The <em>offer letter</em> is.",
         "body": "Getting Band 7 is half the journey. Turning it into a place at a university abroad — the application, the credential check, the visa, the accommodation — is the other half. That is what FMA Overseas does, and Bloom students go straight through to them.",
         "variant": "dark",
         "lockup": {
@@ -66,7 +66,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Our university network",
-        "heading": "Where a Bloom band actually gets you.",
+        "heading": "Where a Bloom band <em>actually gets you</em>.",
         "lead": "Every university below has admitted a Bloom student. The English requirement shown is the one the department actually enforces — including the per-skill minimum, which is what catches most applicants out.",
         "all_label": "All destinations",
         "universities": [
@@ -99,7 +99,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Campus life",
-        "heading": "Students who made it there.",
+        "heading": "Students who <em>made it there</em>.",
         "lead": "Photographs sent back by Bloom students after they arrived — the reason any of this matters.",
         "variant": "paper",
         "mid": true,
@@ -118,7 +118,7 @@
       "enabled": true,
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
-        "heading": "Find out what band you would get today.",
+        "heading": "Find out what band you would get <em>today</em>.",
         "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
         "phone": "+91 80 4718 2260",
         "email": "hello@bloomielts.com",

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { apiFetch } from "@/lib/api";
-import { Section } from "./shared";
+import { Inline, Section } from "./shared";
 import { Icon } from "./Icon";
 
 interface ContactField {
@@ -116,8 +116,8 @@ function ContactPage({ props }: { props: ContactProps }) {
     >
       <div className="wrap">
         <div className="head rv">
-          {eyebrow && <div className="eb">{eyebrow}</div>}
-          <h2>{heading}</h2>
+          {eyebrow && <div className="eb"><Inline text={eyebrow} /></div>}
+          <h2><Inline text={heading} /></h2>
           {body && <p className="lead">{body}</p>}
         </div>
         <div className="split" style={{ alignItems: "start" }}>
@@ -175,7 +175,7 @@ function ContactPage({ props }: { props: ContactProps }) {
                 >
                   <Icon name="check" size={23} />
                 </div>
-                <h3 style={{ fontSize: 23, marginBottom: 11 }}>{form?.success?.title}</h3>
+                <h3 style={{ fontSize: 23, marginBottom: 11 }}><Inline text={form?.success?.title} /></h3>
                 <p
                   style={{
                     fontSize: 14,
@@ -306,7 +306,7 @@ function ContactPage({ props }: { props: ContactProps }) {
               </div>
             )}
             <div className="card rv" style={{ padding: 26 }}>
-              <div className="eb">{office?.heading || "Visit us"}</div>
+              <div className="eb"><Inline text={office?.heading} fallback={"Visit us"} /></div>
               {address && (
                 <div
                   style={{ fontSize: 14, lineHeight: 1.7, color: "var(--ink-2)", marginTop: 6 }}
@@ -400,7 +400,7 @@ export function ContactSection({ props }: { props: ContactProps }) {
         <div className="eb" style={{ justifyContent: "center", color: "var(--leaf-300)" }}>
           Start here
         </div>
-        <h2 style={{ maxWidth: 640, margin: "0 auto" }}>{heading}</h2>
+        <h2 style={{ maxWidth: 640, margin: "0 auto" }}><Inline text={heading} /></h2>
         {body && (
           <p className="lead" style={{ margin: "18px auto 0", color: "rgba(255,255,255,.76)" }}>
             {body}

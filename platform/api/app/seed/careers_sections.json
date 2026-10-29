@@ -11,7 +11,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Careers at Bloom",
-        "heading": "Pursue your career with us.",
+        "heading": "Pursue your career <em>with us</em>.",
         "body": "We are a small academy with an unusual standard: every teacher marks one part of the exam for a living. If you are a former examiner, a specialist tutor or someone who wants education operations done properly, we want to hear from you.",
         "layout": "hero",
         "cards": [],
@@ -39,7 +39,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Why Bloom",
-        "heading": "What the job is actually like.",
+        "heading": "What the job is <em>actually like</em>.",
         "lead": "No inflated claims. This is how the academy runs, and the parts people tell us they value.",
         "variant": "paper",
         "mid": true,
@@ -61,7 +61,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Open positions",
-        "heading": "Roles we are hiring for.",
+        "heading": "Roles we are <em>hiring</em> for.",
         "lead": "Apply below and your application enters our hiring pipeline the same minute. We read every one, and reply either way.",
         "mid": true,
         "jobs": [
@@ -85,7 +85,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "How hiring works",
-        "heading": "Six stages, no ghosting.",
+        "heading": "Six stages, <em>no ghosting</em>.",
         "lead": "You will know which stage you are at, and roughly how long the next one takes.",
         "variant": "paper",
         "mid": true,
@@ -107,7 +107,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Apply",
-        "heading": "Send us your application.",
+        "heading": "Send us your <em>application</em>.",
         "lead": "Pick a role, or send a speculative application and we will keep you on file. Everything here goes straight into our hiring pipeline — no third-party job board in between.",
         "tips_heading": "What helps your application",
         "tips": [

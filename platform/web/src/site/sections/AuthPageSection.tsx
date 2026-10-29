@@ -2,6 +2,7 @@ import { useState, type FormEvent, type MouseEvent, type ReactNode } from "react
 import { ApiError } from "@/lib/api";
 import { fetchMe, login, saveSession } from "@/lib/auth";
 import { Icon } from "./Icon";
+import { Inline } from "./shared";
 
 interface AuthFeature {
   icon: string;
@@ -112,7 +113,7 @@ function SuccessPanel({
       >
         <Icon name={icon} size={22} />
       </div>
-      <h1 style={{ fontSize: 26, letterSpacing: "-1px" }}>{heading}</h1>
+      <h1 style={{ fontSize: 26, letterSpacing: "-1px" }}><Inline text={heading} /></h1>
       <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 11, lineHeight: 1.7 }}>
         {children}
       </p>
@@ -287,12 +288,12 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
 
         <div style={{ maxWidth: 420 }}>
           <div className="eb" style={{ color: "var(--leaf-300)" }}>
-            {aside?.eyebrow}
+            <Inline text={aside?.eyebrow} />
           </div>
-          <h2 style={{ color: "#fff" }}>{aside?.heading}</h2>
+          <h2 style={{ color: "#fff" }}><Inline text={aside?.heading} /></h2>
           {aside?.lead && (
             <p className="lead" style={{ color: "rgba(255,255,255,.7)", marginTop: 16 }}>
-              {aside.lead}
+              <Inline text={aside.lead} />
             </p>
           )}
 
@@ -421,11 +422,11 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
           {!done && mode === "login" && (
             <div>
               <h1 style={{ fontSize: 31, letterSpacing: "-1.3px" }}>
-                {signin?.heading || "Sign in"}
+                <Inline text={signin?.heading} fallback={"Sign in"} />
               </h1>
               {signin?.lead && (
                 <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 9, marginBottom: 26 }}>
-                  {signin.lead}
+                  <Inline text={signin.lead} />
                 </p>
               )}
 
@@ -559,11 +560,11 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
           {!done && mode === "signup" && (
             <div>
               <h1 style={{ fontSize: 31, letterSpacing: "-1.3px" }}>
-                {signup?.heading || "Create your account"}
+                <Inline text={signup?.heading} fallback={"Create your account"} />
               </h1>
               {signup?.lead && (
                 <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 9, marginBottom: 24 }}>
-                  {signup.lead}
+                  <Inline text={signup.lead} />
                 </p>
               )}
 
@@ -697,11 +698,11 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
           {!done && mode === "forgot" && (
             <div>
               <h1 style={{ fontSize: 31, letterSpacing: "-1.3px" }}>
-                {forgot?.heading || "Reset your password"}
+                <Inline text={forgot?.heading} fallback={"Reset your password"} />
               </h1>
               {forgot?.lead && (
                 <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 9, marginBottom: 24 }}>
-                  {forgot.lead}
+                  <Inline text={forgot.lead} />
                 </p>
               )}
               <form onSubmit={doForgot}>

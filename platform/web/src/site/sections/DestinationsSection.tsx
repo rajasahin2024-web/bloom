@@ -1,4 +1,4 @@
-import { Section } from "./shared";
+import { Inline, Section } from "./shared";
 
 interface DestinationsProps {
   heading: string;
@@ -21,7 +21,7 @@ export function DestinationsSection({ props }: { props: DestinationsProps }) {
               marginBottom: 18,
             }}
           >
-            {heading}
+            <Inline text={heading} />
           </div>
         )}
         <div

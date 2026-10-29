@@ -14,7 +14,7 @@
       },
       "props": {
         "eyebrow": "IELTS explained",
-        "heading": "Know the test before you sit it.",
+        "heading": "Know the test before you <em>sit</em> it.",
         "intro": "Most candidates lose marks to the format rather than to their English. Here is the whole exam laid out — what each section asks, how long you get, and what each band actually means to a university.",
         "columns": [
           "Section",
@@ -108,7 +108,7 @@
       },
       "props": {
         "eyebrow": "The nine-band scale",
-        "heading": "What your band actually means.",
+        "heading": "What your band actually <em>means</em>.",
         "lead": "Bands are reported in whole and half scores. Your overall is the average of the four skills, rounded to the nearest half — which is why a single weak skill drags everything down.",
         "rows": [
           {
@@ -196,7 +196,7 @@
       },
       "props": {
         "eyebrow": "Skill by skill",
-        "heading": "The question types that decide your score.",
+        "heading": "The question types that decide your <em>score</em>.",
         "features": [
           {
             "icon": "headphones",
@@ -330,7 +330,7 @@
       },
       "props": {
         "eyebrow": "Academic or General Training?",
-        "heading": "Choosing the wrong one is expensive.",
+        "heading": "Choosing the <em>wrong</em> one is expensive.",
         "body": "Listening and Speaking are identical. Reading and Writing are not — and a university will not accept a General Training result, however high the band.",
         "cards": [
           {
@@ -570,7 +570,7 @@
       },
       "props": {
         "eyebrow": "How we do it",
-        "heading": "Five stages. Nothing is guessed.",
+        "heading": "Five stages. Nothing is <em>guessed</em>.",
         "lead": "Most preparation fails for one reason: students practise without ever checking what they got wrong. Bloom is built to make that impossible.",
         "variant": "paper",
         "steps": [
@@ -614,7 +614,7 @@
       },
       "props": {
         "eyebrow": "The difference",
-        "heading": "Feedback is the whole product.",
+        "heading": "Feedback is the <em>whole</em> product.",
         "body": "Anyone can sell you practice papers. Half a band takes roughly a hundred focused hours — and those hours only count if something tells you, precisely, what went wrong.",
         "variant": "paper",
         "cards": [
@@ -701,7 +701,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "Find out what band you would get today.",
+        "heading": "Find out what band you would get <em>today</em>.",
         "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
         "phone": "+91 80 4718 2260",
         "email": "hello@bloomielts.com",

@@ -1,7 +1,7 @@
 import { Icon } from "./Icon";
 
 interface FooterProps {
-  brand?: { name: string; tagline: string; logo_url: string; blurb?: string };
+  brand?: { name: string; tagline: string; logo_url: string; blurb?: string; blurb_title?: string };
   columns: { heading: string; links: { label: string; href: string }[] }[];
   social: { icon: string; href: string }[];
   copyright: string;
@@ -25,9 +25,20 @@ export function FooterSection({ props }: { props: FooterProps }) {
                 <span>{brand?.tagline ?? "IELTS Academy"}</span>
               </div>
             </a>
-            {brand?.blurb && (
+            {(brand?.blurb_title || brand?.blurb) && (
               <div style={{ lineHeight: 1.7, maxWidth: 300 }}>
-                {brand.blurb}
+                {brand?.blurb_title && (
+                  <b
+                    style={{
+                      color: "var(--leaf-300)",
+                      display: "block",
+                      marginBottom: 7,
+                    }}
+                  >
+                    {brand.blurb_title}
+                  </b>
+                )}
+                {brand?.blurb}
               </div>
             )}
             {social?.length > 0 && (

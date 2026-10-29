@@ -1,4 +1,4 @@
-import { Section } from "./shared";
+import { Inline, Section } from "./shared";
 import { Icon } from "./Icon";
 
 interface CtaStripProps {
@@ -15,7 +15,7 @@ export function CtaStripSection({ props }: { props: CtaStripProps }) {
         <div className="eb" style={{ justifyContent: "center", color: "var(--leaf-300)" }}>
           Start here
         </div>
-        <h2 style={{ maxWidth: 640, margin: "0 auto" }}>{heading}</h2>
+        <h2 style={{ maxWidth: 640, margin: "0 auto" }}><Inline text={heading} /></h2>
         {body && (
           <p className="lead" style={{ margin: "18px auto 0", color: "rgba(255,255,255,.76)" }}>
             {body}

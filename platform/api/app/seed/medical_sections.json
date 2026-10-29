@@ -14,7 +14,7 @@
       },
       "props": {
         "eyebrow": "Medical English · with Future MedsAcademy",
-        "heading": "Doctors and nurses need a different English exam.",
+        "heading": "Doctors and nurses need a <em>different</em> English exam.",
         "intro": "The Occupational English Test is the healthcare-specific alternative to IELTS, accepted by the GMC, NMC, AHPRA, the Medical Council of Ireland and dozens of other regulators. Every task is set in a clinical context — and that is exactly why it suits medics and why generic preparation fails.",
         "table_label": "IELTS or OET for registration?",
         "columns": [
@@ -148,7 +148,7 @@
       },
       "props": {
         "eyebrow": "How Bloom and FMA deliver it together",
-        "heading": "Language teachers and practising clinicians, in the same course.",
+        "heading": "Language teachers and <em>practising clinicians</em>, in the same course.",
         "body": "OET fails candidates who have excellent clinical English and no idea what an examiner wants from a referral letter — and candidates whose English is fine but whose role-play manner is not. We put both specialists in the room.",
         "ctas": [
           {
@@ -329,7 +329,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "Find out what band you would get today.",
+        "heading": "Find out what band you would get <em>today</em>.",
         "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
         "phone": "+91 80 4718 2260",
         "email": "hello@bloomielts.com",

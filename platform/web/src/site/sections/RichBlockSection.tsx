@@ -1,4 +1,4 @@
-import { Cap, Head, IconSlot, Section, Tbl } from "./shared";
+import { Cap, Head, IconSlot, Inline, Section, Tbl } from "./shared";
 import { Icon } from "./Icon";
 
 interface SideSpec {
@@ -158,7 +158,7 @@ function FeedbackCard({ side }: { side: SideSpec }) {
 function SubtestsCard({ side }: { side: SideSpec }) {
   return (
     <div>
-      {(side.eyebrow || side.title) && <div className="eb">{side.eyebrow ?? side.title}</div>}
+      {(side.eyebrow || side.title) && <div className="eb"><Inline text={side.eyebrow ?? side.title} /></div>}
       <div style={{ display: "grid", gap: 13, marginTop: 4 }}>
         {(side.items ?? []).map((it, i) => (
           <div
@@ -271,7 +271,7 @@ function SideTable({ side }: { side: SideSpec }) {
   }
   return (
     <div className="card" style={{ padding: 26 }}>
-      {side.eyebrow && <div className="eb">{side.eyebrow}</div>}
+      {side.eyebrow && <div className="eb"><Inline text={side.eyebrow} /></div>}
       {side.intro && (
         <div style={{ fontSize: 13, color: "var(--ink-3)", lineHeight: 1.65, marginBottom: 18 }}>
           {side.intro}
@@ -297,8 +297,8 @@ function BeliefsSplit({ props }: { props: RichBlockProps }) {
     <section className="sec paper" id={anchor_id ?? "about"}>
       <div className="wrap split">
         <div className="rv">
-          {eyebrow && <div className="eb">{eyebrow}</div>}
-          <h2>{heading}</h2>
+          {eyebrow && <div className="eb"><Inline text={eyebrow} /></div>}
+          <h2><Inline text={heading} /></h2>
           {paras.map((p, i) => (
             <p key={i} className="lead" style={{ marginTop: i === 0 ? 16 : 14 }}>
               {p}
@@ -329,7 +329,7 @@ function BeliefsSplit({ props }: { props: RichBlockProps }) {
         </div>
         <div className="rv">
           <div className="card" style={{ padding: 30 }}>
-            {side?.eyebrow && <div className="eb">{side.eyebrow}</div>}
+            {side?.eyebrow && <div className="eb"><Inline text={side.eyebrow} /></div>}
             <ul className="checklist" style={{ marginTop: 6 }}>
               {(side?.items ?? []).map((it, i) => (
                 <li key={i}>
@@ -363,8 +363,8 @@ function HeroLayout({ props }: { props: RichBlockProps }) {
       <div className="wrap">
         <div className="split" style={{ alignItems: "center" }}>
           <div className="rv">
-            {eyebrow && <div className="eb">{eyebrow}</div>}
-            <h1>{heading}</h1>
+            {eyebrow && <div className="eb"><Inline text={eyebrow} /></div>}
+            <h1><Inline text={heading} /></h1>
             {body && <p className="lead">{body}</p>}
             {(primary_btn || secondary_btn) && (
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 26 }}>
@@ -462,8 +462,8 @@ export function RichBlockSection({ props }: { props: RichBlockProps }) {
       <Section variant={props.variant} padTop={pad_top} padBottom={pad_bottom}>
         <div className="split">
           <div className="rv">
-            {eyebrow && <div className="eb">{eyebrow}</div>}
-            {heading && <h2>{heading}</h2>}
+            {eyebrow && <div className="eb"><Inline text={eyebrow} /></div>}
+            {heading && <h2><Inline text={heading} /></h2>}
             {body && (
               <p className="lead" style={{ marginTop: 16 }}>
                 {body}
@@ -512,7 +512,7 @@ export function RichBlockSection({ props }: { props: RichBlockProps }) {
           const inner = (
             <>
               <IconSlot icon={c.icon} tone={tone} />
-              <h3>{c.title}</h3>
+              <h3><Inline text={c.title} /></h3>
               <p>{c.body}</p>
             </>
           );

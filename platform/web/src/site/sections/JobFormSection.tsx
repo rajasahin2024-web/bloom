@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { apiFetch } from "@/lib/api";
-import { Section } from "./shared";
+import { Inline, Section } from "./shared";
 import { Icon } from "./Icon";
 
 interface JobFormProps {
@@ -120,9 +120,9 @@ export function JobFormSection({ props }: { props: JobFormProps }) {
     <Section id="apply">
       <div className="split" style={{ alignItems: "start" }}>
         <div className="rv">
-          <div className="eb">{eyebrow}</div>
-          <h2>{heading}</h2>
-          {lead && <p className="lead">{lead}</p>}
+          <div className="eb"><Inline text={eyebrow} /></div>
+          <h2><Inline text={heading} /></h2>
+          {lead && <p className="lead"><Inline text={lead} /></p>}
           {(tips ?? []).length > 0 && (
             <div className="card" style={{ marginTop: 24, padding: "20px 22px" }}>
               <div
@@ -290,7 +290,7 @@ export function JobFormSection({ props }: { props: JobFormProps }) {
                 <Icon name="check" size={23} />
               </div>
               <h3 style={{ fontSize: 23, marginBottom: 11 }}>
-                {success?.title || "Application received"}
+                <Inline text={success?.title} fallback={"Application received"} />
               </h3>
               <p
                 style={{

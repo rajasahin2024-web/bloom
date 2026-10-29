@@ -1,4 +1,4 @@
-import { Head, Section } from "./shared";
+import { Head, Inline, Section } from "./shared";
 import { Icon } from "./Icon";
 
 interface CertItem {
@@ -79,7 +79,7 @@ export function CertificateListSection({ props }: { props: CertificateListProps 
                   fontWeight: 600,
                 }}
               >
-                {s.label}
+                <Inline text={s.label} />
               </div>
             </div>
           ))}

@@ -1,4 +1,4 @@
-import { Head, Section } from "./shared";
+import { Head, Inline, Section } from "./shared";
 import { fmtDate } from "../format";
 import { Icon } from "./Icon";
 
@@ -116,7 +116,7 @@ export function FeatureGridSection({ props }: { props: FeatureGridProps }) {
                   </span>
                 )}
               </div>
-              <h3 style={{ fontSize: 17, lineHeight: 1.3, marginBottom: 9 }}>{f.title}</h3>
+              <h3 style={{ fontSize: 17, lineHeight: 1.3, marginBottom: 9 }}><Inline text={f.title} /></h3>
               <p style={{ fontSize: "13.5px", color: "var(--ink-3)", lineHeight: 1.65 }}>{f.body}</p>
             </div>
           ) : dark ? (
@@ -135,7 +135,7 @@ export function FeatureGridSection({ props }: { props: FeatureGridProps }) {
               >
                 <Icon name={f.icon ?? "bullseye"} />
               </div>
-              <h3>{f.title}</h3>
+              <h3><Inline text={f.title} /></h3>
               <p style={{ color: "rgba(255,255,255,.7)" }}>{f.body}</p>
             </div>
           ) : (
@@ -143,7 +143,7 @@ export function FeatureGridSection({ props }: { props: FeatureGridProps }) {
               <div className="ic ic-leaf">
                 <Icon name={f.icon ?? "bullseye"} />
               </div>
-              <h3>{f.title}</h3>
+              <h3><Inline text={f.title} /></h3>
               <p>{f.body}</p>
             </div>
           ),

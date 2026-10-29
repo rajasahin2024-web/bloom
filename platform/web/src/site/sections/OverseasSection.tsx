@@ -1,4 +1,4 @@
-import { Head, Section } from "./shared";
+import { Head, Inline, Section } from "./shared";
 import { Icon } from "./Icon";
 
 interface LockupSide {
@@ -110,7 +110,7 @@ export function OverseasSection({ props }: { props: OverseasProps }) {
         {items.map((it, i) => (
           <div key={i} className="pstep">
             <div className="n">{i + 1}</div>
-            <h3>{it.title}</h3>
+            <h3><Inline text={it.title} /></h3>
             <p>{it.body}</p>
           </div>
         ))}
@@ -120,9 +120,9 @@ export function OverseasSection({ props }: { props: OverseasProps }) {
         <div className="split" style={{ alignItems: "start" }}>
           {checklist && (
             <div className="rv">
-              <div className="eb">{checklist.eyebrow}</div>
+              <div className="eb"><Inline text={checklist.eyebrow} /></div>
               <h3 style={{ fontSize: 24, color: "#fff", marginBottom: 8 }}>
-                {checklist.title}
+                <Inline text={checklist.title} />
               </h3>
               <ul className="checklist">
                 {checklist.items.map((it, i) => (
@@ -141,7 +141,7 @@ export function OverseasSection({ props }: { props: OverseasProps }) {
           )}
           {universities && (
             <div className="rv">
-              <div className="eb">{unis_title}</div>
+              <div className="eb"><Inline text={unis_title} /></div>
               <div className="unis">
                 {universities.map((u, i) => (
                   <div key={i} className="uni">

@@ -11,7 +11,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Blog & guides",
-        "heading": "Written by the people who mark the papers.",
+        "heading": "Written by the people who <em>mark the papers</em>.",
         "lead": "Strategy, format updates and requirement news. No listicles, no motivational filler — every post exists because a student asked the question in a lesson.",
         "all_label": "All",
         "categories": ["Strategy", "Reading", "Speaking", "Grammar", "Study abroad", "Medical", "Listening"]
@@ -45,7 +45,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "News & updates",
-        "heading": "What is happening at Bloom.",
+        "heading": "What is happening at <em>Bloom</em>.",
         "variant": "paper",
         "mid": true,
         "columns": 2,

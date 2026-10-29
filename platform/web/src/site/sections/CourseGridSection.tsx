@@ -1,4 +1,4 @@
-import { Head, Section } from "./shared";
+import { Head, Inline, Section } from "./shared";
 import { Icon } from "./Icon";
 
 interface CourseFeature {
@@ -72,7 +72,7 @@ export function CourseGridSection({ props }: { props: CourseGridProps }) {
               >
                 <Icon name={c.icon || "seedling"} />
               </div>
-              <h3>{c.name}</h3>
+              <h3><Inline text={c.name} /></h3>
             </div>
             <div className="pr">
               <b>{c.price}</b>

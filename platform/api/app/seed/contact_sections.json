@@ -11,7 +11,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Talk to us",
-        "heading": "A free consultation, whatever your current band.",
+        "heading": "A free consultation, whatever your <em>current band</em>.",
         "body": "Tell us where you are and what you need. We will tell you honestly how far that is and how long it usually takes — before anyone mentions a course.",
         "phone": "+91 80 4718 2260",
         "email": "hello@bloomielts.com",

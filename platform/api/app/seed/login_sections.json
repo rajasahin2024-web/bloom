@@ -19,7 +19,7 @@
         "back_link": { "label": "Back to site", "href": "/" },
         "aside": {
           "eyebrow": "Welcome back",
-          "heading": "Your band, your plan, your next session.",
+          "heading": "Your band, your plan, your <em>next session</em>.",
           "lead": "Everything picks up exactly where you left it — the study plan for today, the words due for review, and whatever your last mock said you should fix.",
           "features": [
             { "icon": "calendar-day", "title": "Today's plan is waiting", "body": "Four blocks, weighted to your weakest skill" },

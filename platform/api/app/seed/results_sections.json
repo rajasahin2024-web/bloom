@@ -11,15 +11,15 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "IELTS certificates",
-        "heading": "Verified results, not marketing numbers.",
+        "heading": "Verified results, not <em>marketing numbers</em>.",
         "lead": "A selection of official Test Report Forms achieved by Bloom students this year. Every entry below corresponds to a certificate we have seen.",
         "variant": "paper",
         "mid": true,
         "stats": [
-          { "value": "7.2", "label": "Average overall band achieved this year" },
-          { "value": "92%", "label": "Reached or exceeded their target band" },
-          { "value": "68%", "label": "Achieved Band 7.0 or above" },
-          { "value": "1.4", "label": "Average band gain from placement" }
+          { "value": "7.2", "label": "Average overall band<br>achieved this year" },
+          { "value": "92%", "label": "Reached or exceeded<br>their target band" },
+          { "value": "68%", "label": "Achieved Band 7.0<br>or above" },
+          { "value": "1.4", "label": "Average band gain<br>from placement" }
         ],
         "items": [
           {
@@ -93,7 +93,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Our students",
-        "heading": "Where they started, and where they got to.",
+        "heading": "Where they started, and where they <em>got to</em>.",
         "lead": "Every band here was verified against an official test result. We do not publish an outcome we have not seen the certificate for.",
         "students": [
           { "name": "Priya Sharma", "photo_url": "", "before_band": "6.0", "after_band": "7.5", "quote": "I had taken IELTS twice and got 6.0 for writing both times without ever understanding why. Bloom marked my first essay against the four criteria and the problem was obvious in ten minutes.", "course": "Delhi, India · Manchester MSc" },
@@ -112,7 +112,7 @@
       "enabled": true,
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
-        "heading": "Find out what band you would get today.",
+        "heading": "Find out what band you would get <em>today</em>.",
         "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
         "phone": "+91 80 4718 2260",
         "email": "hello@bloomielts.com",

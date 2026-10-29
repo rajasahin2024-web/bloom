@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fmtDate } from "../format";
 import { Icon } from "./Icon";
+import { Inline } from "./shared";
 
 export const BLOG_FILTER_EVENT = "bloom:blog-filter";
 export const BLOG_POSTS_EVENT = "bloom:blog-posts";
@@ -86,7 +87,7 @@ export function BlogGridSection({ props }: { props: BlogGridProps }) {
                 <span className="tag leaf">{p.category}</span>
                 <span className="tag amb">Featured</span>
               </div>
-              <h3 style={{ fontSize: 25, lineHeight: 1.2, marginBottom: 12 }}>{p.title}</h3>
+              <h3 style={{ fontSize: 25, lineHeight: 1.2, marginBottom: 12 }}><Inline text={p.title} /></h3>
               <p style={{ fontSize: "14.5px", color: "var(--ink-3)", lineHeight: 1.7, marginBottom: 18 }}>
                 {p.excerpt}
               </p>
@@ -118,7 +119,7 @@ export function BlogGridSection({ props }: { props: BlogGridProps }) {
                   <span className="tag leaf">{p.category}</span>
                   <span className="tag">{p.read_minutes} min</span>
                 </div>
-                <h3 style={{ fontSize: 17, lineHeight: 1.3, marginBottom: 9 }}>{p.title}</h3>
+                <h3 style={{ fontSize: 17, lineHeight: 1.3, marginBottom: 9 }}><Inline text={p.title} /></h3>
                 <p style={{ fontSize: 13, color: "var(--ink-3)", lineHeight: 1.6, flex: 1 }}>
                   {(p.excerpt || "").slice(0, 132)}…
                 </p>

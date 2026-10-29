@@ -14,7 +14,7 @@
       },
       "props": {
         "eyebrow": "The platform",
-        "heading": "Everything a serious candidate needs, in one place.",
+        "heading": "Everything a serious candidate <em>needs</em>, in one place.",
         "lead": "Your school, your practice, your feedback and your teacher — organised by the part of the exam each thing belongs to.",
         "variant": "dark",
         "mid": true,
@@ -68,7 +68,7 @@
       },
       "props": {
         "eyebrow": "Inside the student portal",
-        "heading": "This is what you log into every day.",
+        "heading": "This is what you log into <em>every day</em>.",
         "body": "Not a video library with a login. A working platform that knows your level, marks your work and decides what you study today.",
         "media": {
           "url": "",
@@ -139,7 +139,7 @@
         "delay_ms": 0
       },
       "props": {
-        "heading": "Find out what band you would get today.",
+        "heading": "Find out what band you would get <em>today</em>.",
         "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
         "phone": "+91 80 4718 2260",
         "email": "hello@bloomielts.com",

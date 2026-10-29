@@ -1,4 +1,4 @@
-import { createElement, type ReactNode } from "react";
+import { createElement, Fragment, type ReactNode } from "react";
 import { Icon } from "./Icon";
 
 /**
@@ -8,6 +8,90 @@ import { Icon } from "./Icon";
  */
 export function Cap({ children }: { children: ReactNode }) {
   return createElement("cap", null, children);
+}
+
+/**
+ * Bounded inline markup for heading-ish seed fields (TEC-146 contract).
+ *
+ * Heading/headline/subhead/lead/eyebrow and item `title` fields rendered
+ * inside h1/h2/h3 MAY carry a whitelist of inline tags — `<em>`, `<strong>`,
+ * `<br>` — matching how the prototype marks accent words. `renderInline`
+ * tokenizes ONLY those tags into React elements; everything else, including
+ * unknown tags and malformed/unclosed markup, renders as literal text.
+ * No raw HTML is ever injected, so seeds stay XSS-safe.
+ */
+const INLINE_TAG = /<(\/?)(em|strong|br)\s*(\/?)>/gi;
+
+function renderInline(text: string | null | undefined): ReactNode {
+  if (text == null) return null;
+  if (!text.includes("<")) return text;
+
+  interface Level {
+    tag: string;
+    raw: string;
+    children: ReactNode[];
+  }
+  const stack: Level[] = [{ tag: "", raw: "", children: [] }];
+  const top = () => stack[stack.length - 1];
+  const pushText = (t: string) => {
+    if (t) top().children.push(t);
+  };
+  // Turn an unclosed open level back into literal text inside its parent.
+  const unwind = () => {
+    const lv = stack.pop()!;
+    top().children.push(lv.raw, ...lv.children);
+  };
+
+  INLINE_TAG.lastIndex = 0;
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = INLINE_TAG.exec(text))) {
+    pushText(text.slice(last, m.index));
+    last = INLINE_TAG.lastIndex;
+    const closing = m[1] === "/";
+    const tag = m[2].toLowerCase();
+    const selfClose = m[3] === "/";
+    if (!closing && (tag === "br" || selfClose)) {
+      if (tag === "br") top().children.push(<br key={key++} />);
+      else pushText(m[0]); // <em/> isn't a valid container — keep literal
+    } else if (!closing) {
+      stack.push({ tag, raw: m[0], children: [] });
+    } else {
+      let idx = -1;
+      for (let i = stack.length - 1; i > 0; i--) {
+        if (stack[i].tag === tag) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx === -1) {
+        pushText(m[0]); // unmatched close tag — literal
+        continue;
+      }
+      while (stack.length - 1 > idx) unwind();
+      const lv = stack.pop()!;
+      top().children.push(createElement(tag, { key: key++ }, ...lv.children));
+    }
+  }
+  pushText(text.slice(last));
+  while (stack.length > 1) unwind();
+
+  const out = stack[0].children;
+  if (out.length === 0) return null;
+  if (out.length === 1) return out[0];
+  return <Fragment>{out}</Fragment>;
+}
+
+/** Inline-markup renderer for seed text fields — see {@link renderInline}. */
+export function Inline({
+  text,
+  fallback,
+}: {
+  text: string | null | undefined;
+  fallback?: ReactNode;
+}) {
+  return <>{renderInline(text) ?? fallback ?? null}</>;
 }
 
 /** Section heading block — eyebrow + h2 + lead, matching `.head`/`.head.mid`. */
@@ -25,9 +109,9 @@ export function Head({
   if (!heading && !eyebrow) return null;
   return (
     <div className={`head rv${mid ? " mid" : ""}`}>
-      {eyebrow && <div className="eb">{eyebrow}</div>}
-      {heading && <h2>{heading}</h2>}
-      {lead && <p className="lead">{lead}</p>}
+      {eyebrow && <div className="eb"><Inline text={eyebrow} /></div>}
+      {heading && <h2><Inline text={heading} /></h2>}
+      {lead && <p className="lead"><Inline text={lead} /></p>}
     </div>
   );
 }

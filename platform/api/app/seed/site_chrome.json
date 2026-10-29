@@ -96,7 +96,8 @@
       "name": "Bloom",
       "tagline": "IELTS Academy",
       "logo_url": "/site/bloom-mark.png",
-      "blurb": "The school for English, accepted all over the globe. English exam preparation for students across Asia, the Gulf and Europe. Founded in 2025 across Oman, Italy and China; headquartered in India."
+      "blurb_title": "The school for English, accepted all over the globe.",
+      "blurb": "English exam preparation for students across Asia, the Gulf and Europe. Founded in 2025 across Oman, Italy and China; headquartered in India."
     },
     "columns": [
       {

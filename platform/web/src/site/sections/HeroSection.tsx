@@ -1,4 +1,5 @@
 import { Icon } from "./Icon";
+import { Inline } from "./shared";
 
 interface HeroProps {
   badge: string;
@@ -21,9 +22,9 @@ export function HeroSection({ props }: { props: HeroProps }) {
               <span>New</span> {p.badge}
             </div>
           )}
-          <h1>{p.headline}</h1>
+          <h1><Inline text={p.headline} /></h1>
           <p className="lead" style={{ marginTop: 22 }}>
-            {p.subhead}
+            <Inline text={p.subhead} />
           </p>
           <div className="hero-cta">
             <a className="btn btn-p btn-lg" href={p.primary_btn.href}>

@@ -11,7 +11,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Courses",
-        "heading": "Three ways in. All include the full platform.",
+        "heading": "Three ways in. All include the <em>full platform</em>.",
         "lead": "Monthly, cancel any time. The placement test and your English profile are free, whether you enrol or not.",
         "courses": [
           {
@@ -86,7 +86,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "eyebrow": "Questions",
-        "heading": "Asked before every enrolment.",
+        "heading": "Asked before <em>every</em> enrolment.",
         "variant": "paper",
         "mid": true,
         "items": [
@@ -111,7 +111,7 @@
       "enabled": true,
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
-        "heading": "Find out what band you would get today.",
+        "heading": "Find out what band you would get <em>today</em>.",
         "body": "Twenty-five minutes, six parts, and a real CEFR level at the end of it. Free, and yours whether you enrol or not.",
         "phone": "+91 80 4718 2260",
         "email": "hello@bloomielts.com",

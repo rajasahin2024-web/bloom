@@ -1,4 +1,4 @@
-import { Head, Section } from "./shared";
+import { Head, Inline, Section } from "./shared";
 import { Icon } from "./Icon";
 
 interface StepsProps {
@@ -7,16 +7,18 @@ interface StepsProps {
   lead?: string;
   mid?: boolean;
   variant?: "paper" | "dark" | "tight";
+  pad_top?: number;
+  pad_bottom?: number;
   steps: { n: string | number; title: string; body: string; icon?: string }[];
 }
 
 export function StepsSection({ props }: { props: StepsProps }) {
-  const { eyebrow, heading, lead, mid, variant, steps } = props;
+  const { eyebrow, heading, lead, mid, variant, pad_top, pad_bottom, steps } = props;
   // Careers hiring stages carry an icon per step and render as a small .card
   // grid (prototype/careers.html); plain steps keep the .steps/.step layout.
   const cardLayout = (steps ?? []).some((s) => s.icon);
   return (
-    <Section variant={variant ?? "paper"}>
+    <Section variant={variant ?? "paper"} padTop={pad_top} padBottom={pad_bottom}>
       <Head eyebrow={eyebrow} heading={heading} lead={lead} mid={mid} />
       {cardLayout ? (
         <div
@@ -57,7 +59,7 @@ export function StepsSection({ props }: { props: StepsProps }) {
                   marginBottom: 5,
                 }}
               >
-                {s.title}
+                <Inline text={s.title} />
               </b>
               <span style={{ fontSize: 12, color: "var(--ink-3)", lineHeight: 1.55 }}>
                 {s.body}
@@ -69,7 +71,7 @@ export function StepsSection({ props }: { props: StepsProps }) {
         <div className="steps">
           {(steps ?? []).map((s, i) => (
             <div key={i} className="step rv">
-              <h3>{s.title}</h3>
+              <h3><Inline text={s.title} /></h3>
               <p>{s.body}</p>
             </div>
           ))}

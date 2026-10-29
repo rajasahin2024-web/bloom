@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Head, Section } from "./shared";
+import { Head, Inline, Section } from "./shared";
 import { Icon } from "./Icon";
 
 interface Uni {
@@ -170,8 +170,8 @@ export function UniFilterSection({ props }: { props: UniFilterProps }) {
       </div>
       {globe && (
         <div className="globe rv" style={{ marginTop: 44 }}>
-          <div className="eb">{globe.eyebrow}</div>
-          <h3>{globe.heading}</h3>
+          <div className="eb"><Inline text={globe.eyebrow} /></div>
+          <h3><Inline text={globe.heading} /></h3>
           <p>{globe.body}</p>
           <div className="flags">
             {(globe.flags ?? []).map((f, i) => (
