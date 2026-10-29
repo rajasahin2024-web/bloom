@@ -7,18 +7,20 @@ interface StepsProps {
   lead?: string;
   mid?: boolean;
   variant?: "paper" | "dark" | "tight";
+  anchor_id?: string;
   pad_top?: number;
   pad_bottom?: number;
   steps: { n: string | number; title: string; body: string; icon?: string }[];
 }
 
 export function StepsSection({ props }: { props: StepsProps }) {
-  const { eyebrow, heading, lead, mid, variant, pad_top, pad_bottom, steps } = props;
+  const { eyebrow, heading, lead, mid, variant, anchor_id, pad_top, pad_bottom, steps } =
+    props;
   // Careers hiring stages carry an icon per step and render as a small .card
   // grid (prototype/careers.html); plain steps keep the .steps/.step layout.
   const cardLayout = (steps ?? []).some((s) => s.icon);
   return (
-    <Section variant={variant ?? "paper"} padTop={pad_top} padBottom={pad_bottom}>
+    <Section variant={variant ?? "paper"} id={anchor_id} padTop={pad_top} padBottom={pad_bottom}>
       <Head eyebrow={eyebrow} heading={heading} lead={lead} mid={mid} />
       {cardLayout ? (
         <div

@@ -571,6 +571,7 @@
       "props": {
         "eyebrow": "How we do it",
         "heading": "Five stages. Nothing is <em>guessed</em>.",
+        "anchor_id": "how",
         "lead": "Most preparation fails for one reason: students practise without ever checking what they got wrong. Bloom is built to make that impossible.",
         "variant": "paper",
         "steps": [
