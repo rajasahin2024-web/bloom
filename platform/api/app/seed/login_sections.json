@@ -43,7 +43,7 @@
             { "provider": "Google", "icon": "google" },
             { "provider": "Microsoft", "icon": "microsoft" }
           ],
-          "demo_note": "Demo access — all three accounts use the password bloom2026. student@bloomielts.com · teacher@bloomielts.com · admin@bloomielts.com",
+          "demo_note": "Demo access — both accounts use the password bloom2026. student@bloomielts.com · teacher@bloomielts.com",
           "footer_text": "New to Bloom?",
           "footer_link": { "label": "Take the free placement test", "mode": "signup" }
         },

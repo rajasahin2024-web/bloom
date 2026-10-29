@@ -78,12 +78,16 @@ const optLabel = (o: string | { label?: string }) =>
 
 /* Demo accounts from prototype/login.html — kept client-side so the page
    behaves exactly like the prototype. Real accounts fall through to the
-   platform /api/auth/login below. */
+   platform /api/auth/login below. No admin demo entry (TEC-149 HIGH-1):
+   a public page must not advertise admin credentials. */
 const DEMO_ACCOUNTS = [
   { email: "student@bloomielts.com", pw: "bloom2026", role: "student", name: "Priya Sharma" },
   { email: "teacher@bloomielts.com", pw: "bloom2026", role: "teacher", name: "Dr. Elena Marchetti" },
-  { email: "admin@bloomielts.com", pw: "bloom2026", role: "admin", name: "Administration" },
 ];
+
+/* Prefill comes from DEMO_ACCOUNTS only — roles without a demo account
+   (admin) get a blank form, never fabricated credentials. */
+const demoFor = (key: string) => DEMO_ACCOUNTS.find((a) => a.role === key);
 
 function SuccessPanel({
   icon,
@@ -162,8 +166,8 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
   const [show, setShow] = useState(false);
   const [errText, setErrText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [email, setEmail] = useState(`${role}@bloomielts.com`);
-  const [pw, setPw] = useState("bloom2026");
+  const [email, setEmail] = useState(() => demoFor(role)?.email ?? "");
+  const [pw, setPw] = useState(() => demoFor(role)?.pw ?? "");
   const [done, setDone] = useState<"signin" | "signup" | "forgot" | null>(null);
   const [doneName, setDoneName] = useState("");
 
@@ -177,8 +181,9 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
 
   const pickRole = (key: string) => {
     setRole(key);
-    setEmail(`${key}@bloomielts.com`);
-    setPw("bloom2026");
+    const demo = demoFor(key);
+    setEmail(demo?.email ?? "");
+    setPw(demo?.pw ?? "");
     setErrText("");
   };
 

@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 
-vi.mock("@/lib/api", () => ({ apiFetch: vi.fn() }));
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
+  apiFetch: vi.fn(),
+}));
 
 import { apiFetch } from "@/lib/api";
 
@@ -470,6 +473,19 @@ describe("AuthPageSection", () => {
     fireEvent.change(pw, { target: { value: "nope" } });
     fireEvent.submit(container.querySelector("form")!);
     expect(container.querySelector(".err")?.textContent).toContain("bloom2026");
+  });
+
+  it("ships no admin demo account — admin role gets no prefilled creds (TEC-152)", async () => {
+    const { container, getByText } = render(<AuthPageSection props={authProps} />);
+    fireEvent.click(getByText("Admin"));
+    const email = container.querySelector('input[type="email"]') as HTMLInputElement;
+    expect(email.value).toBe("");
+    fireEvent.change(email, { target: { value: "admin@bloomielts.com" } });
+    const pw = container.querySelector('input[type="password"]') as HTMLInputElement;
+    fireEvent.change(pw, { target: { value: "bloom2026" } });
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() => expect(container.querySelector(".err")).toBeTruthy());
+    expect(container.querySelector(".err")?.textContent).not.toContain("Demo password");
   });
 
   it("completes the forgot flow with the seeded success copy", () => {
