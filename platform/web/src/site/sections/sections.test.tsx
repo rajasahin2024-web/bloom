@@ -5,6 +5,9 @@ vi.mock("@/lib/api", () => ({ apiFetch: vi.fn() }));
 
 import { apiFetch } from "@/lib/api";
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 import { BandTableSection } from "./BandTableSection";
 import { FaqSection } from "./FaqSection";
 import { CourseGridSection } from "./CourseGridSection";
@@ -308,7 +311,10 @@ describe("JobFormSection", () => {
       "/api/applications",
       expect.objectContaining({
         method: "POST",
-        body: expect.objectContaining({ source: "careers page" }),
+        body: expect.objectContaining({
+          source: "careers page",
+          idempotency_key: expect.stringMatching(UUID_RE),
+        }),
       }),
     );
   });
@@ -676,5 +682,73 @@ describe("ContactSection (CTA band)", () => {
     expect(white?.textContent).toContain("Take the free placement test");
     expect(line?.textContent).toContain("Sign in to my account");
     expect(white?.getAttribute("href")).toBe("/login?mode=signup");
+  });
+});
+
+describe("ContactSection (page form)", () => {
+  const pageProps = {
+    layout: "page",
+    eyebrow: "Contact",
+    heading: "Talk to us",
+    body: "b",
+    form: {
+      fields: [
+        { key: "name", label: "Name", kind: "text", required: true },
+        { key: "email", label: "Email", kind: "email", required: true },
+        {
+          key: "interest",
+          label: "Interested in",
+          kind: "select",
+          options: ["IELTS prep"],
+        },
+      ],
+      submit_label: "Send",
+      footnote: "We reply within one working day.",
+      success: {
+        title: "Thank you — that is with us",
+        body: "We reply soon.",
+        cta_label: "Message us on WhatsApp",
+      },
+    },
+    whatsapp: "+919008041720",
+  };
+
+  const waText = (container: HTMLElement) =>
+    decodeURIComponent(
+      container.querySelector('a[href^="https://wa.me"]')?.getAttribute("href") ?? "",
+    );
+
+  it("POSTs the enquiry and hands the stored ref to the WhatsApp CTA", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      status: 201,
+      data: { enquiry: { ref: "ENQ-10077" }, alert: "sent" },
+    });
+    const { container } = render(<ContactSection props={pageProps} />);
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() =>
+      expect(container.textContent).toContain("Thank you — that is with us"),
+    );
+    expect(waText(container)).toContain("Ref: ENQ-10077");
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/api/enquiries",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.objectContaining({
+          source: "website",
+          idempotency_key: expect.stringMatching(UUID_RE),
+        }),
+      }),
+    );
+  });
+
+  it("still confirms when intake fails — the prototype's can't-fail UX", async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error("API down"));
+    const { container } = render(<ContactSection props={pageProps} />);
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() =>
+      expect(container.textContent).toContain("Thank you — that is with us"),
+    );
+    expect(waText(container)).toMatch(/Ref: ENQ-\d{4}/);
+    expect(container.querySelector("form")).toBeNull();
   });
 });

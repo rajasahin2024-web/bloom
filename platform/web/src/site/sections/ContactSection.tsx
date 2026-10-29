@@ -68,25 +68,31 @@ function ContactPage({ props }: { props: ContactProps }) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const get = (k: string) => String(fd.get(k) ?? "");
-    const ref = `ENQ-${String(Date.now()).slice(-4)}`;
-    // Real intake: POST /api/enquiries (stores enquiry + fires the alert).
-    // The done panel shows either way — matching the prototype's can't-fail UX.
+    const fallbackRef = `ENQ-${String(Date.now()).slice(-4)}`;
+    // Real intake: POST /api/enquiries (stores the enquiry + fires the
+    // alert). The done panel shows either way — matching the prototype's
+    // can't-fail UX — but the ref shown is the stored row's when it succeeds.
+    let ref = fallbackRef;
     try {
-      await apiFetch("/api/enquiries", {
-        method: "POST",
-        body: {
-          name: get("name"),
-          email: get("email"),
-          phone: get("phone") || null,
-          country: get("country") || null,
-          interest: get("interest") || null,
-          band: get("band") || null,
-          target: get("target") || null,
-          message: get("message") || null,
-          source: "website",
-          idempotency_key: ref,
+      const { data } = await apiFetch<{ enquiry: { ref: string } }>(
+        "/api/enquiries",
+        {
+          method: "POST",
+          body: {
+            name: get("name"),
+            email: get("email"),
+            phone: get("phone") || null,
+            country: get("country") || null,
+            interest: get("interest") || null,
+            band: get("band") || null,
+            target: get("target") || null,
+            message: get("message") || null,
+            source: "website",
+            idempotency_key: crypto.randomUUID(),
+          },
         },
-      });
+      );
+      ref = data.enquiry.ref;
     } catch {
       /* intake down — still confirm to the visitor */
     }

@@ -90,7 +90,7 @@ export function JobFormSection({ props }: { props: JobFormProps }) {
             cv: get("cv") || null,
             note: get("note").trim() || null,
             source: "careers page",
-            idempotency_key: fallbackRef,
+            idempotency_key: crypto.randomUUID(),
           },
         },
       );
