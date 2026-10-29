@@ -73,3 +73,16 @@ export async function fetchMe(accessToken: string): Promise<AdminUser> {
   });
   return data;
 }
+
+/**
+ * Revoke a refresh token server-side. Best-effort — the timeout keeps a dead
+ * network from trapping the sign-out click; callers should still clear the
+ * local session when this rejects.
+ */
+export async function logout(refreshToken: string): Promise<void> {
+  await apiFetch("/api/auth/logout", {
+    method: "POST",
+    body: { refresh_token: refreshToken },
+    signal: AbortSignal.timeout(5000),
+  });
+}

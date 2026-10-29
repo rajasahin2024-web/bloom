@@ -438,11 +438,10 @@ describe("AuthPageSection", () => {
       footer_link: { label: "Sign in", mode: "login" },
     },
     forgot: {
-      heading: "Reset your password",
-      lead: "Enter your email for a reset link.",
-      submit_label: "Send reset link",
-      success_heading: "Check your inbox",
-      success_body: "If an account exists for {email}, a reset link is on its way.",
+      heading: "Forgot your password?",
+      lead: "Password reset is not self-serve yet — message us and we will help.",
+      cta_label: "Contact us",
+      cta_href: "/contact",
     },
   };
 
@@ -464,15 +463,29 @@ describe("AuthPageSection", () => {
     fireEvent.click(getByText("Sign in"));
     expect(container.textContent).toContain("Choose how you are signing in");
     fireEvent.click(getByText("Forgot password?"));
-    expect(container.textContent).toContain("Reset your password");
+    expect(container.textContent).toContain("Forgot your password?");
   });
 
-  it("rejects a wrong demo password like the prototype", () => {
+  it("rejects a wrong demo password with a generic failure (TEC-154 LOW-2)", () => {
     const { container } = render(<AuthPageSection props={authProps} />);
     const pw = container.querySelector('input[type="password"]') as HTMLInputElement;
     fireEvent.change(pw, { target: { value: "nope" } });
     fireEvent.submit(container.querySelector("form")!);
-    expect(container.querySelector(".err")?.textContent).toContain("bloom2026");
+    const err = container.querySelector(".err")?.textContent ?? "";
+    // Generic message — must not single out the password or reveal the role.
+    expect(err).toContain("Demo sign-in failed");
+    expect(err).not.toContain("bloom2026");
+  });
+
+  it("rejects a demo role mismatch with the same generic failure", () => {
+    const { container, getByText } = render(<AuthPageSection props={authProps} />);
+    fireEvent.click(getByText("Teacher"));
+    const email = container.querySelector('input[type="email"]') as HTMLInputElement;
+    fireEvent.change(email, { target: { value: "student@bloomielts.com" } });
+    fireEvent.submit(container.querySelector("form")!);
+    const err = container.querySelector(".err")?.textContent ?? "";
+    expect(err).toContain("Demo sign-in failed");
+    expect(err).not.toContain("signs in as");
   });
 
   it("ships no admin demo account — admin role gets no prefilled creds (TEC-152)", async () => {
@@ -488,14 +501,14 @@ describe("AuthPageSection", () => {
     expect(container.querySelector(".err")?.textContent).not.toContain("Demo password");
   });
 
-  it("completes the forgot flow with the seeded success copy", () => {
+  it("forgot mode is an honest info panel — no fake reset email (TEC-154 LOW-1)", () => {
     const { container, getByText } = render(<AuthPageSection props={authProps} />);
     fireEvent.click(getByText("Forgot password?"));
-    const input = container.querySelector('input[name="fgEmail"]') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "me@x.com" } });
-    fireEvent.submit(container.querySelector("form")!);
-    expect(container.textContent).toContain("Check your inbox");
-    expect(container.textContent).toContain("me@x.com");
+    expect(container.textContent).toContain("Password reset is not self-serve yet");
+    expect(container.querySelector('input[name="fgEmail"]')).toBeNull();
+    const cta = container.querySelector('a[href="/contact"]');
+    expect(cta?.textContent).toContain("Contact us");
+    expect(container.textContent).not.toContain("reset link is on its way");
   });
 });
 

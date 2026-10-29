@@ -74,11 +74,10 @@
           "footer_link": { "label": "Sign in", "mode": "login" }
         },
         "forgot": {
-          "heading": "Reset your password",
-          "lead": "Enter the email on your account and we will send a reset link. It is valid for one hour.",
-          "submit_label": "Send reset link",
-          "success_heading": "Check your inbox",
-          "success_body": "If an account exists for {email}, a reset link is on its way. It expires in one hour."
+          "heading": "Forgot your password?",
+          "lead": "Password reset is not self-serve yet — send us a message and the Bloom team will help you get back in.",
+          "cta_label": "Contact us",
+          "cta_href": "/contact"
         }
       }
     }

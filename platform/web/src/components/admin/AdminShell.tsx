@@ -16,7 +16,7 @@ import type { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ADMIN_NAV } from "@/components/admin/nav";
 import type { AdminNavIcon, AdminNavItem } from "@/components/admin/nav";
-import { clearSession } from "@/lib/auth";
+import { clearSession, logout } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
 import {
@@ -147,7 +147,15 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
     };
   }, [drawerOpen]);
 
-  function signOut() {
+  async function signOut() {
+    // Revoke the refresh token server-side before dropping the local session —
+    // otherwise the row stays valid for its full TTL (TEC-149 MEDIUM-1). The
+    // call is bounded by a timeout in logout(); a failure still signs out.
+    try {
+      await logout(session.tokens.refresh_token);
+    } catch {
+      // best-effort revocation — the token still expires naturally
+    }
     clearSession();
     onSignOut();
   }

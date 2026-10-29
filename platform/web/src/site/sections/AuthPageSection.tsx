@@ -56,9 +56,8 @@ interface AuthPageProps {
   forgot: {
     heading: string;
     lead: string;
-    submit_label: string;
-    success_heading: string;
-    success_body: string;
+    cta_label?: string;
+    cta_href?: string;
   };
 }
 
@@ -168,7 +167,7 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState(() => demoFor(role)?.email ?? "");
   const [pw, setPw] = useState(() => demoFor(role)?.pw ?? "");
-  const [done, setDone] = useState<"signin" | "signup" | "forgot" | null>(null);
+  const [done, setDone] = useState<"signin" | "signup" | null>(null);
   const [doneName, setDoneName] = useState("");
 
   const roleMeta = (roles ?? []).find((r) => r.key === role) ?? roles?.[0];
@@ -203,13 +202,11 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
     const em = email.trim().toLowerCase();
     const demo = DEMO_ACCOUNTS.find((a) => a.email === em);
     if (demo) {
-      if (demo.pw !== pw) {
-        setErrText("That password is not correct. Demo password: bloom2026");
-        return;
-      }
-      if (demo.role !== role) {
+      // One generic failure — distinguishing password vs role mismatches leaks
+      // which emails are demo accounts and what role they hold (TEC-149 LOW-2).
+      if (demo.pw !== pw || demo.role !== role) {
         setErrText(
-          `That account signs in as ${(roles ?? []).find((r) => r.key === demo.role)?.name.toLowerCase() ?? demo.role}. Switch the role above.`,
+          "Demo sign-in failed — check that the email, password and selected role match a demo account shown below.",
         );
         return;
       }
@@ -269,15 +266,6 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
       setDone("signup");
       setBusy(false);
     }, 700);
-  }
-
-  function doForgot(e: FormEvent) {
-    e.preventDefault();
-    const f = e.target as HTMLFormElement;
-    const em =
-      (f.elements.namedItem("fgEmail") as HTMLInputElement | null)?.value.trim() ?? "";
-    setDoneName(em);
-    setDone("forgot");
   }
 
   return (
@@ -389,26 +377,6 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
               <Icon name="circle-info" />
               <span>{errText}</span>
             </div>
-          )}
-
-          {done === "forgot" && (
-            <SuccessPanel
-              icon="envelope-circle-check"
-              heading={forgot?.success_heading || "Check your inbox"}
-              onBack={() => {
-                setDone(null);
-                setMode("login");
-              }}
-            >
-              {(forgot?.success_body || "If an account exists for {email}, a reset link is on its way.")
-                .split("{email}")
-                .map((part, i, arr) => (
-                  <span key={i}>
-                    {part}
-                    {i < arr.length - 1 && <b style={{ color: "var(--ink)" }}>{doneName}</b>}
-                  </span>
-                ))}
-            </SuccessPanel>
           )}
 
           {(done === "signin" || done === "signup") && (
@@ -703,26 +671,28 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
           {!done && mode === "forgot" && (
             <div>
               <h1 style={{ fontSize: 31, letterSpacing: "-1.3px" }}>
-                <Inline text={forgot?.heading} fallback={"Reset your password"} />
+                <Inline text={forgot?.heading} fallback={"Forgot your password?"} />
               </h1>
               {forgot?.lead && (
                 <p style={{ fontSize: "14.5px", color: "var(--ink-3)", marginTop: 9, marginBottom: 24 }}>
                   <Inline text={forgot.lead} />
                 </p>
               )}
-              <form onSubmit={doForgot}>
-                <div className="fg">
-                  <label>Email address</label>
-                  <input name="fgEmail" type="email" placeholder="you@email.com" required />
-                </div>
-                <button
-                  className="btn btn-p btn-lg"
-                  type="submit"
-                  style={{ width: "100%", justifyContent: "center", marginTop: 8 }}
-                >
-                  <Icon name="paper-plane" /> {forgot?.submit_label || "Send reset link"}
-                </button>
-              </form>
+              {/* No reset endpoint exists yet — the CTA routes to the contact
+                  page instead of faking an email send (TEC-149 LOW-1). */}
+              <a
+                className="btn btn-p btn-lg"
+                href={forgot?.cta_href || "/contact"}
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  marginTop: 8,
+                  display: "inline-flex",
+                  textAlign: "center",
+                }}
+              >
+                <Icon name="paper-plane" /> {forgot?.cta_label || "Contact us"}
+              </a>
               <div
                 style={{ textAlign: "center", marginTop: 24, fontSize: "13.5px", color: "var(--ink-3)" }}
               >

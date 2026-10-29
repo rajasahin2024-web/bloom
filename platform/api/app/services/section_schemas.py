@@ -385,12 +385,12 @@ SECTION_TYPES: dict[str, dict[str, Any]] = {
             "footer_text": _ANY,
             "footer_link": {"label": _ANY, "mode": _ANY},
         },
+        # Password reset is not self-serve (no reset endpoint) — the mode is an
+        # info panel with a contact CTA. Only heading/lead are required so
+        # rows seeded before the relabel still validate (TEC-154 LOW-1).
         "forgot": {
             "heading": _ANY,
             "lead": _ANY,
-            "submit_label": _ANY,
-            "success_heading": _ANY,
-            "success_body": _ANY,
         },
     },
 }

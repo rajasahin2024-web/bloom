@@ -1192,9 +1192,8 @@ export const SECTION_META: Record<string, SectionMeta> = {
         fields: [
           { kind: "text", key: "heading", label: "Heading" },
           { kind: "textarea", key: "lead", label: "Lead" },
-          { kind: "text", key: "submit_label", label: "Submit label" },
-          { kind: "text", key: "success_heading", label: "Success heading" },
-          { kind: "textarea", key: "success_body", label: "Success body" },
+          { kind: "text", key: "cta_label", label: "CTA label" },
+          { kind: "text", key: "cta_href", label: "CTA link" },
         ],
       },
     ],
