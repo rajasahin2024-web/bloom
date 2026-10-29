@@ -296,8 +296,11 @@ def test_refresh_via_cookie_rotates_and_returns_access_only() -> None:
         original = jar.cookies.get("bloom_refresh")
         assert original == registered.json()["tokens"]["refresh_token"]
 
-        # Empty JSON body — the cookie carries the credential.
-        rotated = jar.post("/api/auth/refresh", json={})
+        # Empty JSON body — the cookie carries the credential. The cookie
+        # path requires the CSRF header (TEC-157 F-2).
+        rotated = jar.post(
+            "/api/auth/refresh", json={}, headers={"X-Bloom-Auth": "1"}
+        )
         assert rotated.status_code == 200
         body = rotated.json()
         assert body["access_token"]
@@ -310,7 +313,12 @@ def test_refresh_via_cookie_rotates_and_returns_access_only() -> None:
         # The rotated-out token is revoked — replaying it must fail.
         replay = TestClient(app)
         replay.cookies.set("bloom_refresh", original, path="/api/auth")
-        assert replay.post("/api/auth/refresh", json={}).status_code == 401
+        assert (
+            replay.post(
+                "/api/auth/refresh", json={}, headers={"X-Bloom-Auth": "1"}
+            ).status_code
+            == 401
+        )
     finally:
         _delete_user(email)
 
@@ -358,7 +366,7 @@ def test_logout_via_cookie_revokes_and_clears_cookie() -> None:
         )
         assert jar.cookies.get("bloom_refresh")
 
-        out = jar.post("/api/auth/logout", json={})
+        out = jar.post("/api/auth/logout", json={}, headers={"X-Bloom-Auth": "1"})
         assert out.status_code == 204
         cleared = out.headers["set-cookie"]
         assert "bloom_refresh=" in cleared
@@ -411,3 +419,153 @@ def test_boot_logs_critical_when_secret_insecure(
     with caplog.at_level(logging.CRITICAL):
         create_app()
     assert any("JWT_SECRET" in record.message for record in caplog.records)
+
+
+# ── TEC-157 F-1: refresh-cookie Secure flag fails closed ────────────────
+#
+# Secure is on unless API_ENV is *explicitly* development/test — any other
+# value, including an empty or unrecognised one, must keep it on.
+
+
+@pytest.mark.parametrize(
+    ("env", "secure"),
+    [
+        ("development", False),
+        ("test", False),
+        ("production", True),
+        ("staging", True),
+        ("", True),
+    ],
+)
+def test_refresh_cookie_secure_only_off_for_explicit_dev_test(
+    monkeypatch: pytest.MonkeyPatch, env: str, secure: bool
+) -> None:
+    monkeypatch.setattr(get_settings(), "api_env", env)
+    assert get_settings().secure_cookies is secure
+
+
+@requires_infra
+def test_production_env_ships_secure_flag_on_refresh_cookie(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "api_env", "production")
+    monkeypatch.setattr(settings, "jwt_secret", f"real-{uuid.uuid4().hex}")
+    email = f"ck-{uuid.uuid4()}@example.dev"
+    try:
+        registered = TestClient(app).post(
+            "/api/auth/register",
+            json={"email": email, "password": "correct-horse-42", "full_name": "CK"},
+        )
+        assert registered.status_code == 201
+        assert "secure" in registered.headers["set-cookie"].lower()
+    finally:
+        _delete_user(email)
+
+
+def test_boot_logs_critical_when_setup_complete_but_env_dev(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "setup_complete", True)
+    monkeypatch.setattr(settings, "api_env", "development")
+    monkeypatch.setattr(settings, "jwt_secret", f"real-{uuid.uuid4().hex}")
+    with caplog.at_level(logging.CRITICAL):
+        create_app()
+    assert any(
+        "SETUP_COMPLETE" in record.message and "API_ENV" in record.message
+        for record in caplog.records
+    )
+
+
+def test_no_boot_critical_once_setup_env_is_production(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "setup_complete", True)
+    monkeypatch.setattr(settings, "api_env", "production")
+    monkeypatch.setattr(settings, "jwt_secret", f"real-{uuid.uuid4().hex}")
+    with caplog.at_level(logging.CRITICAL):
+        create_app()
+    assert not caplog.records
+
+
+# ── TEC-157 F-2: CSRF hardening on the cookie path ─────────────────────
+#
+# The rejection fires before the credential is read, so the deny paths are
+# hermetic; the accept paths need the real stack.
+
+
+def test_cookie_path_refresh_and_logout_rejected_without_csrf_proof() -> None:
+    jar = TestClient(app)
+    jar.cookies.set("bloom_refresh", "forged", path="/api/auth")
+    assert jar.post("/api/auth/refresh", json={}).status_code == 403
+    assert jar.post("/api/auth/logout", json={}).status_code == 403
+
+
+def test_cookie_path_rejects_unsafe_fetch_metadata() -> None:
+    jar = TestClient(app)
+    jar.cookies.set("bloom_refresh", "forged", path="/api/auth")
+    for site in ("same-site", "cross-site"):
+        response = jar.post(
+            "/api/auth/refresh", json={}, headers={"Sec-Fetch-Site": site}
+        )
+        assert response.status_code == 403, site
+
+
+@requires_infra
+def test_cookie_path_refresh_accepts_csrf_header() -> None:
+    email = f"ck-{uuid.uuid4()}@example.dev"
+    try:
+        jar = TestClient(app)
+        jar.post(
+            "/api/auth/register",
+            json={"email": email, "password": "correct-horse-42", "full_name": "CK"},
+        )
+        rotated = jar.post(
+            "/api/auth/refresh", json={}, headers={"X-Bloom-Auth": "1"}
+        )
+        assert rotated.status_code == 200
+        assert rotated.json()["access_token"]
+    finally:
+        _delete_user(email)
+
+
+@requires_infra
+def test_cookie_path_refresh_accepts_same_origin_fetch_metadata() -> None:
+    email = f"ck-{uuid.uuid4()}@example.dev"
+    try:
+        jar = TestClient(app)
+        jar.post(
+            "/api/auth/register",
+            json={"email": email, "password": "correct-horse-42", "full_name": "CK"},
+        )
+        rotated = jar.post(
+            "/api/auth/refresh", json={}, headers={"Sec-Fetch-Site": "same-origin"}
+        )
+        assert rotated.status_code == 200
+    finally:
+        _delete_user(email)
+
+
+@requires_infra
+def test_cookie_path_logout_rejected_without_csrf_proof() -> None:
+    email = f"ck-{uuid.uuid4()}@example.dev"
+    try:
+        jar = TestClient(app)
+        jar.post(
+            "/api/auth/register",
+            json={"email": email, "password": "correct-horse-42", "full_name": "CK"},
+        )
+        assert jar.cookies.get("bloom_refresh")
+        # No header → the forge attempt is refused and the cookie NOT cleared.
+        refused = jar.post("/api/auth/logout", json={})
+        assert refused.status_code == 403
+        assert jar.cookies.get("bloom_refresh")
+        # With the header → revoked.
+        assert (
+            jar.post("/api/auth/logout", json={}, headers={"X-Bloom-Auth": "1"}).status_code
+            == 204
+        )
+    finally:
+        _delete_user(email)

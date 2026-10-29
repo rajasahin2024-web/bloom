@@ -132,9 +132,19 @@ def login(db: Session, payload: LoginIn) -> tuple[User, TokenPair]:
 
 
 def refresh(db: Session, presented_token: str) -> tuple[User, TokenPair]:
-    """Rotate a refresh token: revoke the presented one, issue a new pair."""
+    """Rotate a refresh token: revoke the presented one, issue a new pair.
+
+    The token row is locked FOR UPDATE so two concurrent presentations of
+    the same token serialize — the loser re-reads the row after the winner's
+    commit, sees `revoked_at` set, and gets a 401 instead of a second live
+    refresh token.
+    """
     token_hash = hash_refresh_token(presented_token)
-    stored = db.scalar(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
+    stored = db.scalar(
+        select(RefreshToken)
+        .where(RefreshToken.token_hash == token_hash)
+        .with_for_update()
+    )
     now = datetime.now(UTC)
     if (
         stored is None

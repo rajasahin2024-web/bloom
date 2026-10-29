@@ -111,6 +111,21 @@ class Settings(BaseSettings):
         return self.api_env == "test"
 
     @property
+    def secure_cookies(self) -> bool:
+        """Secure flag for the refresh cookie — on unless API_ENV is
+        explicitly development/test (local dev runs plain http). Any other
+        value, including an unrecognised one, fails closed to Secure."""
+        return not (self.is_dev or self.is_test)
+
+    @property
+    def refresh_cookie_insecure(self) -> bool:
+        """True on a completed install still classified development/test —
+        the refresh cookie ships without Secure and dev-only surfaces (OTP
+        echo, the dev JWT secret) stay armed. Boot logs CRITICAL, mirroring
+        `jwt_secret_insecure`: the install must set API_ENV=production."""
+        return self.setup_complete and (self.is_dev or self.is_test)
+
+    @property
     def jwt_secret_insecure(self) -> bool:
         """True when the app would sign/verify JWTs with the public built-in
         secret outside development/test. In that state token issue and

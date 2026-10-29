@@ -24,6 +24,7 @@ interface RequestOptions {
   body?: Json;
   token?: string;
   credentials?: RequestCredentials;
+  headers?: Record<string, string>;
   signal?: AbortSignal;
 }
 
@@ -68,7 +69,7 @@ export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<{ status: number; data: T }> {
-  const { method = "GET", body, token, credentials, signal } = options;
+  const { method = "GET", body, token, credentials, headers, signal } = options;
   let res: Response;
   try {
     res = await fetch(`${env.apiBaseUrl}${path}`, {
@@ -78,6 +79,7 @@ export async function apiFetch<T>(
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });

@@ -36,12 +36,32 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 REFRESH_COOKIE_NAME = "bloom_refresh"
 REFRESH_COOKIE_PATH = "/api/auth"
 
+# Cookie-transport CSRF proof (TEC-157 F-2). A custom header no HTML form can
+# send; cross-origin fetch must additionally pass a CORS preflight. Clients
+# that can't set headers are covered by Fetch Metadata — but only
+# same-origin/user-initiated is trusted: "same-site" is precisely the
+# sibling-subdomain cross-origin case SameSite=Strict doesn't cover.
+CSRF_HEADER = "x-bloom-auth"
+_SAFE_FETCH_SITES = {"same-origin", "none"}
+
+
+def _enforce_cookie_csrf(request: Request) -> None:
+    """Reject cookie-credential requests a cross-origin page could forge."""
+    if request.headers.get(CSRF_HEADER):
+        return
+    fetch_site = request.headers.get("sec-fetch-site")
+    if fetch_site and fetch_site.lower() in _SAFE_FETCH_SITES:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=f"Cookie-authenticated requests require the {CSRF_HEADER} header",
+    )
+
 
 def _refresh_cookie_secure() -> bool:
     """Secure outside dev/test — httpx/TestClient won't echo a Secure cookie
     over plain http, and local dev runs http://localhost only."""
-    settings = get_settings()
-    return not (settings.is_dev or settings.is_test)
+    return get_settings().secure_cookies
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
@@ -103,10 +123,12 @@ def refresh(
     """Rotate a refresh token. Body transport stays for non-browser clients;
     browser clients present the HttpOnly cookie and get the rotated value
     back via Set-Cookie — the JSON response carries the access token only."""
-    via_cookie = not (payload and payload.refresh_token)
-    presented = (
-        payload.refresh_token if payload else None
-    ) or request.cookies.get(REFRESH_COOKIE_NAME)
+    body_token = payload.refresh_token if payload else None
+    cookie_token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if cookie_token and not body_token:
+        _enforce_cookie_csrf(request)
+    via_cookie = not body_token
+    presented = body_token or cookie_token
     if not presented:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
@@ -125,9 +147,11 @@ def logout(
     payload: LogoutIn | None = None,
     db: Session = Depends(get_db),
 ) -> None:
-    presented = (
-        payload.refresh_token if payload else None
-    ) or request.cookies.get(REFRESH_COOKIE_NAME)
+    body_token = payload.refresh_token if payload else None
+    cookie_token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if cookie_token and not body_token:
+        _enforce_cookie_csrf(request)
+    presented = body_token or cookie_token
     if presented:
         auth_service.logout(db, presented)
     _clear_refresh_cookie(response)

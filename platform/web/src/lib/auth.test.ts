@@ -79,6 +79,7 @@ describe("credential transport", () => {
         method: "POST",
         body: {},
         credentials: "include",
+        headers: { "X-Bloom-Auth": "1" },
       }),
     );
     expect(tokens?.access_token).toBe("at-2");
@@ -98,6 +99,7 @@ describe("credential transport", () => {
         method: "POST",
         body: {},
         credentials: "include",
+        headers: { "X-Bloom-Auth": "1" },
       }),
     );
   });

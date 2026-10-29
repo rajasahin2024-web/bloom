@@ -42,6 +42,14 @@ def create_app() -> FastAPI:
             "until a real JWT_SECRET is set (API_ENV=%s)",
             _settings.api_env,
         )
+    if _settings.refresh_cookie_insecure:
+        logger.critical(
+            "SETUP_COMPLETE is set but API_ENV=%s — the bloom_refresh cookie "
+            "ships without Secure and dev-only surfaces (OTP echo, the dev "
+            "JWT secret) stay armed. Set API_ENV=production; installs applied "
+            "by the setup wizard write it automatically.",
+            _settings.api_env,
+        )
     app = FastAPI(
         title="Bloom Academy API",
         description="Bloom Academy IELTS platform — FastAPI backend.",

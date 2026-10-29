@@ -93,6 +93,13 @@ export async function fetchMe(accessToken: string): Promise<AdminUser> {
 }
 
 /**
+ * Cookie-transport CSRF proof (TEC-157 F-2): the API requires this custom
+ * header on /refresh|/logout when the refresh credential arrives by cookie —
+ * a cross-origin form POST can never set it.
+ */
+const COOKIE_CSRF_HEADER = { "X-Bloom-Auth": "1" };
+
+/**
  * Silent session restore — POST /api/auth/refresh with an empty body; the
  * HttpOnly cookie carries the credential and the rotated value comes back
  * via Set-Cookie. Returns null when there is no valid cookie session.
@@ -103,6 +110,7 @@ export async function refreshSession(): Promise<SessionTokens | null> {
       method: "POST",
       body: {},
       credentials: "include",
+      headers: COOKIE_CSRF_HEADER,
     });
     return data;
   } catch {
@@ -120,6 +128,7 @@ export async function logout(): Promise<void> {
     method: "POST",
     body: {},
     credentials: "include",
+    headers: COOKIE_CSRF_HEADER,
     signal: AbortSignal.timeout(5000),
   });
 }

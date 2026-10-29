@@ -530,6 +530,9 @@ def apply_setup(payload: SetupApplyIn) -> SetupApplyOut:
             "DATABASE_URL_DIRECT": database_url,
             "JWT_SECRET": secrets.token_hex(32),
             "SETUP_COMPLETE": "true",
+            # The wizard is the production-install path — pin API_ENV so the
+            # refresh cookie ships Secure and dev-only surfaces stay disarmed.
+            "API_ENV": "production",
             # Core settings — institute identity collected by the wizard.
             "INSTITUTE_NAME": payload.institute_name.strip(),
             "INSTITUTE_TAGLINE": payload.institute_tagline.strip(),

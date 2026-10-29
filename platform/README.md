@@ -90,6 +90,20 @@ docker compose up -d --build
 docker compose ps          # all services healthy
 ```
 
+### Production deploy checklist
+
+- `API_ENV=production` — anything other than `development`/`test` turns on the
+  `Secure` flag on the `bloom_refresh` cookie and disarms dev-only surfaces
+  (OTP echo, the built-in JWT secret). The setup wizard's apply writes this
+  automatically; verify it in the deployed env — the API logs CRITICAL at
+  boot when `SETUP_COMPLETE=true` while `API_ENV` is still dev/test.
+- `JWT_SECRET` — a real random value (`openssl rand -hex 32`); the wizard
+  generates one. Boot logs CRITICAL and token issue/verify is refused while
+  the built-in dev secret is configured outside dev/test.
+- `CORS_ORIGINS` — restrict to the real web origin(s).
+- HTTPS termination in front of the API — `Secure` cookies are only sent
+  over TLS.
+
 ## Database migrations (Alembic)
 
 All migrations live in one place: `api/alembic/versions`. They connect
