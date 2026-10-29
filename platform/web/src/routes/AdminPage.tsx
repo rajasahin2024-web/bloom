@@ -17,32 +17,23 @@ import { GeneralSettings } from "@/components/admin/GeneralSettings";
 import { SeoSettings } from "@/components/admin/SeoSettings";
 import { AioSettings } from "@/components/admin/AioSettings";
 import { SitemapSettings } from "@/components/admin/SitemapSettings";
-import {
-  clearSession,
-  fetchMe,
-  loadSession,
-} from "@/lib/auth";
+import { fetchMe, refreshSession } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
 
 export function AdminPage() {
   const [session, setSession] = useState<AdminSession | null>(null);
   const [checking, setChecking] = useState(true);
 
+  // Session restore: no tokens in storage — the HttpOnly refresh cookie
+  // rotates into a fresh access token, then /me confirms the admin role.
   useEffect(() => {
-    const stored = loadSession();
-    if (!stored) {
-      setChecking(false);
-      return;
-    }
-    fetchMe(stored.tokens.access_token)
-      .then((user) => {
-        if (user.role === "admin") {
-          setSession({ ...stored, user });
-        } else {
-          clearSession();
-        }
+    refreshSession()
+      .then(async (tokens) => {
+        if (!tokens) return;
+        const user = await fetchMe(tokens.access_token);
+        if (user.role === "admin") setSession({ user, tokens });
       })
-      .catch(() => clearSession())
+      .catch(() => {})
       .finally(() => setChecking(false));
   }, []);
 

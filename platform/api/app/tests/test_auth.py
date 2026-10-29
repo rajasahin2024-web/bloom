@@ -235,6 +235,165 @@ def test_dev_and_test_permit_dev_secret(monkeypatch: pytest.MonkeyPatch, env: st
     assert claims["role"] == "student"
 
 
+# ── MEDIUM-2: refresh token moves to an HttpOnly cookie ─────────────────
+#
+# The JSON contract is unchanged — login/register still return the token
+# pair — but also Set-Cookie `bloom_refresh` scoped to /api/auth. Browsers
+# then refresh/logout with an empty body; body transport keeps working for
+# non-browser clients.
+
+
+def _register(email: str, password: str = "correct-horse-42") -> Any:
+    return TestClient(app).post(
+        "/api/auth/register",
+        json={"email": email, "password": password, "full_name": "Cookie Test"},
+    )
+
+
+def _delete_user(email: str) -> None:
+    with psycopg.connect(PG_DSN) as conn:
+        conn.execute("DELETE FROM users WHERE email = %s", (email,))
+
+
+@requires_infra
+def test_register_and_login_set_httponly_refresh_cookie() -> None:
+    email = f"ck-{uuid.uuid4()}@example.dev"
+    try:
+        jar = TestClient(app)
+        registered = jar.post(
+            "/api/auth/register",
+            json={"email": email, "password": "correct-horse-42", "full_name": "CK"},
+        )
+        assert registered.status_code == 201
+        cookie = registered.headers["set-cookie"]
+        assert "bloom_refresh=" in cookie
+        assert "httponly" in cookie.lower()
+        assert "samesite=strict" in cookie.lower()
+        assert "path=/api/auth" in cookie.lower()
+        assert f"max-age={30 * 86400}" in cookie.lower()
+
+        # A fresh jar still gets the cookie on login (JSON contract intact).
+        fresh = TestClient(app)
+        logged_in = fresh.post(
+            "/api/auth/login", json={"email": email, "password": "correct-horse-42"}
+        )
+        assert logged_in.status_code == 200
+        assert logged_in.json()["tokens"]["refresh_token"]
+        assert "bloom_refresh=" in logged_in.headers["set-cookie"]
+    finally:
+        _delete_user(email)
+
+
+@requires_infra
+def test_refresh_via_cookie_rotates_and_returns_access_only() -> None:
+    email = f"ck-{uuid.uuid4()}@example.dev"
+    try:
+        jar = TestClient(app)
+        registered = jar.post(
+            "/api/auth/register",
+            json={"email": email, "password": "correct-horse-42", "full_name": "CK"},
+        )
+        original = jar.cookies.get("bloom_refresh")
+        assert original == registered.json()["tokens"]["refresh_token"]
+
+        # Empty JSON body — the cookie carries the credential.
+        rotated = jar.post("/api/auth/refresh", json={})
+        assert rotated.status_code == 200
+        body = rotated.json()
+        assert body["access_token"]
+        assert body["expires_in"] > 0
+        assert "refresh_token" not in body  # cookie path never re-ships it
+
+        new_cookie = jar.cookies.get("bloom_refresh")
+        assert new_cookie and new_cookie != original
+
+        # The rotated-out token is revoked — replaying it must fail.
+        replay = TestClient(app)
+        replay.cookies.set("bloom_refresh", original, path="/api/auth")
+        assert replay.post("/api/auth/refresh", json={}).status_code == 401
+    finally:
+        _delete_user(email)
+
+
+@requires_infra
+def test_refresh_via_body_returns_full_pair_for_non_browser_clients() -> None:
+    email = f"ck-{uuid.uuid4()}@example.dev"
+    try:
+        registered = _register(email)
+        refresh_token = registered.json()["tokens"]["refresh_token"]
+
+        # No cookie on this client — body transport only.
+        rotated = TestClient(app).post(
+            "/api/auth/refresh", json={"refresh_token": refresh_token}
+        )
+        assert rotated.status_code == 200
+        pair = rotated.json()
+        assert pair["refresh_token"] and pair["refresh_token"] != refresh_token
+
+        # Body path must not silently accept the old token twice either.
+        assert (
+            TestClient(app)
+            .post("/api/auth/refresh", json={"refresh_token": refresh_token})
+            .status_code
+            == 401
+        )
+    finally:
+        _delete_user(email)
+
+
+@requires_infra
+def test_refresh_without_any_credential_returns_401() -> None:
+    assert TestClient(app).post("/api/auth/refresh", json={}).status_code == 401
+    assert TestClient(app).post("/api/auth/refresh").status_code == 401
+
+
+@requires_infra
+def test_logout_via_cookie_revokes_and_clears_cookie() -> None:
+    email = f"ck-{uuid.uuid4()}@example.dev"
+    try:
+        jar = TestClient(app)
+        jar.post(
+            "/api/auth/register",
+            json={"email": email, "password": "correct-horse-42", "full_name": "CK"},
+        )
+        assert jar.cookies.get("bloom_refresh")
+
+        out = jar.post("/api/auth/logout", json={})
+        assert out.status_code == 204
+        cleared = out.headers["set-cookie"]
+        assert "bloom_refresh=" in cleared
+        assert "max-age=0" in cleared.lower()
+
+        # The revoked token no longer refreshes, cookie or body.
+        assert jar.post("/api/auth/refresh", json={}).status_code == 401
+    finally:
+        _delete_user(email)
+
+
+@requires_infra
+def test_logout_via_body_still_works_and_logout_is_idempotent() -> None:
+    email = f"ck-{uuid.uuid4()}@example.dev"
+    try:
+        registered = _register(email)
+        refresh_token = registered.json()["tokens"]["refresh_token"]
+
+        bare = TestClient(app)
+        assert (
+            bare.post("/api/auth/logout", json={"refresh_token": refresh_token}).status_code
+            == 204
+        )
+        assert (
+            bare.post("/api/auth/refresh", json={"refresh_token": refresh_token}).status_code
+            == 401
+        )
+        # Unknown tokens are a no-op — still 204.
+        assert (
+            bare.post("/api/auth/logout", json={"refresh_token": "nope"}).status_code == 204
+        )
+    finally:
+        _delete_user(email)
+
+
 def test_production_with_real_secret_issues_tokens(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

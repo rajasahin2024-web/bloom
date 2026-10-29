@@ -23,16 +23,20 @@ class LoginIn(BaseModel):
 
 
 class RefreshIn(BaseModel):
-    refresh_token: str = Field(min_length=1)
+    # Optional: browser clients carry the refresh token in the HttpOnly
+    # `bloom_refresh` cookie instead of the body (TEC-155 MEDIUM-2).
+    refresh_token: str | None = Field(default=None, min_length=1)
 
 
 class LogoutIn(BaseModel):
-    refresh_token: str = Field(min_length=1)
+    refresh_token: str | None = Field(default=None, min_length=1)
 
 
 class TokenPair(BaseModel):
     access_token: str
-    refresh_token: str
+    # None only on POST /api/auth/refresh when the presented token came from
+    # the cookie — the rotated value travels back via Set-Cookie, not JSON.
+    refresh_token: str | None = None
     token_type: str = "bearer"
     expires_in: int  # access-token lifetime, seconds
 

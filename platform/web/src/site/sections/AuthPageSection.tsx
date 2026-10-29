@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { ApiError } from "@/lib/api";
-import { fetchMe, login, saveSession } from "@/lib/auth";
+import { fetchMe, login } from "@/lib/auth";
 import { Icon } from "./Icon";
 import { Inline } from "./shared";
 
@@ -215,7 +215,6 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
       try {
         const res = await login(em, pw);
         const me = await fetchMe(res.tokens.access_token);
-        saveSession({ user: me, tokens: res.tokens });
         signedIn(me.full_name || demo.name, me.role);
       } catch {
         signedIn(demo.name, demo.role);
@@ -227,7 +226,6 @@ export function AuthPageSection({ props }: { props: AuthPageProps }) {
     try {
       const res = await login(em, pw);
       const me = await fetchMe(res.tokens.access_token);
-      saveSession({ user: me, tokens: res.tokens });
       signedIn(me.full_name || em, me.role);
     } catch (err) {
       setErrText(

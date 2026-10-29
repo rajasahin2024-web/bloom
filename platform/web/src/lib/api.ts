@@ -23,6 +23,7 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: Json;
   token?: string;
+  credentials?: RequestCredentials;
   signal?: AbortSignal;
 }
 
@@ -67,12 +68,13 @@ export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<{ status: number; data: T }> {
-  const { method = "GET", body, token, signal } = options;
+  const { method = "GET", body, token, credentials, signal } = options;
   let res: Response;
   try {
     res = await fetch(`${env.apiBaseUrl}${path}`, {
       method,
       signal,
+      credentials,
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

@@ -12,7 +12,7 @@ import { useId, useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError } from "@/lib/api";
 import { useBranding } from "@/lib/branding";
-import { fetchMe, login, saveSession } from "@/lib/auth";
+import { fetchMe, login, sessionTokens } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
 import {
   ArrowLeftIcon,
@@ -55,9 +55,8 @@ export function AdminLogin({ onSuccess }: AdminLoginProps) {
         );
         return;
       }
-      const session = { user: me, tokens: res.tokens };
-      saveSession(session);
-      onSuccess(session);
+      // Session lives in memory; the refresh token stays in its cookie.
+      onSuccess({ user: me, tokens: sessionTokens(res.tokens) });
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 400)) {
         setError("Invalid credentials. Please try again.");

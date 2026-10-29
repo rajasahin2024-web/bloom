@@ -3,7 +3,6 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 vi.mock("@/lib/auth", () => ({
-  clearSession: vi.fn(),
   logout: vi.fn(() => Promise.resolve()),
 }));
 
@@ -11,7 +10,7 @@ vi.mock("@/lib/branding", () => ({
   useBranding: () => ({ name: "Bloom", tagline: "", logo_url: null }),
 }));
 
-import { clearSession, logout } from "@/lib/auth";
+import { logout } from "@/lib/auth";
 import { AdminShell } from "./AdminShell";
 import type { AdminSession } from "@/lib/auth";
 
@@ -27,7 +26,6 @@ const session: AdminSession = {
   },
   tokens: {
     access_token: "at-1",
-    refresh_token: "rt-1",
     token_type: "bearer",
     expires_in: 1800,
   },
@@ -50,18 +48,13 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("AdminShell sign-out (TEC-154 MEDIUM-1)", () => {
-  it("revokes the refresh token via /api/auth/logout before clearing", async () => {
+describe("AdminShell sign-out (TEC-154 MEDIUM-1, TEC-155 MEDIUM-2)", () => {
+  it("revokes via /api/auth/logout (cookie-carried, empty body) before clearing", async () => {
     const { getAllByText, onSignOut } = renderShell();
     fireEvent.click(getAllByText("Sign out")[0]);
 
     await waitFor(() => expect(onSignOut).toHaveBeenCalled());
-    expect(logout).toHaveBeenCalledWith("rt-1");
-    expect(clearSession).toHaveBeenCalled();
-    // Revocation is initiated before the local session is dropped.
-    expect(
-      vi.mocked(logout).mock.invocationCallOrder[0],
-    ).toBeLessThan(vi.mocked(clearSession).mock.invocationCallOrder[0]);
+    expect(logout).toHaveBeenCalledWith();
   });
 
   it("still signs out locally when the logout call fails", async () => {
@@ -70,6 +63,5 @@ describe("AdminShell sign-out (TEC-154 MEDIUM-1)", () => {
     fireEvent.click(getAllByText("Sign out")[0]);
 
     await waitFor(() => expect(onSignOut).toHaveBeenCalled());
-    expect(clearSession).toHaveBeenCalled();
   });
 });

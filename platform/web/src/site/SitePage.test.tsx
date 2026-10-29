@@ -11,7 +11,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 vi.mock("@/lib/auth", () => ({
-  loadSession: vi.fn(() => null),
+  refreshSession: vi.fn(() => Promise.resolve(null)),
   fetchMe: vi.fn(),
 }));
 
@@ -20,7 +20,7 @@ vi.mock("./siteRuntime", () => ({
 }));
 
 import { apiFetch } from "@/lib/api";
-import { loadSession } from "@/lib/auth";
+import { refreshSession } from "@/lib/auth";
 import { SitePage } from "./SitePage";
 
 const mockPage = {
@@ -91,9 +91,10 @@ describe("SitePage", () => {
       status: 200,
       data: mockPage,
     });
-    vi.mocked(loadSession).mockReturnValueOnce({
-      user: { id: "u1", email: "a@b.co", phone: null, full_name: "A", role: "admin", is_active: true, created_at: "" },
-      tokens: { access_token: "tok", refresh_token: "r", token_type: "bearer", expires_in: 3600 },
+    vi.mocked(refreshSession).mockResolvedValueOnce({
+      access_token: "tok",
+      token_type: "bearer",
+      expires_in: 3600,
     });
     const { fetchMe } = await import("@/lib/auth");
     vi.mocked(fetchMe).mockResolvedValueOnce({

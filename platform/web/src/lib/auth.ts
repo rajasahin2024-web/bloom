@@ -1,15 +1,25 @@
 /**
- * Admin auth — login/me calls plus token persistence.
+ * Admin auth — login/me/refresh/logout calls plus the session shape.
  *
- * Tokens are stored in localStorage under a single key so the admin gate can
- * revalidate on load. Only `/admin` uses this today; the student/teacher
- * login will get its own storage namespace in a later issue.
+ * MEDIUM-2 (TEC-155): nothing is persisted to localStorage anymore. The
+ * 30-day refresh token lives only in an HttpOnly SameSite=Strict cookie
+ * scoped to /api/auth, so XSS cannot exfiltrate the session. The 30-min
+ * access token stays in memory (the AdminSession object in React state);
+ * a reload restores the session via a silent cookie refresh below.
  */
 import { apiFetch } from "@/lib/api";
 
+/** Wire shape of POST /api/auth/login|register — refresh_token included. */
 export interface TokenPair {
   access_token: string;
-  refresh_token: string;
+  refresh_token?: string;
+  token_type: string;
+  expires_in: number;
+}
+
+/** The part of the pair the client is allowed to hold in memory. */
+export interface SessionTokens {
+  access_token: string;
   token_type: string;
   expires_in: number;
 }
@@ -29,31 +39,38 @@ interface LoginResponse {
   tokens: TokenPair;
 }
 
-const STORAGE_KEY = "bloom.admin.session";
-
 export interface AdminSession {
   user: AdminUser;
-  tokens: TokenPair;
+  tokens: SessionTokens;
 }
 
-export function loadSession(): AdminSession | null {
+const LEGACY_STORAGE_KEY = "bloom.admin.session";
+
+/**
+ * Pre-MEDIUM-2 sessions persisted both tokens to localStorage — the exfil
+ * window this issue closes. The key is dead now; drop it once on load so
+ * any token stored before the change is gone from disk.
+ */
+export function purgeLegacySession(): void {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AdminSession;
-    if (!parsed?.tokens?.access_token || !parsed?.user) return null;
-    return parsed;
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
-    return null;
+    // storage unavailable (SSR/private mode) — nothing persisted anyway
   }
 }
 
-export function saveSession(session: AdminSession): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-}
+purgeLegacySession();
 
-export function clearSession(): void {
-  localStorage.removeItem(STORAGE_KEY);
+/**
+ * Drop the refresh token before the pair enters app state — JS may hold the
+ * short-lived access token only; the long-lived one belongs to the cookie.
+ */
+export function sessionTokens(tokens: TokenPair): SessionTokens {
+  return {
+    access_token: tokens.access_token,
+    token_type: tokens.token_type,
+    expires_in: tokens.expires_in,
+  };
 }
 
 export async function login(
@@ -63,6 +80,7 @@ export async function login(
   const { data } = await apiFetch<LoginResponse>("/api/auth/login", {
     method: "POST",
     body: { email, password },
+    credentials: "include",
   });
   return data;
 }
@@ -75,14 +93,33 @@ export async function fetchMe(accessToken: string): Promise<AdminUser> {
 }
 
 /**
- * Revoke a refresh token server-side. Best-effort — the timeout keeps a dead
- * network from trapping the sign-out click; callers should still clear the
- * local session when this rejects.
+ * Silent session restore — POST /api/auth/refresh with an empty body; the
+ * HttpOnly cookie carries the credential and the rotated value comes back
+ * via Set-Cookie. Returns null when there is no valid cookie session.
  */
-export async function logout(refreshToken: string): Promise<void> {
+export async function refreshSession(): Promise<SessionTokens | null> {
+  try {
+    const { data } = await apiFetch<SessionTokens>("/api/auth/refresh", {
+      method: "POST",
+      body: {},
+      credentials: "include",
+    });
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Revoke the refresh token server-side — the cookie carries it, the body is
+ * empty. Best-effort: the timeout keeps a dead network from trapping the
+ * sign-out click; callers should still drop the local session on failure.
+ */
+export async function logout(): Promise<void> {
   await apiFetch("/api/auth/logout", {
     method: "POST",
-    body: { refresh_token: refreshToken },
+    body: {},
+    credentials: "include",
     signal: AbortSignal.timeout(5000),
   });
 }

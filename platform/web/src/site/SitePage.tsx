@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { apiFetch, ApiError } from "@/lib/api";
-import { fetchMe, loadSession } from "@/lib/auth";
+import { fetchMe, refreshSession } from "@/lib/auth";
 import { SECTION_REGISTRY, SECTION_TYPES } from "./sections/registry";
 import type { SiteSection } from "./sections/types";
 import { SiteEditor } from "./SiteEditor";
@@ -88,12 +88,13 @@ export function SitePage({ slug: slugProp }: { slug?: string }) {
     }
   }, [page]);
 
+  // Admin edit affordances ride the same cookie-restored session as /admin.
   useEffect(() => {
-    const s = loadSession();
-    if (!s) return;
-    fetchMe(s.tokens.access_token)
-      .then((u) => {
-        if (u.role === "admin") setAdminToken(s.tokens.access_token);
+    refreshSession()
+      .then(async (tokens) => {
+        if (!tokens) return;
+        const u = await fetchMe(tokens.access_token);
+        if (u.role === "admin") setAdminToken(tokens.access_token);
       })
       .catch(() => setAdminToken(null));
   }, []);
