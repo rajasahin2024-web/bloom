@@ -1,0 +1,21 @@
+# Deploy overlay — swapped in by the GitHub Actions deploy job.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull api web
+#   docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
+#
+# Replaces the local `build:` definitions for api/web with the GHCR images
+# built by .github/workflows/deploy.yml. Infra services (postgres, pgbouncer,
+# redis) already run image-based and are inherited unchanged.
+# `.env` stays on the server — secrets never enter the repo or the images.
+name: bloom
+
+services:
+  api:
+    build: !reset null
+    image: ghcr.io/rajasahin2024-web/bloom-api:main
+    environment:
+      API_ENV: ${API_ENV:-production}
+
+  web:
+    build: !reset null
+    image: ghcr.io/rajasahin2024-web/bloom-web:main

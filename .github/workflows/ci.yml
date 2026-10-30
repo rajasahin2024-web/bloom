@@ -1,0 +1,83 @@
+# CI — runs on every PR and every push to main.
+# Mirrors platform/scripts/{lint,typecheck,test}.sh plus docker image builds.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: platform/api/pyproject.toml
+
+      - name: Install dependencies
+        working-directory: platform/api
+        run: pip install -e '.[dev]'
+
+      - name: Lint (ruff)
+        working-directory: platform/api
+        run: ruff check app
+
+      - name: Typecheck (mypy)
+        working-directory: platform/api
+        run: mypy app
+
+      - name: Test (pytest)
+        working-directory: platform/api
+        run: pytest
+        # Infra-backed tests self-skip when Postgres/Redis aren't reachable.
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: platform/web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: platform/web
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (eslint)
+        working-directory: platform/web
+        run: pnpm lint
+
+      - name: Typecheck (tsc)
+        working-directory: platform/web
+        run: pnpm typecheck
+
+      - name: Test (vitest)
+        working-directory: platform/web
+        run: pnpm test
+
+      - name: Build (vite)
+        working-directory: platform/web
+        run: pnpm build
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build api image
+        run: docker build -t bloom-api-ci platform/api
+
+      - name: Build web production image
+        run: docker build -t bloom-web-ci --target production platform/web
