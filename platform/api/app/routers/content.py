@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -91,7 +92,7 @@ def get_page_by_slug(slug: str, db: Session = Depends(get_db)) -> CmsPageOut:
 
 
 @router.get("/site-chrome")
-def get_site_chrome() -> dict:
+def get_site_chrome() -> dict[str, Any]:
     """Shared site chrome (navbar + footer) for the common layout.
 
     Public, unauthenticated, no DB row — the chrome is a bundled JSON seed so
@@ -99,7 +100,8 @@ def get_site_chrome() -> dict:
     having to repeat nav/footer sections. Admins edit the seed file directly.
     """
     try:
-        return json.loads(_SEED_CHROME.read_text(encoding="utf-8"))
+        data: dict[str, Any] = json.loads(_SEED_CHROME.read_text(encoding="utf-8"))
+        return data
     except OSError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

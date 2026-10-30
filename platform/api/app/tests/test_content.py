@@ -114,7 +114,7 @@ def test_get_home_page_returns_typed_sections() -> None:
 def test_seed_idempotency_preserves_typed_sections(
     db_session: object,
 ) -> None:
-    _ensure_home_page(db_session)  # type: ignore[arg-type]
+    _ensure_home_page(db_session)
     row = db_session.execute(  # type: ignore[attr-defined]
         select(CmsPage).where(CmsPage.slug == "home")
     ).scalar_one()
@@ -139,7 +139,7 @@ def test_seed_idempotency_preserves_typed_sections(
     ]
     db_session.commit()  # type: ignore[attr-defined]
 
-    _ensure_home_page(db_session)  # type: ignore[arg-type]
+    _ensure_home_page(db_session)
     db_session.refresh(row)  # type: ignore[attr-defined]
     assert row.sections is not None
     assert len(row.sections) == 1
@@ -161,7 +161,7 @@ def test_ensure_home_page_reseeds_old_html_format(
     db_session.add(row)  # type: ignore[attr-defined]
     db_session.commit()  # type: ignore[attr-defined]
 
-    _ensure_home_page(db_session)  # type: ignore[arg-type]
+    _ensure_home_page(db_session)
     db_session.refresh(row)  # type: ignore[attr-defined]
     assert row.sections is not None
     assert section_schemas.is_typed_section(row.sections[0]) is True

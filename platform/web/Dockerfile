@@ -2,7 +2,7 @@
 # Multi-stage: `development` runs the Vite dev server, `production` serves the build.
 
 # ── Base: install deps ───────────────────────────────────────
-FROM node:20-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@12.3.4 --activate
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./

@@ -93,6 +93,7 @@ def register(
     db: Session = Depends(get_db),
 ) -> RegisterOut:
     user, tokens = auth_service.register(db, payload)
+    assert tokens.refresh_token is not None
     _set_refresh_cookie(response, tokens.refresh_token)
     return RegisterOut(user=UserOut.model_validate(user), tokens=tokens)
 
@@ -109,6 +110,7 @@ def login(
         redis, request.client.host if request.client else None, payload.email
     )
     user, tokens = auth_service.login(db, payload)
+    assert tokens.refresh_token is not None
     _set_refresh_cookie(response, tokens.refresh_token)
     return RegisterOut(user=UserOut.model_validate(user), tokens=tokens)
 
@@ -134,6 +136,7 @@ def refresh(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )
     _, tokens = auth_service.refresh(db, presented)
+    assert tokens.refresh_token is not None
     _set_refresh_cookie(response, tokens.refresh_token)
     if via_cookie:
         return tokens.model_copy(update={"refresh_token": None})
