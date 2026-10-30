@@ -2,12 +2,16 @@
 # images on the GitHub runner, pushes them to GHCR, then SSHs into the server
 # to pull and restart. The server never builds; it only runs images.
 #
+# The server needs nothing repo-related: this workflow copies the two compose
+# files over SSH, so the target only needs docker + a `.env` beside them.
+#
 # Required repo secrets (Settings -> Secrets and variables -> Actions):
-#   DEPLOY_HOST      e.g. 82.112.226.111
-#   DEPLOY_PORT      SSH port, e.g. 2016
-#   DEPLOY_USER      SSH user (root on this box)
-#   DEPLOY_SSH_KEY   private key matching the pubkey in the server's authorized_keys
-#   DEPLOY_PATH      /project/bloom/platform
+#   DEPLOY_HOST            e.g. 72.61.90.150
+#   DEPLOY_PORT            SSH port, e.g. 22
+#   DEPLOY_USER            SSH user
+#   DEPLOY_SSH_KEY         private key matching a pubkey in the server's authorized_keys
+#   DEPLOY_SSH_PASSPHRASE  only if the private key is passphrase-protected (else leave unset)
+#   DEPLOY_PATH            directory on the server holding docker-compose.yml + .env
 name: deploy
 
 on:
@@ -64,18 +68,41 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Pull images and restart stack over SSH
+      - uses: actions/checkout@v4
+
+      - name: Ensure deploy directory exists
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           port: ${{ secrets.DEPLOY_PORT }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          passphrase: ${{ secrets.DEPLOY_SSH_PASSPHRASE }}
+          script: mkdir -p "${{ secrets.DEPLOY_PATH }}"
+
+      - name: Ship compose files to the server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          passphrase: ${{ secrets.DEPLOY_SSH_PASSPHRASE }}
+          source: "platform/docker-compose.yml,platform/docker-compose.deploy.yml"
+          target: "${{ secrets.DEPLOY_PATH }}/"
+          strip_components: 1
+
+      - name: Pull images and restart stack
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          passphrase: ${{ secrets.DEPLOY_SSH_PASSPHRASE }}
           script: |
             set -e
-            # Keep server-side compose/env-adjacent files in sync with the repo.
-            git -C /project/bloom pull --ff-only
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd "${{ secrets.DEPLOY_PATH }}"
             docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull api web
             docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
             # Migrations run after the new code is up, through DATABASE_URL_DIRECT
