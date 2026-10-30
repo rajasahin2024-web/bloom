@@ -104,7 +104,9 @@ jobs:
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
             docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull api web
-            docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
+            # Only redis + app containers run here — Postgres/PgBouncer live
+            # on a remote host via POSTGRES_HOST/PGBOUNCER_HOST in .env.
+            docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-deps redis api web
             # Migrations run after the new code is up, through DATABASE_URL_DIRECT
             # (never DDL through the PgBouncer transaction pool).
             docker compose -f docker-compose.yml -f docker-compose.deploy.yml exec -T api alembic upgrade head

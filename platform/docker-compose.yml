@@ -91,8 +91,8 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-bloom}:${POSTGRES_PASSWORD:-bloom_dev_password}@pgbouncer:6432/${POSTGRES_DB:-bloom}
-      DATABASE_URL_DIRECT: postgresql+psycopg://${POSTGRES_USER:-bloom}:${POSTGRES_PASSWORD:-bloom_dev_password}@postgres:5432/${POSTGRES_DB:-bloom}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-bloom}:${POSTGRES_PASSWORD:-bloom_dev_password}@${PGBOUNCER_HOST:-pgbouncer}:${PGBOUNCER_PORT:-6432}/${POSTGRES_DB:-bloom}
+      DATABASE_URL_DIRECT: postgresql+psycopg://${POSTGRES_USER:-bloom}:${POSTGRES_PASSWORD:-bloom_dev_password}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-bloom}
       REDIS_URL: redis://redis:6379/0
       API_ENV: ${API_ENV:-development}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
