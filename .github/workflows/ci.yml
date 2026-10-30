@@ -10,6 +10,33 @@ on:
 jobs:
   api:
     runs-on: ubuntu-latest
+    services:
+      # Tests expect Postgres on localhost:5433 (DIRECT) + localhost:6432
+      # (the PgBouncer port — raw Postgres answers fine for tests) and Redis
+      # on localhost:6380, matching platform/api/app/tests/conftest.py.
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: bloom
+          POSTGRES_PASSWORD: bloom_dev_password
+          POSTGRES_DB: bloom
+        ports:
+          - 5433:5432
+          - 6432:5432
+        options: >-
+          --health-cmd "pg_isready -U bloom -d bloom"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -31,10 +58,17 @@ jobs:
         working-directory: platform/api
         run: mypy app
 
+      - name: Migrate test database
+        working-directory: platform/api
+        env:
+          DATABASE_URL_DIRECT: postgresql+psycopg://bloom:bloom_dev_password@localhost:5433/bloom
+        run: |
+          python -c "import psycopg; c = psycopg.connect('postgresql://bloom:bloom_dev_password@localhost:5433/bloom', autocommit=True); c.execute('CREATE EXTENSION IF NOT EXISTS vector')"
+          alembic upgrade head
+
       - name: Test (pytest)
         working-directory: platform/api
         run: pytest
-        # Infra-backed tests self-skip when Postgres/Redis aren't reachable.
 
   web:
     runs-on: ubuntu-latest
