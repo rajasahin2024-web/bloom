@@ -8,18 +8,9 @@
  * The `ImportMetaEnv` type is declared globally in `src/vite-env.d.ts`.
  */
 
-function required(value: string | undefined, name: string): string {
-  if (!value) {
-    // In dev, fall back to same-origin so the app works over any host —
-    // vite's /api proxy forwards to the API (see vite.config.ts).
-    if (import.meta.env.DEV) {
-      return "";
-    }
-    throw new Error(`Missing required env var: ${name}`);
-  }
-  return value;
-}
-
 export const env = {
-  apiBaseUrl: required(import.meta.env.VITE_API_BASE_URL, "VITE_API_BASE_URL"),
+  // Empty → same-origin: Vite's dev proxy forwards /api to the API, and the
+  // production nginx config proxies /api to the api container. A non-empty
+  // VITE_API_BASE_URL overrides this for split-origin setups.
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || "",
 } as const;
