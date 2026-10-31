@@ -11,9 +11,9 @@ jobs:
   api:
     runs-on: ubuntu-latest
     services:
-      # Tests expect Postgres on localhost:5433 (DIRECT) + localhost:6432
-      # (the PgBouncer port — raw Postgres answers fine for tests) and Redis
-      # on localhost:6380, matching platform/api/app/tests/conftest.py.
+      # Tests expect Postgres on localhost:5433 (DIRECT), a real PgBouncer on
+      # localhost:6432 (test_setup.py probes its admin console) and Redis on
+      # localhost:6380, matching platform/api/app/tests/conftest.py.
       postgres:
         image: pgvector/pgvector:pg16
         env:
@@ -22,9 +22,27 @@ jobs:
           POSTGRES_DB: bloom
         ports:
           - 5433:5432
-          - 6432:5432
         options: >-
           --health-cmd "pg_isready -U bloom -d bloom"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      pgbouncer:
+        image: edoburu/pgbouncer:v1.24.1-p1
+        env:
+          DB_HOST: postgres
+          DB_PORT: 5432
+          DB_USER: bloom
+          DB_PASSWORD: bloom_dev_password
+          DB_NAME: bloom
+          POOL_MODE: transaction
+          AUTH_TYPE: scram-sha-256
+          LISTEN_PORT: 6432
+          ADMIN_USERS: bloom
+        ports:
+          - 6432:6432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -p 6432 -U bloom"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
