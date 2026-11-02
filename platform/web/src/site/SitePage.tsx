@@ -16,6 +16,7 @@ import { useParams } from "react-router-dom";
 import { apiFetch, ApiError } from "@/lib/api";
 import { fetchMe, refreshSession } from "@/lib/auth";
 import { SECTION_REGISTRY, SECTION_TYPES } from "./sections/registry";
+import { SitePreloader } from "./SitePreloader";
 import type { SiteSection } from "./sections/types";
 import { SiteEditor } from "./SiteEditor";
 import { initSiteRuntime } from "./siteRuntime";
@@ -159,9 +160,8 @@ export function SitePage({ slug: slugProp }: { slug?: string }) {
   }
   if (!page) {
     return (
-      <div className="wiz-loading" role="status">
-        <span className="wiz-spinner" />
-        Loading…
+      <div className="site-root">
+        <SitePreloader />
       </div>
     );
   }

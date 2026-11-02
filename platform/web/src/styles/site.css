@@ -357,9 +357,17 @@
 .site-root .links a:hover{background:var(--paper-2);color:var(--leaf-700)}
 .site-root .nav-cta{display:flex;gap:9px;align-items:center;flex:0 0 auto}
 .site-root .burger{display:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;font-size:15px}
-.site-root .mob{position:fixed;inset:var(--nav-h) 0 auto 0;background:var(--surface);border-bottom:1px solid var(--line);padding:14px var(--gut) 20px;z-index:890;display:none;box-shadow:var(--sh-3)}
-.site-root .mob.on{display:block}
-.site-root .mob a{display:block;padding:12px 4px;font-size:15px;font-weight:600;color:var(--ink-2);border-bottom:1px solid var(--line)}
+.site-root .mob-scrim{position:fixed;inset:0;z-index:950;background:rgba(9,18,13,.55);opacity:0;pointer-events:none;transition:opacity .24s}
+.site-root .mob-scrim.on{opacity:1;pointer-events:auto}
+.site-root .mob{position:fixed;top:0;right:0;bottom:0;width:min(340px,86vw);z-index:960;background:var(--surface);box-shadow:var(--sh-lift);transform:translateX(105%);transition:transform .28s cubic-bezier(.32,.72,.35,1),visibility .28s;visibility:hidden;overflow-y:auto;display:flex;flex-direction:column;padding:18px var(--gut) 24px}
+.site-root .mob.on{transform:none;visibility:visible}
+.site-root .mob-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.site-root .mob-head img{width:34px;height:34px;object-fit:contain}
+.site-root .mob-x{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;font-size:18px;line-height:1;display:grid;place-items:center}
+.site-root .mob-x:hover{border-color:var(--leaf-400);color:var(--leaf-700);background:var(--leaf-50)}
+.site-root .mob-links a{display:block;padding:12px 4px;font-size:15px;font-weight:600;color:var(--ink-2);border-bottom:1px solid var(--line)}
+.site-root .mob-cta{display:flex;gap:9px;margin-top:16px}
+.site-root .mob-cta .btn{flex:1;justify-content:center}
 @media(max-width:940px){.site-root .links{display:none}
 .site-root .nav-cta{margin-left:auto}
 .site-root .burger{display:grid;place-items:center}
@@ -989,4 +997,16 @@
 #cmsBanner .x:hover{color:#fff}
 .site-root.has-banner{padding-top:var(--banner-h)}
 .site-root.has-banner .nav{top:var(--banner-h)}
-.site-root.has-banner .mob{top:calc(var(--nav-h) + var(--banner-h))}
+
+/* ── light logo preloader (TEC-162) — replaces the dark wizard spinner on
+   site routes. Scrim+drawer intentionally sit above .nav (900) and
+   #cmsBanner (901) so the whole viewport dims. ── */
+.site-root .site-preloader{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;background:radial-gradient(circle at 28% 22%,var(--leaf-100) 0%,rgba(228,241,220,0) 55%),radial-gradient(circle at 72% 78%,var(--amber-soft) 0%,rgba(253,233,203,0) 50%),var(--paper)}
+.site-root .pl-orb{position:relative;width:88px;height:88px;border-radius:50%;background:#fff;box-shadow:var(--sh-2);display:grid;place-items:center}
+.site-root .pl-orb img{width:50px;height:50px;object-fit:contain}
+.site-root .pl-ring{position:absolute;inset:-7px;border-radius:50%;border:3px solid var(--leaf-200);border-top-color:var(--leaf-700);animation:pl-spin .9s linear infinite}
+@keyframes pl-spin{to{transform:rotate(360deg)}}
+
+@media (prefers-reduced-motion:reduce){
+.site-root .mob,.site-root .mob-scrim{transition:none}
+.site-root .pl-ring{animation:none}}

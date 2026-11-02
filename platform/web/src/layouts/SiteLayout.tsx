@@ -16,6 +16,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { NavSection } from "@/site/sections/NavSection";
 import { FooterSection } from "@/site/sections/FooterSection";
 import { Icon } from "@/site/sections/Icon";
+import { SitePreloader } from "@/site/SitePreloader";
 import { initSiteRuntime } from "@/site/siteRuntime";
 import "@/styles/site.css";
 
@@ -70,9 +71,8 @@ export function SiteLayout() {
   }
   if (!chrome) {
     return (
-      <div className="wiz-loading" role="status">
-        <span className="wiz-spinner" />
-        Loading…
+      <div className="site-root">
+        <SitePreloader />
       </div>
     );
   }

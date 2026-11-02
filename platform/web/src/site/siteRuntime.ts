@@ -1,8 +1,8 @@
 /**
  * Site runtime — ports the prototype's tail script into a typed module.
  *
- * Sticky nav, mobile-menu close, scroll-reveal (`.rv` → `.in`) and the
- * stat-strip count-up animation. Called after each render; observers are
+ * Sticky nav, scroll-reveal (`.rv` → `.in`) and the stat-strip
+ * count-up animation. Called after each render; observers are
  * kept in module scope and replaced on each call so freshly rendered `.rv`
  * elements (which arrive after the API fetch) are always picked up.
  */
@@ -17,14 +17,6 @@ function setupStickyNav(): void {
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
   scrollBound = true;
-}
-
-function setupMobileMenu(): void {
-  document.querySelectorAll("#mob a").forEach((a) =>
-    a.addEventListener("click", () =>
-      document.getElementById("mob")?.classList.remove("on"),
-    ),
-  );
 }
 
 function setupScrollReveal(): void {
@@ -70,7 +62,6 @@ function setupCountUp(): void {
 
 export function initSiteRuntime(): void {
   setupStickyNav();
-  setupMobileMenu();
   setupScrollReveal();
   setupCountUp();
 }
