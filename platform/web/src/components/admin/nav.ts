@@ -8,14 +8,23 @@
  * that do not exist yet.
  */
 
-export interface AdminSubItem {
+/**
+ * Deepest menu node — a live destination or a Soon placeholder.
+ * Deliberately non-recursive: the menu hard-stops at 3 levels (TEC-166 A1).
+ */
+export interface AdminNavLeaf {
   id: string;
   label: string;
-  /** Icon key — rendered in the desktop dropdown and the mobile drawer. */
+  /** Icon key — rendered in the desktop dropdown/flyout and the mobile drawer. */
   icon: AdminNavIcon;
   soon: boolean;
   /** Live destination — when set, the leaf navigates instead of showing Soon. */
   to?: string;
+}
+
+export interface AdminSubItem extends AdminNavLeaf {
+  /** Optional third level — leaves only, never nested further. */
+  children?: AdminNavLeaf[];
 }
 
 export interface AdminNavItem {
@@ -141,6 +150,49 @@ export const ADMIN_NAV: AdminNavItem[] = [
     ],
   },
   {
+    id: "cms",
+    label: "CMS",
+    icon: "layout",
+    children: [
+      {
+        id: "blogs",
+        label: "Blogs",
+        icon: "pen",
+        soon: false,
+        children: [
+          {
+            id: "post-new",
+            label: "New Post",
+            icon: "pen",
+            soon: false,
+            to: "/admin/cms/posts/new",
+          },
+          {
+            id: "posts-all",
+            label: "All Posts",
+            icon: "tasklist",
+            soon: false,
+            to: "/admin/cms/posts",
+          },
+          {
+            id: "authors",
+            label: "Authors",
+            icon: "users",
+            soon: false,
+            to: "/admin/cms/authors",
+          },
+          {
+            id: "categories",
+            label: "Categories",
+            icon: "layout",
+            soon: false,
+            to: "/admin/cms/categories",
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: "settings",
     label: "Settings",
     icon: "gear",
@@ -175,6 +227,13 @@ export const ADMIN_NAV: AdminNavItem[] = [
         icon: "file",
         soon: false,
         to: "/admin/settings/sitemaps",
+      },
+      {
+        id: "storage",
+        label: "Storage / R2",
+        icon: "server",
+        soon: false,
+        to: "/admin/settings/storage",
       },
       soon("redis", "Redis", "server"),
     ],

@@ -5,7 +5,7 @@
  * main-menu items with slim dropdowns immediately right of the brand,
  * search/bell/avatar on the right. Below 1024px: hamburger opens a
  * slide-in drawer with accordion submenus, backdrop overlay and ≥44px
- * tap targets — the 8-item menu does not fit beside the right cluster
+ * tap targets — the 9-item menu does not fit beside the right cluster
  * at narrower widths, and long labels truncate instead of colliding.
  *
  * Dashboard and Settings → General Settings are live destinations; every
@@ -15,7 +15,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ADMIN_NAV } from "@/components/admin/nav";
-import type { AdminNavIcon, AdminNavItem } from "@/components/admin/nav";
+import type {
+  AdminNavIcon,
+  AdminNavItem,
+  AdminNavLeaf,
+} from "@/components/admin/nav";
 import { logout } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
 import { useBranding } from "@/lib/branding";
@@ -105,9 +109,11 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
   const location = useLocation();
   const navId = useId();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [openFly, setOpenFly] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [expandedSub, setExpandedSub] = useState<string | null>(null);
   const navRef = useRef<HTMLElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
@@ -117,6 +123,7 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
       const t = e.target as Node;
       if (openMenu && navRef.current && !navRef.current.contains(t)) {
         setOpenMenu(null);
+        setOpenFly(null);
       }
       if (userMenuOpen && userRef.current && !userRef.current.contains(t)) {
         setUserMenuOpen(false);
@@ -125,6 +132,7 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setOpenMenu(null);
+        setOpenFly(null);
         setUserMenuOpen(false);
         setDrawerOpen(false);
       }
@@ -169,6 +177,10 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
     setExpanded((cur) => (cur === id ? null : id));
   }
 
+  function toggleSubAccordion(id: string) {
+    setExpandedSub((cur) => (cur === id ? null : id));
+  }
+
   function goTo(path: string) {
     setOpenMenu(null);
     setDrawerOpen(false);
@@ -178,8 +190,47 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
   /** The section whose leaf matches the current path (for top-nav highlight). */
   const activeTop =
     ADMIN_NAV.find((item) =>
-      item.children.some((sub) => sub.to === location.pathname),
+      item.children.some(
+        (sub) =>
+          sub.to === location.pathname ||
+          sub.children?.some((leaf) => leaf.to === location.pathname),
+      ),
     )?.id ?? (location.pathname === "/admin" ? "dashboard" : null);
+
+  const dropLeaf = (leaf: AdminNavLeaf) => (
+    <button
+      key={leaf.id}
+      type="button"
+      role="menuitem"
+      className={`adm-di${leaf.to === location.pathname ? " on" : ""}`}
+      aria-current={leaf.to === location.pathname ? "page" : undefined}
+      aria-disabled={leaf.to ? undefined : true}
+      onClick={leaf.to ? () => goTo(leaf.to!) : undefined}
+    >
+      <span className="adm-di-ic">
+        {NAV_ICONS[leaf.icon]({ size: 14 })}
+        {leaf.label}
+      </span>
+      {leaf.soon && <SoonBadge />}
+    </button>
+  );
+
+  const drawerLeaf = (leaf: AdminNavLeaf) => (
+    <button
+      key={leaf.id}
+      type="button"
+      className={`adm-dsi${leaf.to === location.pathname ? " on" : ""}`}
+      aria-current={leaf.to === location.pathname ? "page" : undefined}
+      aria-disabled={leaf.to ? undefined : true}
+      onClick={leaf.to ? () => goTo(leaf.to!) : undefined}
+    >
+      <span className="adm-dsi-ic">
+        {NAV_ICONS[leaf.icon]({ size: 14 })}
+        {leaf.label}
+      </span>
+      {leaf.soon && <SoonBadge />}
+    </button>
+  );
 
   const logo = branding.logo_url ?? "/assets/bloom-mark.png";
 
@@ -211,7 +262,12 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
               key={item.id}
               className={`adm-ni${item.label.length > 10 ? " adm-ni-lg" : ""}`}
               onMouseEnter={() => item.children.length > 0 && setOpenMenu(item.id)}
-              onMouseLeave={() => item.children.length > 0 && setOpenMenu(null)}
+              onMouseLeave={() => {
+                if (item.children.length > 0) {
+                  setOpenMenu(null);
+                  setOpenFly(null);
+                }
+              }}
             >
               {item.children.length === 0 ? (
                 <button
@@ -242,23 +298,41 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                     className={`adm-drop${openMenu === item.id ? " show" : ""}`}
                     role="menu"
                   >
-                    {item.children.map((sub) => (
-                      <button
-                        key={sub.id}
-                        type="button"
-                        role="menuitem"
-                        className={`adm-di${sub.to === location.pathname ? " on" : ""}`}
-                        aria-current={sub.to === location.pathname ? "page" : undefined}
-                        aria-disabled={sub.to ? undefined : true}
-                        onClick={sub.to ? () => goTo(sub.to!) : undefined}
-                      >
-                        <span className="adm-di-ic">
-                          {NAV_ICONS[sub.icon]({ size: 14 })}
-                          {sub.label}
-                        </span>
-                        {sub.soon && <SoonBadge />}
-                      </button>
-                    ))}
+                    {item.children.map((sub) =>
+                      sub.children?.length ? (
+                        <div
+                          key={sub.id}
+                          className="adm-di-host"
+                          onMouseEnter={() => setOpenFly(sub.id)}
+                          onMouseLeave={() => setOpenFly(null)}
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className={`adm-di adm-di-parent${openFly === sub.id ? " open" : ""}`}
+                            aria-haspopup="true"
+                            aria-expanded={openFly === sub.id}
+                            onClick={() =>
+                              setOpenFly((cur) => (cur === sub.id ? null : sub.id))
+                            }
+                          >
+                            <span className="adm-di-ic">
+                              {NAV_ICONS[sub.icon]({ size: 14 })}
+                              {sub.label}
+                            </span>
+                            <ChevronIcon size={9} className="adm-di-chev" />
+                          </button>
+                          <div
+                            className={`adm-fly${openFly === sub.id ? " show" : ""}`}
+                            role="menu"
+                          >
+                            {sub.children.map(dropLeaf)}
+                          </div>
+                        </div>
+                      ) : (
+                        dropLeaf(sub)
+                      ),
+                    )}
                   </div>
                 </>
               )}
@@ -373,22 +447,31 @@ export function AdminShell({ session, onSignOut, children }: AdminShellProps) {
                   <ChevronIcon size={11} className="adm-dl-chev" />
                 </button>
                 <div className={`adm-dsub${expanded === item.id ? " show" : ""}`}>
-                  {item.children.map((sub) => (
-                    <button
-                      key={sub.id}
-                      type="button"
-                      className={`adm-dsi${sub.to === location.pathname ? " on" : ""}`}
-                      aria-current={sub.to === location.pathname ? "page" : undefined}
-                      aria-disabled={sub.to ? undefined : true}
-                      onClick={sub.to ? () => goTo(sub.to!) : undefined}
-                    >
-                      <span className="adm-dsi-ic">
-                        {NAV_ICONS[sub.icon]({ size: 14 })}
-                        {sub.label}
-                      </span>
-                      {sub.soon && <SoonBadge />}
-                    </button>
-                  ))}
+                  {item.children.map((sub) =>
+                    sub.children?.length ? (
+                      <div key={sub.id} className="adm-dsub-grp">
+                        <button
+                          type="button"
+                          className={`adm-dsi adm-dsi-parent${expandedSub === sub.id ? " open" : ""}`}
+                          aria-expanded={expandedSub === sub.id}
+                          onClick={() => toggleSubAccordion(sub.id)}
+                        >
+                          <span className="adm-dsi-ic">
+                            {NAV_ICONS[sub.icon]({ size: 14 })}
+                            {sub.label}
+                          </span>
+                          <ChevronIcon size={9} className="adm-dsi-chev" />
+                        </button>
+                        <div
+                          className={`adm-dsub${expandedSub === sub.id ? " show" : ""}`}
+                        >
+                          {sub.children.map(drawerLeaf)}
+                        </div>
+                      </div>
+                    ) : (
+                      drawerLeaf(sub)
+                    ),
+                  )}
                 </div>
               </div>
             ),

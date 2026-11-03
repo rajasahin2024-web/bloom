@@ -11,6 +11,7 @@ describe("ADMIN_NAV — approved Plan v7 menu structure", () => {
       "Accounts / Finance",
       "HR Management",
       "AI",
+      "CMS",
       "Settings",
     ]);
   });
@@ -74,6 +75,7 @@ describe("ADMIN_NAV — approved Plan v7 menu structure", () => {
       "SEO Settings",
       "AIO Settings",
       "Sitemaps",
+      "Storage / R2",
       "Redis",
     ]);
   });
@@ -84,9 +86,15 @@ describe("ADMIN_NAV — approved Plan v7 menu structure", () => {
       "seo-settings",
       "aio-settings",
       "sitemaps",
+      "storage",
     ]);
     for (const item of ADMIN_NAV) {
       for (const sub of item.children) {
+        // container nodes (e.g. CMS → Blogs) are not leaves — checked below
+        if (sub.children?.length) {
+          expect(sub.to).toBeUndefined();
+          continue;
+        }
         if (live.has(sub.id)) continue;
         expect(sub.soon).toBe(true);
         expect(sub.to).toBeUndefined();
@@ -130,7 +138,48 @@ describe("ADMIN_NAV — approved Plan v7 menu structure", () => {
     expect(leaf?.to).toBe("/admin/settings/sitemaps");
   });
 
-  it("has unique ids across items and sub-items", () => {
+  it("Storage / R2 is a live destination under Settings", () => {
+    const leaf = ADMIN_NAV.find((i) => i.id === "settings")?.children.find(
+      (c) => c.id === "storage",
+    );
+    expect(leaf).toBeDefined();
+    expect(leaf?.soon).toBe(false);
+    expect(leaf?.to).toBe("/admin/settings/storage");
+  });
+
+  it("CMS → Blogs is the only third-level group, with the approved leaves", () => {
+    const cms = ADMIN_NAV.find((i) => i.id === "cms");
+    expect(cms).toBeDefined();
+    expect(cms?.icon).toBe("layout");
+    expect(cms?.children.map((c) => c.label)).toEqual(["Blogs"]);
+
+    const blogs = cms?.children[0];
+    expect(blogs?.icon).toBe("pen");
+    expect(blogs?.soon).toBe(false);
+    expect(
+      blogs?.children?.map((l) => [l.label, l.to, l.soon]),
+    ).toEqual([
+      ["New Post", "/admin/cms/posts/new", false],
+      ["All Posts", "/admin/cms/posts", false],
+      ["Authors", "/admin/cms/authors", false],
+      ["Categories", "/admin/cms/categories", false],
+    ]);
+  });
+
+  it("never nests deeper than 3 levels", () => {
+    for (const item of ADMIN_NAV) {
+      for (const sub of item.children) {
+        for (const leaf of sub.children ?? []) {
+          expect(
+            "children" in leaf,
+            `leaf ${leaf.id} must not carry children — max depth is 3`,
+          ).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("has unique ids across items, sub-items, and leaves", () => {
     const ids = new Set<string>();
     for (const item of ADMIN_NAV) {
       expect(ids.has(item.id)).toBe(false);
@@ -138,6 +187,10 @@ describe("ADMIN_NAV — approved Plan v7 menu structure", () => {
       for (const sub of item.children) {
         expect(ids.has(sub.id)).toBe(false);
         ids.add(sub.id);
+        for (const leaf of sub.children ?? []) {
+          expect(ids.has(leaf.id)).toBe(false);
+          ids.add(leaf.id);
+        }
       }
     }
   });

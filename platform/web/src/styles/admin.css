@@ -208,6 +208,16 @@
 .adm-drop.show {
   display: block;
 }
+/* hover bridge — covers the 6px dead gap between the nav button and the
+   dropdown so mouseleave does not fire while the cursor crosses (TEC-166) */
+.adm-drop::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8px;
+  height: 8px;
+}
 .adm-di {
   display: flex;
   align-items: center;
@@ -248,6 +258,54 @@
 .adm-di-out:hover {
   background: var(--adm-coral-soft);
   color: #a33326;
+}
+
+/* dropdown item that opens a third-level flyout (TEC-166) */
+.adm-di-host {
+  position: relative;
+}
+.adm-di-parent {
+  cursor: pointer;
+}
+.adm-di-chev {
+  flex: 0 0 auto;
+  color: var(--blm-ink-4);
+  transform: rotate(-90deg);
+}
+.adm-di-parent:hover .adm-di-chev,
+.adm-di-parent.open .adm-di-chev {
+  color: var(--leaf-700);
+}
+
+/* right-side flyout — third level, same open-state pattern as .adm-drop */
+.adm-fly {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: 0;
+  margin-left: 8px;
+  min-width: 180px;
+  background: var(--blm-surface);
+  border: 1px solid var(--blm-line);
+  border-radius: 10px;
+  box-shadow:
+    var(--adm-sh-2),
+    0 1px 3px rgba(20, 53, 29, 0.08);
+  padding: 5px;
+  z-index: 71;
+}
+.adm-fly.show {
+  display: block;
+}
+/* hover bridge — covers the margin gap on the flyout's left edge so the
+   pointer can cross from the parent item without a mouseleave */
+.adm-fly::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  width: 8px;
 }
 
 .adm-soon {
@@ -507,6 +565,21 @@
 }
 .adm-dsi:hover .adm-dsi-ic svg {
   color: var(--leaf-700);
+}
+/* nested accordion — a drawer sub-item with its own children (TEC-166) */
+.adm-dsi-parent {
+  cursor: pointer;
+}
+.adm-dsi-chev {
+  flex: 0 0 auto;
+  color: var(--blm-ink-4);
+  transition: transform 0.16s;
+}
+.adm-dsi-parent.open .adm-dsi-chev {
+  transform: rotate(180deg);
+}
+.adm-dsub .adm-dsub {
+  padding-left: 10px;
 }
 .adm-drawer-foot {
   border-top: 1px solid var(--blm-line);
