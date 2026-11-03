@@ -10,7 +10,9 @@ from pydantic import BaseModel, Field
 
 
 class StorageConnectionIn(BaseModel):
-    account_id: str = Field(min_length=1, max_length=100)
+    # Cloudflare account IDs are 32-char lowercase hex — the value becomes
+    # the S3 endpoint host, so URL delimiters must be impossible here.
+    account_id: str = Field(pattern=r"^[a-z0-9]{32}$")
     access_key_id: str = Field(min_length=1, max_length=100)
     secret_access_key: str = Field(min_length=1, max_length=200)
 

@@ -275,9 +275,22 @@ def storage_usage(
 
 # ── public media serving ─────────────────────────────────────────────────
 
+# Content-Type never comes straight from the DB field — a stored row can
+# claim anything. Only the servable image allowlist goes out, derived from
+# the key extension when the stored value is unusable.
+_EXT_MIME = {
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "webp": "image/webp",
+}
 
-def _safe_key(key: str) -> bool:
-    return bool(key) and "\x00" not in key and ".." not in key.split("/")
+
+def _media_type_for(row: Any) -> str:
+    if row.mime_type in media_service.ALLOWED_MIME_TYPES:
+        return str(row.mime_type)
+    ext = row.storage_key.rsplit(".", 1)[-1].lower()
+    return _EXT_MIME.get(ext, "application/octet-stream")
 
 
 @media_router.get("/serve/{key:path}")
@@ -287,15 +300,23 @@ def serve_media(key: str, db: Session = Depends(get_db)) -> Response:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
         )
-    media_type = row.mime_type or "application/octet-stream"
-    headers = {"Cache-Control": _IMMUTABLE_CACHE}
-
-    if _safe_key(key):
-        path = media_service.media_file(key)
-        if path is not None:
-            return FileResponse(path, media_type=media_type, headers=headers)
-
     cfg = storage_service.resolve_config(db)
+    # Only server-generated keys under the public media prefixes are
+    # servable — anything else is a 404 even though a row exists.
+    if not media_service.is_servable_key(key, cfg.prefix_media):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+        )
+    media_type = _media_type_for(row)
+    headers = {
+        "Cache-Control": _IMMUTABLE_CACHE,
+        "X-Content-Type-Options": "nosniff",
+    }
+
+    path = media_service.media_file(key)
+    if path is not None:
+        return FileResponse(path, media_type=media_type, headers=headers)
+
     if cfg.configured and cfg.bucket:
         try:
             obj = storage_service.get_object(
@@ -311,11 +332,18 @@ def serve_media(key: str, db: Session = Depends(get_db)) -> Response:
                 detail="storage_unavailable",
                 headers={"Cache-Control": _SHORT_CACHE},
             ) from exc
+        body = obj.get("Body")
+        if body is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="storage_unavailable",
+                headers={"Cache-Control": _SHORT_CACHE},
+            )
         length = obj.get("ContentLength")
         if length:
             headers["Content-Length"] = str(length)
         return StreamingResponse(
-            storage_service.stream_body(obj.get("Body")),
+            storage_service.stream_body(body),
             media_type=media_type,
             headers=headers,
         )

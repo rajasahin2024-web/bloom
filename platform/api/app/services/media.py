@@ -29,6 +29,15 @@ _IMAGE_DATA_URL = re.compile(
 _IMAGE_EXT = {"png": "png", "jpeg": "jpg", "webp": "webp"}
 _IMAGE_MAX_BYTES = 512 * 1024
 
+# MIME types the public serve endpoint will ever emit — a stored row whose
+# mime_type is anything else is served as application/octet-stream (and the
+# response always carries X-Content-Type-Options: nosniff).
+ALLOWED_MIME_TYPES = frozenset({"image/png", "image/jpeg", "image/webp"})
+
+# Server-generated storage keys are always ``<prefix>/<uuid-hex>.<img-ext>``
+# — the local ``cms/`` dir or the configured R2 media prefix.
+_SERVABLE_KEY_RE = re.compile(r"^[0-9a-f]{32}\.(png|jpe?g|webp)$")
+
 _UPLOAD_SUBDIR = "cms"
 
 
@@ -53,7 +62,13 @@ def save_cms_media(
 
     ext = _IMAGE_EXT[match.group(1)]
     stem = uuid.uuid4().hex
-    detected_mime = mime_type or f"image/{match.group(1)}"
+    # Caller-supplied mime_type is only honoured when it's a servable image
+    # type — anything else falls back to the type implied by the data URL.
+    detected_mime = (
+        mime_type
+        if mime_type in ALLOWED_MIME_TYPES
+        else f"image/{match.group(1)}"
+    )
 
     storage_key, url = _store_bytes(db, stem, ext, raw, detected_mime)
 
@@ -87,9 +102,12 @@ def _store_bytes(
                 storage_service.get_client(cfg), cfg.bucket, key, raw, mime
             )
             return key, f"/api/media/serve/{key}"
-        except storage_service.StorageError:
+        except storage_service.StorageError as exc:
+            # exc.detail is already sanitised — never log the chained
+            # ClientError, it can carry raw AWS internals / key ids.
             logger.warning(
-                "R2 PutObject failed — falling back to local disk", exc_info=True
+                "R2 PutObject failed (%s) — falling back to local disk",
+                exc.detail,
             )
     storage_key = f"{_UPLOAD_SUBDIR}/{stem}.{ext}"
     dest = setup_service.UPLOADS_DIR / _UPLOAD_SUBDIR
@@ -98,13 +116,23 @@ def _store_bytes(
     return storage_key, f"/uploads/{storage_key}"
 
 
+def _resolve_upload(storage_key: str) -> Path | None:
+    """Resolve a storage key under UPLOADS_DIR — ``None`` when the resolved
+    path escapes the uploads root (absolute path, ``..`` segments, …)."""
+    root = setup_service.UPLOADS_DIR.resolve()
+    path = (root / storage_key).resolve()
+    if not path.is_relative_to(root):
+        return None
+    return path
+
+
 def delete_cms_media(media_id: uuid.UUID, db: Session) -> None:
     """Delete a media row and the file it points at on disk."""
     row = db.get(CmsMedia, media_id)
     if row is None:
         return
-    path = setup_service.UPLOADS_DIR / row.storage_key
-    if path.is_file():
+    path = _resolve_upload(row.storage_key)
+    if path is not None and path.is_file():
         try:
             path.unlink()
         except OSError:
@@ -114,9 +142,23 @@ def delete_cms_media(media_id: uuid.UUID, db: Session) -> None:
 
 
 def media_file(storage_key: str) -> Path | None:
-    """Resolve a stored media file path, if it still exists on disk."""
-    path = setup_service.UPLOADS_DIR / storage_key
-    return path if path.is_file() else None
+    """Resolve a stored media file path, if it still exists on disk and
+    stays inside the uploads directory."""
+    path = _resolve_upload(storage_key)
+    return path if path is not None and path.is_file() else None
+
+
+def is_servable_key(storage_key: str, media_prefix: str) -> bool:
+    """True only for server-generated keys — ``<public-prefix>/<uuid>.<img>``
+    under the local ``cms/`` dir or the configured R2 media prefix. Rows
+    pointing anywhere else (absolute paths, traversal, internal ``files/``
+    prefixes, arbitrary shapes) are not servable."""
+    for prefix in ("cms/", media_prefix):
+        if storage_key.startswith(prefix) and _SERVABLE_KEY_RE.match(
+            storage_key[len(prefix) :]
+        ):
+            return True
+    return False
 
 
 def storage_key_from_url(url: str) -> str | None:

@@ -23,6 +23,7 @@ from fastapi.testclient import TestClient
 from app.core.security import create_access_token
 from app.main import app
 from app.models.enums import UserRole
+from app.services import media as media_service
 from app.services import settings as settings_service
 from app.services import setup as setup_service
 from app.services import storage as storage_service
@@ -337,7 +338,7 @@ def test_connection_round_trip(admin_token: str, fake_s3: _FakeS3) -> None:
             "/api/admin/storage/connection",
             headers=_auth(admin_token),
             json={
-                "account_id": "acct-1234567890",
+                "account_id": "0123456789abcdef0123456789abcdef",
                 "access_key_id": "AKID9999",
                 "secret_access_key": "sekret-value",
             },
@@ -346,7 +347,7 @@ def test_connection_round_trip(admin_token: str, fake_s3: _FakeS3) -> None:
         body = resp.json()
         assert body["configured"] is True
         assert body["reachable"] is True
-        assert body["account_id"] == "••••7890"
+        assert body["account_id"] == "••••cdef"
         assert body["access_key_id"] == "••••9999"
         assert "sekret" not in resp.text
 
@@ -407,7 +408,7 @@ def test_connection_rejects_bad_credentials(
         "/api/admin/storage/connection",
         headers=_auth(admin_token),
         json={
-            "account_id": "bad",
+            "account_id": "0123456789abcdef0123456789abcdef",
             "access_key_id": "bad",
             "secret_access_key": "bad",
         },
@@ -473,7 +474,7 @@ def test_media_upload_goes_to_r2_and_serves(
             "/api/admin/storage/connection",
             headers=_auth(admin_token),
             json={
-                "account_id": "acct-1",
+                "account_id": "00112233445566778899aabbccddeeff",
                 "access_key_id": "AKID",
                 "secret_access_key": "sekret",
             },
@@ -558,7 +559,7 @@ def test_serve_r2_outage_returns_503(
             "/api/admin/storage/connection",
             headers=_auth(admin_token),
             json={
-                "account_id": "acct-1",
+                "account_id": "00112233445566778899aabbccddeeff",
                 "access_key_id": "AKID",
                 "secret_access_key": "sekret",
             },
@@ -588,3 +589,168 @@ def test_serve_r2_outage_returns_503(
                 f"/api/cms/media/{media_id}", headers=_auth(admin_token)
             )
         _clear_connection(admin_token)
+
+
+# ── security review regressions (TEC-171 F1/F2/F3) ──────────────────────
+
+
+def _insert_media_row(storage_key: str, mime_type: str) -> str:
+    """Insert a raw cms_media row (bypasses API validation); returns its id."""
+    row_id = str(uuid.uuid4())
+    conn = _pg()
+    conn.execute(
+        "INSERT INTO cms_media (id, storage_key, url, filename, mime_type,"
+        " created_at) VALUES (%s, %s, %s, 'x.png', %s, %s)",
+        (
+            row_id,
+            storage_key,
+            f"/api/media/serve/{storage_key}",
+            mime_type,
+            datetime.now(UTC),
+        ),
+    )
+    conn.close()
+    return row_id
+
+
+def _delete_media_row(row_id: str) -> None:
+    conn = _pg()
+    conn.execute("DELETE FROM cms_media WHERE id = %s", (row_id,))
+    conn.close()
+
+
+def test_is_servable_key_shape() -> None:
+    good = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6.png"
+    assert media_service.is_servable_key(f"cms/{good}", "media/")
+    assert media_service.is_servable_key(f"media/{good}", "media/")
+    for bad in (
+        "/etc/passwd",
+        "cms/../../etc/passwd",
+        f"files/{good}",
+        f"uploads/{good}",
+        "cms/not-a-uuid.png",
+        "cms/" + good + ".exe",
+        "cms/",
+    ):
+        assert not media_service.is_servable_key(bad, "media/"), bad
+
+
+def test_media_file_containment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(setup_service, "UPLOADS_DIR", tmp_path)
+    (tmp_path / "cms").mkdir()
+    (tmp_path / "cms" / "a.png").write_bytes(b"x")
+    assert media_service.media_file("cms/a.png") is not None
+    assert media_service.media_file("/etc/hostname") is None
+    assert media_service.media_file("../../etc/hostname") is None
+    assert media_service.media_file("cms/../../etc/hostname") is None
+
+
+@requires_infra
+def test_serve_rejects_non_media_keys(
+    admin_token: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F1: absolute-path and non-media-prefix rows are never served."""
+    monkeypatch.setattr(setup_service, "UPLOADS_DIR", tmp_path)
+    good = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6.png"
+    ids = [
+        _insert_media_row("/etc/hostname", "image/png"),
+        _insert_media_row(f"files/{good}", "image/png"),
+        _insert_media_row(f"uploads/{good}", "image/png"),
+    ]
+    try:
+        for key in ("/etc/hostname", f"files/{good}", f"uploads/{good}"):
+            resp = client.get(f"/api/media/serve/{key}")
+            assert resp.status_code == 404, (key, resp.status_code)
+    finally:
+        for row_id in ids:
+            _delete_media_row(row_id)
+
+
+@requires_infra
+def test_create_media_rejects_arbitrary_storage_key(admin_token: str) -> None:
+    """F1 write-path: POST /api/cms/media can't register an arbitrary key."""
+    for bad in (
+        "/etc/hostname",
+        "files/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6.png",
+        "cms/../x.png",
+    ):
+        resp = client.post(
+            "/api/cms/media",
+            headers=_auth(admin_token),
+            json={
+                "storage_key": bad,
+                "url": f"/api/media/serve/{bad}",
+                "filename": "x.png",
+                "mime_type": "image/png",
+            },
+        )
+        assert resp.status_code == 422, (bad, resp.status_code)
+
+
+@requires_infra
+def test_serve_ignores_stored_html_content_type(
+    admin_token: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F2: a row claiming text/html never serves HTML — ext-derived + nosniff."""
+    monkeypatch.setattr(setup_service, "UPLOADS_DIR", tmp_path)
+    key = "cms/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6.png"
+    (tmp_path / "cms").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "cms" / "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6.png").write_bytes(
+        b"<html>"
+    )
+    row_id = _insert_media_row(key, "text/html")
+    try:
+        resp = client.get(f"/api/media/serve/{key}")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+        assert resp.headers["x-content-type-options"] == "nosniff"
+        assert "immutable" in resp.headers["cache-control"]
+    finally:
+        _delete_media_row(row_id)
+
+
+@requires_infra
+def test_connection_rejects_malformed_account_id(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    """F3: account_id feeds the endpoint host — URL delimiters rejected."""
+    try:
+        for bad in (
+            "evil.example.com/x?y",
+            "a" * 31,
+            "AABB" + "0" * 28,
+            "0" * 31 + "!",
+            "",
+        ):
+            resp = client.put(
+                "/api/admin/storage/connection",
+                headers=_auth(admin_token),
+                json={
+                    "account_id": bad,
+                    "access_key_id": "AKID",
+                    "secret_access_key": "sekret",
+                },
+            )
+            assert resp.status_code == 422, (bad, resp.status_code)
+    finally:
+        # if a case ever slips through and writes creds, don't leak it to
+        # later tests
+        _clear_connection(admin_token)
+
+
+def test_account_id_format_via_settings_spec() -> None:
+    """F3: the same check applies to direct settings PATCHes."""
+    spec = settings_service.SPEC_BY_KEY["storage.r2.account_id"]
+    errs: dict[str, str] = {}
+    settings_service._validate(spec, "evil.example.com/x", errs)
+    assert spec.key in errs
+    errs = {}
+    assert (
+        settings_service._validate(
+            spec, "0123456789abcdef0123456789abcdef", errs
+        )
+        == "0123456789abcdef0123456789abcdef"
+    )
+    assert errs == {}

@@ -58,6 +58,8 @@ _OH_SEGMENT_RE = re.compile(
 )
 # site-relative path, one per line: /courses, /blog/post-1, /a/b/?x=1
 _PATH_LINE_RE = re.compile(r"^/[\w\-./~%!$&'()*+,;=:@?#]*$")
+# Cloudflare account ID — 32-char lowercase hex
+_R2_ACCOUNT_ID_RE = re.compile(r"^[a-z0-9]{32}$")
 
 # data:image/{png,jpeg,webp};base64,… uploads (same rules as the setup wizard)
 _IMAGE_DATA_URL = re.compile(
@@ -102,7 +104,7 @@ class SettingSpec:
     number_min: float = 0
     number_max: float = 100
     # extra string check: geo_lat | geo_lng | opening_hours | twitter_handle
-    # | fb_app_id | url_list | path_list | r2_prefix
+    # | fb_app_id | url_list | path_list | r2_prefix | r2_account_id
     format: str | None = None
 
 
@@ -925,7 +927,8 @@ SPECS: tuple[SettingSpec, ...] = (
             "https://<account-id>.r2.cloudflarestorage.com."
         ),
         default="",
-        max_length=100,
+        max_length=32,
+        format="r2_account_id",
     ),
     SettingSpec(
         key="storage.r2.access_key_id",
@@ -1182,6 +1185,12 @@ def _check_format(spec: SettingSpec, value: str, errors: dict[str, str]) -> None
                 errors,
                 spec.key,
                 "must be a relative folder prefix ending in '/', e.g. media/",
+            )
+    elif fmt == "r2_account_id":
+        # Becomes the S3 endpoint host — URL delimiters must be impossible.
+        if not _R2_ACCOUNT_ID_RE.match(value):
+            _invalid(
+                errors, spec.key, "must be the 32-character Cloudflare account ID"
             )
 
 

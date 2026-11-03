@@ -43,6 +43,7 @@ from app.schemas.cms import (
 from app.schemas.common import Page, Pagination
 from app.services import media as media_service
 from app.services import sanitize, section_schemas
+from app.services import storage as storage_service
 
 router = APIRouter(
     prefix="/api/cms",
@@ -85,6 +86,15 @@ def _create(db: Session, model: type[ModelT], payload: InT, user: User) -> Model
     if hasattr(row, "created_by_id"):
         row.created_by_id = user.id
     if isinstance(row, CmsMedia):
+        # Storage keys are server-generated — caller-supplied keys must match
+        # the servable shape or the public /api/media/serve endpoint would
+        # expose whatever the row points at.
+        cfg = storage_service.resolve_config(db)
+        if not media_service.is_servable_key(row.storage_key, cfg.prefix_media):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="storage_key must be a server-generated media key",
+            )
         row.uploaded_by_id = user.id
     db.add(row)
     db.commit()

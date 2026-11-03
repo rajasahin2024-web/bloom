@@ -93,8 +93,10 @@ def resolve_config(db: Session) -> R2Config:
 # ── client ───────────────────────────────────────────────────────────────
 
 # One client per credential set — boto3 clients are thread-safe and cheap
-# to reuse; rebuilding per request would re-run endpoint resolution every time.
+# to reuse; rebuilding per request would re-run endpoint resolution every
+# time. Bounded so churned/bad credentials can't grow the map forever.
 _clients: dict[tuple[str, str, str], Any] = {}
+_CLIENT_CACHE_MAX = 16
 
 
 def get_client(cfg: R2Config) -> Any:
@@ -102,6 +104,8 @@ def get_client(cfg: R2Config) -> Any:
     key = (cfg.account_id, cfg.access_key_id, cfg.secret_access_key)
     client = _clients.get(key)
     if client is None:
+        if len(_clients) >= _CLIENT_CACHE_MAX:
+            _clients.clear()
         client = boto3.client(
             "s3",
             endpoint_url=_ENDPOINT_TEMPLATE.format(account_id=cfg.account_id),
