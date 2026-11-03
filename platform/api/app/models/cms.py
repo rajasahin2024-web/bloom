@@ -239,3 +239,10 @@ class CmsPost(Base):
         if author is None or author.avatar is None:
             return None
         return author.avatar.url
+
+    @property
+    def hero_url(self) -> str | None:
+        """Hero image URL for serialization — relies on the caller
+        eager-loading ``hero_media`` (list endpoints use selectinload)."""
+        media = self.hero_media
+        return media.url if media is not None else None

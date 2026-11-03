@@ -279,7 +279,12 @@ def test_media_upload_rejects_invalid_data_url(admin_token: str) -> None:
 @pytest.fixture
 def blog_cleanup() -> Generator[dict[str, list[str]], None, None]:
     """Track created blog rows and delete them in FK-safe order."""
-    created: dict[str, list[str]] = {"posts": [], "categories": [], "authors": []}
+    created: dict[str, list[str]] = {
+        "posts": [],
+        "categories": [],
+        "authors": [],
+        "media": [],
+    }
     yield created
     if not _infra_up():
         return
@@ -290,6 +295,8 @@ def blog_cleanup() -> Generator[dict[str, list[str]], None, None]:
         conn.execute("DELETE FROM cms_categories WHERE id = %s", (cid,))
     for aid in created["authors"]:
         conn.execute("DELETE FROM cms_authors WHERE id = %s", (aid,))
+    for mid in created["media"]:
+        conn.execute("DELETE FROM cms_media WHERE id = %s", (mid,))
     conn.close()
 
 
@@ -535,6 +542,73 @@ def test_post_slug_taken(
     )
     assert resp.status_code == 409
     assert resp.json()["detail"] == "slug_taken"
+
+
+@requires_infra
+def test_post_hero_url_resolved(
+    admin_token: str, blog_cleanup: dict[str, list[str]]
+) -> None:
+    """TEC-173: hero_url resolves hero_media.url; null when no hero is set."""
+    media_id = str(uuid.uuid4())
+    conn = _pg()
+    conn.execute(
+        "INSERT INTO cms_media (id, storage_key, url, filename)"
+        " VALUES (%s, %s, %s, %s)",
+        (
+            media_id,
+            f"test/{media_id}.png",
+            "https://cdn.example/hero.png",
+            "hero.png",
+        ),
+    )
+    conn.close()
+    blog_cleanup["media"].append(media_id)
+
+    resp = client.post(
+        "/api/cms/posts",
+        headers=_auth(admin_token),
+        json={
+            "slug": "hero-post",
+            "title": "With hero",
+            "hero_media_id": media_id,
+            "status": "published",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    post = resp.json()
+    blog_cleanup["posts"].append(post["id"])
+    assert post["hero_media_id"] == media_id
+    assert post["hero_url"] == "https://cdn.example/hero.png"
+
+    resp = client.get(f"/api/cms/posts/{post['id']}", headers=_auth(admin_token))
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["hero_url"] == "https://cdn.example/hero.png"
+
+    resp = client.get("/api/cms/posts", headers=_auth(admin_token))
+    assert resp.status_code == 200, resp.text
+    row = next(i for i in resp.json()["items"] if i["slug"] == "hero-post")
+    assert row["hero_url"] == "https://cdn.example/hero.png"
+
+    resp = client.get("/api/content/posts")
+    assert resp.status_code == 200, resp.text
+    row = next(i for i in resp.json()["items"] if i["slug"] == "hero-post")
+    assert row["hero_url"] == "https://cdn.example/hero.png"
+
+    resp = client.get("/api/content/posts/hero-post")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["hero_url"] == "https://cdn.example/hero.png"
+
+    # No hero_media → null.
+    resp = client.post(
+        "/api/cms/posts",
+        headers=_auth(admin_token),
+        json={"slug": "no-hero-post", "title": "No hero"},
+    )
+    assert resp.status_code == 201, resp.text
+    bare = resp.json()
+    blog_cleanup["posts"].append(bare["id"])
+    assert bare["hero_media_id"] is None
+    assert bare["hero_url"] is None
 
 
 @requires_infra

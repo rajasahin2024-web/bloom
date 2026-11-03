@@ -187,6 +187,7 @@ class CmsPostOut(BaseModel):
     category_id: uuid.UUID | None
     subcategory_id: uuid.UUID | None
     author_avatar_url: str | None
+    hero_url: str | None
     meta_title: str | None
     meta_description: str | None
     featured: bool

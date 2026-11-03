@@ -153,12 +153,14 @@ def _commit_or_slug_conflict(db: Session) -> None:
         ) from exc
 
 
-def _post_load_options() -> tuple[ExecutableOption, ExecutableOption]:
+def _post_load_options() -> tuple[ExecutableOption, ...]:
     """Eager loads for CmsPostOut serialization — author_avatar_url walks
-    author_obj.avatar; without selectinload each row would lazy-load (N+1)."""
+    author_obj.avatar and hero_url walks hero_media; without selectinload
+    each row would lazy-load (N+1)."""
     return (
         selectinload(CmsPost.author_obj).selectinload(CmsAuthor.avatar),
         selectinload(CmsPost.category_obj),
+        selectinload(CmsPost.hero_media),
     )
 
 

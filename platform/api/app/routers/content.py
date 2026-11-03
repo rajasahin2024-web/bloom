@@ -117,6 +117,7 @@ def get_site_chrome() -> dict[str, Any]:
 _POST_LOAD = (
     selectinload(CmsPost.author_obj).selectinload(CmsAuthor.avatar),
     selectinload(CmsPost.category_obj),
+    selectinload(CmsPost.hero_media),
 )
 
 
