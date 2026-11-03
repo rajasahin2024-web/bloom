@@ -995,6 +995,14 @@
 #cmsBanner a.cta{background:#fff;color:var(--leaf-800);border-radius:8px;padding:5px 13px;font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}
 #cmsBanner .x{background:transparent;border:none;color:rgba(255,255,255,.55);cursor:pointer;font-size:13px;padding:2px 4px;margin-left:2px}
 #cmsBanner .x:hover{color:#fff}
+/* Mobile (<941px, burger breakpoint): keep the banner to one compact line —
+   icon + ellipsized text + inline CTA + dismiss. TEC-161 follow-up. */
+@media(max-width:940px){
+  #cmsBanner{flex-wrap:nowrap;justify-content:flex-start;gap:8px;padding:7px 12px;font-size:11.5px;text-align:left}
+  #cmsBanner span{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #cmsBanner a.cta{flex:0 0 auto;padding:3px 9px;font-size:11px}
+  #cmsBanner .x{flex:0 0 auto}
+}
 .site-root.has-banner{padding-top:var(--banner-h)}
 .site-root.has-banner .nav{top:var(--banner-h)}
 
