@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Head } from "./shared";
 import { BLOG_FILTER_EVENT, BLOG_POSTS_EVENT } from "./BlogGridSection";
+import { fetchBlogCategories } from "../blog";
 
 interface BlogFilterProps {
   eyebrow?: string;
@@ -8,6 +9,9 @@ interface BlogFilterProps {
   lead?: string;
   all_label?: string;
   categories?: (string | { label?: string })[];
+  /** "live" → pills come from GET /api/content/blog/categories; seeded
+      `categories` stay as the error/empty fallback (TEC-169). */
+  source?: string;
 }
 
 interface PostLike {
@@ -22,9 +26,28 @@ const catName = (c: string | { label?: string }) =>
    the head + pills. Category counts come from the live post list, broadcast
    by the grid on `bloom:blog-posts` (prototype derives them the same way). */
 export function BlogFilterSection({ props }: { props: BlogFilterProps }) {
-  const { eyebrow, heading, lead, all_label, categories } = props;
+  const { eyebrow, heading, lead, all_label, categories, source } = props;
   const [active, setActive] = useState("All");
   const [posts, setPosts] = useState<PostLike[]>([]);
+  const [liveCats, setLiveCats] = useState<string[] | null>(null);
+
+  /* TEC-169 — the pill list fetches the real category names once the
+     endpoint exists; on 404/empty the seeded `categories` keep working. */
+  const wantsLive = source === "live" || !categories;
+  useEffect(() => {
+    if (!wantsLive) return;
+    let on = true;
+    fetchBlogCategories()
+      .then((cats) => {
+        if (on) setLiveCats(cats.length > 0 ? cats.map((c) => c.name) : null);
+      })
+      .catch(() => {
+        if (on) setLiveCats(null);
+      });
+    return () => {
+      on = false;
+    };
+  }, [wantsLive]);
 
   useEffect(() => {
     const onPosts = (e: Event) => {
@@ -47,7 +70,10 @@ export function BlogFilterSection({ props }: { props: BlogFilterProps }) {
     );
   };
 
-  const pills = [all_label || "All", ...(categories ?? []).map(catName)];
+  const pills = [
+    all_label || "All",
+    ...(liveCats ?? (categories ?? []).map(catName)),
+  ];
 
   /* First section on /blog: top padding clears the fixed nav exactly like
      the prototype's inline `padding-top:calc(var(--nav-h) + 54px)`. Bottom

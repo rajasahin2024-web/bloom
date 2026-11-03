@@ -14,6 +14,7 @@
         "heading": "Written by the people who <em>mark the papers</em>.",
         "lead": "Strategy, format updates and requirement news. No listicles, no motivational filler — every post exists because a student asked the question in a lesson.",
         "all_label": "All",
+        "source": "live",
         "categories": ["Strategy", "Reading", "Speaking", "Grammar", "Study abroad", "Medical", "Listening"]
       }
     },
@@ -25,6 +26,7 @@
       "animation": { "type": "fade", "delay_ms": 0 },
       "props": {
         "variant": "tight",
+        "source": "live",
         "posts": [
           { "slug": "band-65-to-7", "title": "Band 6.5 to 7.0: the four things that actually move the needle", "category": "Strategy", "author": "Dr. Elena Marchetti", "date": "2026-08-28", "read_minutes": 8, "hero_url": "", "excerpt": "Half a band is roughly a hundred focused hours — but only if those hours target the right four things. Here is what separates a 6.5 script from a 7.0 one, criterion by criterion.", "featured": true, "tags": ["Writing", "Band descriptors"] },
           { "slug": "tfng-procedure", "title": "True / False / Not Given: a three-question procedure that removes the guesswork", "category": "Reading", "author": "James Okonkwo", "date": "2026-08-21", "read_minutes": 6, "hero_url": "", "excerpt": "The most-failed question type in IELTS Reading, reduced to three questions you ask in order. Plus the qualifier words that turn a TRUE into a FALSE.", "featured": true, "tags": ["Reading", "Question types"] },

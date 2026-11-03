@@ -992,6 +992,12 @@ export const SECTION_META: Record<string, SectionMeta> = {
         options: ["tight", "paper", "dark"],
       },
       {
+        kind: "select",
+        key: "source",
+        label: "Posts source (live = CMS posts API)",
+        options: ["seeded", "live"],
+      },
+      {
         kind: "text",
         key: "posts",
         label: "Posts",
@@ -1026,6 +1032,12 @@ export const SECTION_META: Record<string, SectionMeta> = {
       { kind: "text", key: "heading", label: "Heading" },
       { kind: "textarea", key: "lead", label: "Lead" },
       { kind: "text", key: "all_label", label: "All-pill label" },
+      {
+        kind: "select",
+        key: "source",
+        label: "Categories source (live = blog categories API)",
+        options: ["seeded", "live"],
+      },
       {
         kind: "text",
         key: "categories",

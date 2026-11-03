@@ -3,6 +3,7 @@ import { BaseLayout } from "@/layouts/BaseLayout";
 import { SiteLayout } from "@/layouts/SiteLayout";
 import { SetupGate } from "@/components/SetupGate";
 import { SitePage } from "@/site/SitePage";
+import { BlogPostPage } from "@/site/BlogPostPage";
 import { SetupPage } from "@/routes/SetupPage";
 import { AdminPage } from "@/routes/AdminPage";
 
@@ -15,6 +16,9 @@ export function AppRouter() {
         {/* Public site pages share the common Navbar + Footer chrome. */}
         <Route element={<SiteLayout />}>
           <Route path="/" element={<SitePage slug="home" />} />
+          {/* /blog/:slug is the public article page — declared before the
+              CMS catch-slug so /blog stays the CMS page. */}
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
           <Route path="/:slug" element={<SitePage />} />
         </Route>
         {/* /login is standalone — the prototype's auth page has no site
