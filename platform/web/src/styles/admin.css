@@ -1738,3 +1738,289 @@ textarea.adm-input {
   }
 }
 
+/* ── storage settings (R2) — TEC-168 ── */
+
+/* status pill in the connection card header */
+.adm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 5px 11px;
+  white-space: nowrap;
+}
+.adm-pill i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.adm-pill.ok {
+  color: var(--adm-ok);
+  background: var(--adm-ok-soft);
+}
+.adm-pill.ok i {
+  background: var(--adm-ok);
+}
+.adm-pill.warn {
+  color: #a0680f;
+  background: var(--adm-amber-soft);
+}
+.adm-pill.warn i {
+  background: var(--adm-amber);
+}
+.adm-pill.bad {
+  color: var(--adm-coral);
+  background: var(--adm-coral-soft);
+}
+.adm-pill.bad i {
+  background: var(--adm-coral);
+}
+
+/* small ghost/compact button variant */
+.adm-btn-sm {
+  min-height: 30px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  border-radius: 9px;
+}
+.adm-btn-danger-g {
+  color: #b73f31;
+}
+.adm-btn-danger-g:hover {
+  color: #a33326;
+  border-color: #e4b3ab;
+  background: #fdf1ef;
+}
+
+/* explanatory note + unreachable warning */
+.adm-store-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid var(--blm-line);
+  border-radius: 10px;
+  background: var(--blm-paper);
+  padding: 11px 13px;
+  color: var(--blm-ink-4);
+}
+.adm-store-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--adm-sky);
+}
+.adm-store-note p {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.adm-store-note b {
+  color: var(--blm-ink-2);
+}
+.adm-store-warn {
+  margin-top: 12px;
+  border: 1px solid #edd7ae;
+  border-left: 3px solid var(--adm-amber);
+  border-radius: 10px;
+  background: #fdf6e7;
+  padding: 10px 13px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #6d5212;
+}
+.adm-store-warn b {
+  color: #573f0a;
+}
+
+/* connection field grid */
+.adm-store-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+.adm-store-lb {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--blm-ink-2);
+}
+.adm-store-hint {
+  margin: 2px 0 7px;
+  font-size: 11px;
+  color: var(--blm-ink-4);
+  line-height: 1.45;
+}
+.adm-store-sub {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--blm-ink-4);
+}
+.adm-store-sub b {
+  color: var(--blm-ink-2);
+}
+
+/* password input with eye toggle */
+.adm-store-pw {
+  position: relative;
+}
+.adm-store-pw .adm-input {
+  padding-right: 38px;
+}
+.adm-store-pw-eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--blm-ink-4);
+  cursor: pointer;
+}
+.adm-store-pw-eye:hover {
+  background: var(--blm-paper-2);
+  color: var(--blm-ink-2);
+}
+
+/* action row under a card body */
+.adm-store-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+}
+.adm-store-actions.pad {
+  margin-top: 0;
+  padding: 13px 16px;
+}
+
+/* list rows — icon slot + active highlight + inline states */
+.adm-store-rowic {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--blm-paper-2);
+  color: var(--blm-ink-4);
+}
+.adm-store-rowic.fold {
+  background: var(--leaf-50);
+  color: var(--leaf-600);
+}
+.adm-store-active {
+  background: var(--leaf-50);
+  box-shadow: inset 3px 0 0 var(--leaf-500);
+}
+.adm-store-folder {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.adm-store-folder:hover {
+  background: var(--blm-paper);
+}
+.adm-store-go {
+  transform: rotate(-90deg);
+  color: var(--blm-ink-4);
+  flex: 0 0 auto;
+}
+.adm-store-empty,
+.adm-store-listerr {
+  padding: 18px 16px;
+  font-size: 12px;
+  color: var(--blm-ink-4);
+  text-align: center;
+}
+.adm-store-listerr {
+  color: #b73f31;
+  font-weight: 600;
+}
+.adm-store-more {
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px;
+}
+
+/* bucket create form — sits as the last row of the flush list */
+.adm-store-create {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 16px;
+  border-top: 1px dashed var(--blm-line-2);
+  background: var(--blm-paper);
+}
+.adm-store-create-fields {
+  flex: 1;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.adm-store-create .adm-btn-sm {
+  margin-top: 3px;
+}
+
+/* explorer breadcrumb */
+.adm-store-crumb {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--blm-line);
+  background: var(--blm-paper);
+  font-size: 12px;
+}
+.adm-store-crumb-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.adm-store-crumb-chev {
+  transform: rotate(-90deg);
+  color: var(--blm-line-2);
+}
+.adm-store-crumb-b {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blm-ink-3);
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+.adm-store-crumb-b:hover {
+  color: var(--leaf-700);
+  background: var(--leaf-50);
+}
+.adm-store-crumb-b.on {
+  color: var(--leaf-700);
+  font-weight: 700;
+}
+
+@media (min-width: 900px) {
+  .adm-store-form {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .adm-store-create-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+

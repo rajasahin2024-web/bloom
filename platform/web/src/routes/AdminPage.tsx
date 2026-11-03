@@ -17,6 +17,7 @@ import { GeneralSettings } from "@/components/admin/GeneralSettings";
 import { SeoSettings } from "@/components/admin/SeoSettings";
 import { AioSettings } from "@/components/admin/AioSettings";
 import { SitemapSettings } from "@/components/admin/SitemapSettings";
+import { StorageSettings } from "@/components/admin/StorageSettings";
 import { fetchMe, refreshSession } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
 
@@ -66,6 +67,10 @@ export function AdminPage() {
           <Route
             path="settings/sitemaps"
             element={<SitemapSettings session={session} />}
+          />
+          <Route
+            path="settings/storage"
+            element={<StorageSettings session={session} />}
           />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
