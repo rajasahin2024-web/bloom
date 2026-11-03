@@ -26,6 +26,7 @@ from app.routers import (
     seo,
     settings,
     setup,
+    storage,
 )
 from app.services import setup as setup_service
 
@@ -76,6 +77,8 @@ def create_app() -> FastAPI:
     app.include_router(content.router)
     app.include_router(settings.router)
     app.include_router(seo.router)
+    app.include_router(storage.admin_router)
+    app.include_router(storage.media_router)
 
     uploads_dir = setup_service.UPLOADS_DIR
     uploads_dir.mkdir(parents=True, exist_ok=True)

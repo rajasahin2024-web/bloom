@@ -43,6 +43,10 @@ logger = logging.getLogger(__name__)
 CACHE_KEY = "bloom:settings:payload:v1"
 CACHE_TTL_SECONDS = 120
 
+# Returned in place of a `secret`-type value on every GET; PATCHing this
+# string (or an empty value) is a no-op so the stored secret is kept.
+SECRET_MASK = "********"
+
 _email_adapter: TypeAdapter[str] = TypeAdapter(EmailStr)
 _URL_RE = re.compile(r"^https?://[^\s]+$", re.I)
 _TWITTER_HANDLE_RE = re.compile(r"^@?[A-Za-z0-9_]{1,15}$")
@@ -88,7 +92,8 @@ class SettingSpec:
     key: str
     group: str
     label: str
-    type: str  # text | email | url | textarea | select | toggle | number | image
+    # text | email | url | textarea | select | toggle | number | image | secret
+    type: str
     description: str
     default: Any = None
     options: tuple[str, ...] = ()
@@ -97,7 +102,7 @@ class SettingSpec:
     number_min: float = 0
     number_max: float = 100
     # extra string check: geo_lat | geo_lng | opening_hours | twitter_handle
-    # | fb_app_id | url_list | path_list
+    # | fb_app_id | url_list | path_list | r2_prefix
     format: str | None = None
 
 
@@ -138,6 +143,12 @@ _GROUPS: tuple[tuple[str, str, str], ...] = (
         "sitemap",
         "Sitemap",
         "What the runtime-generated /sitemap.xml includes.",
+    ),
+    (
+        "storage",
+        "Storage / R2",
+        "Cloudflare R2 object storage — connection credentials, the active "
+        "bucket and the folder prefixes used for each upload type.",
     ),
 )
 
@@ -891,6 +902,91 @@ SPECS: tuple[SettingSpec, ...] = (
         max_length=2000,
         format="path_list",
     ),
+    # ── Storage / R2 ─────────────────────────────────────────────────────
+    SettingSpec(
+        key="storage.r2.enabled",
+        group="storage",
+        label="Store new uploads in R2",
+        type="toggle",
+        description=(
+            "When on (with credentials saved and a bucket selected), new "
+            "CMS media uploads go to Cloudflare R2 and are served via "
+            "/api/media/serve/. Off keeps the local uploads directory."
+        ),
+        default=False,
+    ),
+    SettingSpec(
+        key="storage.r2.account_id",
+        group="storage",
+        label="R2 account ID",
+        type="text",
+        description=(
+            "Cloudflare account ID — the S3 endpoint is "
+            "https://<account-id>.r2.cloudflarestorage.com."
+        ),
+        default="",
+        max_length=100,
+    ),
+    SettingSpec(
+        key="storage.r2.access_key_id",
+        group="storage",
+        label="R2 access key ID",
+        type="text",
+        description="Access key ID of the R2 API token.",
+        default="",
+        max_length=100,
+    ),
+    SettingSpec(
+        key="storage.r2.secret_access_key",
+        group="storage",
+        label="R2 secret access key",
+        type="secret",
+        description=(
+            "Secret of the R2 API token — never shown after saving; enter "
+            "a new value to rotate it."
+        ),
+        default="",
+        max_length=200,
+    ),
+    SettingSpec(
+        key="storage.r2.bucket",
+        group="storage",
+        label="Active bucket",
+        type="text",
+        description="Bucket that receives new uploads — set from the storage admin page.",
+        default="",
+        max_length=63,
+    ),
+    SettingSpec(
+        key="storage.r2.prefix_media",
+        group="storage",
+        label="Media prefix",
+        type="text",
+        description="Folder prefix for CMS media uploads (images for pages/posts).",
+        default="media/",
+        max_length=200,
+        format="r2_prefix",
+    ),
+    SettingSpec(
+        key="storage.r2.prefix_public_uploads",
+        group="storage",
+        label="Public uploads prefix",
+        type="text",
+        description="Folder prefix for public file uploads.",
+        default="uploads/",
+        max_length=200,
+        format="r2_prefix",
+    ),
+    SettingSpec(
+        key="storage.r2.prefix_files",
+        group="storage",
+        label="Files prefix",
+        type="text",
+        description="Folder prefix for internal/admin files.",
+        default="files/",
+        max_length=200,
+        format="r2_prefix",
+    ),
 )
 
 SPEC_BY_KEY = {spec.key: spec for spec in SPECS}
@@ -940,6 +1036,11 @@ def ensure_seeded(db: Session) -> None:
 
 def _item_payload(spec: SettingSpec, row: Setting | None, env: Settings) -> dict[str, Any]:
     value = row.value if row is not None else _default_for(spec, env)
+    default = _default_for(spec, env)
+    if spec.type == "secret":
+        # Never return the stored secret — a fixed mask when one is set.
+        value = SECRET_MASK if value else None
+        default = SECRET_MASK if default else None
     source = "db" if (row is not None and row.updated_by is not None) else "env"
     return {
         "key": spec.key,
@@ -947,7 +1048,7 @@ def _item_payload(spec: SettingSpec, row: Setting | None, env: Settings) -> dict
         "label": spec.label,
         "type": spec.type,
         "value": value,
-        "default": _default_for(spec, env),
+        "default": default,
         "source": source,
         "options": list(spec.options) or None,
         "description": spec.description,
@@ -1071,6 +1172,17 @@ def _check_format(spec: SettingSpec, value: str, errors: dict[str, str]) -> None
                 spec.key,
                 f"every line must be a site path starting with '/' — fix: {bad[0][:60]}",
             )
+    elif fmt == "r2_prefix":
+        if (
+            not value.endswith("/")
+            or value.startswith("/")
+            or ".." in value.split("/")
+        ):
+            _invalid(
+                errors,
+                spec.key,
+                "must be a relative folder prefix ending in '/', e.g. media/",
+            )
 
 
 def _validate(spec: SettingSpec, raw: Any, errors: dict[str, str]) -> Any:
@@ -1110,7 +1222,7 @@ def _validate(spec: SettingSpec, raw: Any, errors: dict[str, str]) -> Any:
             return raw
         _invalid(errors, key, "must be an image upload (PNG/JPEG/WebP) or a URL")
         return None
-    # text | email | url | textarea
+    # text | email | url | textarea | secret
     if not isinstance(raw, str):
         _invalid(errors, key, "must be a string")
         return None
@@ -1174,6 +1286,11 @@ def update(
         if spec is None:
             _invalid(errors, key, "unknown setting")
             continue
+        if spec.type == "secret" and (
+            raw is None or raw == "" or raw == SECRET_MASK
+        ):
+            # Masked read-back or an empty field = keep the stored secret.
+            continue
         value = _validate(spec, raw, errors)
         if key not in errors:
             validated[key] = value
@@ -1202,6 +1319,25 @@ def update(
         ", ".join(sorted(validated)),
     )
     return collect(db)
+
+
+def write_values(db: Session, changes: dict[str, Any], user: User) -> None:
+    """Direct upsert for service-to-service writes (e.g. the R2 connect /
+    disconnect flows in ``routers.storage``). Unlike ``update`` it bypasses
+    the secret-mask no-op rule — callers always pass real values."""
+    now = datetime.now(UTC)
+    for key, value in changes.items():
+        spec = SPEC_BY_KEY.get(key)
+        if spec is None:
+            raise KeyError(f"unknown setting: {key}")
+        row = db.get(Setting, key)
+        if row is None:
+            row = Setting(key=key, group=spec.group)
+            db.add(row)
+        row.value = value
+        row.updated_by = user.id
+        row.updated_at = now
+    db.commit()
 
 
 def reset(db: Session, user: User) -> dict[str, Any]:

@@ -9,6 +9,7 @@ Files land under ``uploads/cms/<uuid>.<ext>`` and are served from
 from __future__ import annotations
 
 import base64
+import logging
 import re
 import uuid
 from pathlib import Path
@@ -18,6 +19,9 @@ from sqlalchemy.orm import Session
 
 from app.models.cms import CmsMedia
 from app.services import setup as setup_service
+from app.services import storage as storage_service
+
+logger = logging.getLogger(__name__)
 
 _IMAGE_DATA_URL = re.compile(
     r"^data:image/(png|jpeg|webp);base64,(?P<data>.+)$", re.S
@@ -49,15 +53,13 @@ def save_cms_media(
 
     ext = _IMAGE_EXT[match.group(1)]
     stem = uuid.uuid4().hex
-    dest = setup_service.UPLOADS_DIR / _UPLOAD_SUBDIR
-    dest.mkdir(parents=True, exist_ok=True)
-    storage_key = f"{_UPLOAD_SUBDIR}/{stem}.{ext}"
-    (dest / f"{stem}.{ext}").write_bytes(raw)
-
     detected_mime = mime_type or f"image/{match.group(1)}"
+
+    storage_key, url = _store_bytes(db, stem, ext, raw, detected_mime)
+
     row = CmsMedia(
         storage_key=storage_key,
-        url=f"/uploads/{storage_key}",
+        url=url,
         filename=filename,
         mime_type=detected_mime,
         size_bytes=len(raw),
@@ -67,6 +69,33 @@ def save_cms_media(
     db.commit()
     db.refresh(row)
     return row
+
+
+def _store_bytes(
+    db: Session, stem: str, ext: str, raw: bytes, mime: str
+) -> tuple[str, str]:
+    """Persist bytes to R2 when active, else local disk; return (key, url).
+
+    R2 failures degrade to the local path so an upload never dies on a
+    storage outage — the row URL always reflects where the bytes went.
+    """
+    cfg = storage_service.resolve_config(db)
+    if cfg.active:
+        key = f"{cfg.prefix_media}{stem}.{ext}"
+        try:
+            storage_service.put_object(
+                storage_service.get_client(cfg), cfg.bucket, key, raw, mime
+            )
+            return key, f"/api/media/serve/{key}"
+        except storage_service.StorageError:
+            logger.warning(
+                "R2 PutObject failed — falling back to local disk", exc_info=True
+            )
+    storage_key = f"{_UPLOAD_SUBDIR}/{stem}.{ext}"
+    dest = setup_service.UPLOADS_DIR / _UPLOAD_SUBDIR
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / f"{stem}.{ext}").write_bytes(raw)
+    return storage_key, f"/uploads/{storage_key}"
 
 
 def delete_cms_media(media_id: uuid.UUID, db: Session) -> None:

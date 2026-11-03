@@ -105,7 +105,7 @@ def test_registry_covers_all_groups() -> None:
     groups = {s.group for s in settings_service.SPECS}
     assert groups == {
         "institute", "academic", "finance", "notifications", "seo",
-        "aio", "sitemap",
+        "aio", "sitemap", "storage",
     }
     # every key is unique
     keys = [s.key for s in settings_service.SPECS]
@@ -198,6 +198,7 @@ def test_settings_round_trip(admin_token: str) -> None:
             "seo",
             "aio",
             "sitemap",
+            "storage",
         ]
         assert body["platform"]["env"]
         assert body["platform"]["version"]
