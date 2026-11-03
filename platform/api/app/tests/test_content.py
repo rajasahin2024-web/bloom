@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import json
 import socket
+import uuid
 from collections.abc import Generator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import psycopg
@@ -272,6 +274,112 @@ def test_new_pages_seeded_idempotently(db_session: object) -> None:
 def test_unknown_slug_returns_404() -> None:
     resp = client.get("/api/content/pages/no-such-page")
     assert resp.status_code == 404
+
+
+# ── TEC-164: public blog detail + categories ─────────────────────────────
+
+
+@pytest.fixture
+def blog_rows() -> Generator[dict[str, str], None, None]:
+    """Seed an author, categories and posts via SQL, clean up after."""
+    if not _infra_up():
+        yield {}
+        return
+    conn = _pg()
+    ids = {
+        "author": str(uuid.uuid4()),
+        "cat_a": str(uuid.uuid4()),
+        "cat_b": str(uuid.uuid4()),
+    }
+    conn.execute(
+        "INSERT INTO cms_authors (id, name, slug) VALUES (%s, 'Pub Author', 'pub-author')",
+        (ids["author"],),
+    )
+    for cid, name, slug in (
+        (ids["cat_a"], "Visa Guide", "visa-guide"),
+        (ids["cat_b"], "Band 9", "band-9"),
+    ):
+        conn.execute(
+            "INSERT INTO cms_categories (id, name, slug) VALUES (%s, %s, %s)",
+            (cid, name, slug),
+        )
+    now = datetime.now(UTC)
+    posts = [
+        # (slug, title, category_id, days_old, status)
+        ("pub-a1", "A1", ids["cat_a"], 1, "published"),
+        ("pub-a2", "A2", ids["cat_a"], 2, "published"),
+        ("pub-a3", "A3", ids["cat_a"], 3, "published"),
+        ("pub-a4", "A4", ids["cat_a"], 4, "published"),
+        ("pub-b1", "B1", ids["cat_b"], 1, "published"),
+        ("draft-a", "DA", ids["cat_a"], 0, "draft"),
+    ]
+    for slug, title, cat, days, st in posts:
+        conn.execute(
+            "INSERT INTO cms_posts (id, slug, title, body, tags, featured, status,"
+            " published_at, author_id, category_id, author, category, created_at,"
+            " updated_at) VALUES (%s,%s,%s,'<p>x</p>','{}',false,%s::cms_status,"
+            " %s,%s,%s,'Pub Author',%s,%s,%s)",
+            (
+                str(uuid.uuid4()),
+                slug,
+                title,
+                st,
+                now - timedelta(days=days),
+                ids["author"],
+                cat,
+                "Visa Guide" if cat == ids["cat_a"] else "Band 9",
+                now,
+                now,
+            ),
+        )
+    yield ids
+    conn = _pg()
+    conn.execute(
+        "DELETE FROM cms_posts WHERE slug IN"
+        " ('pub-a1','pub-a2','pub-a3','pub-a4','pub-b1','draft-a')"
+    )
+    conn.execute("DELETE FROM cms_categories WHERE slug IN ('visa-guide','band-9')")
+    conn.execute("DELETE FROM cms_authors WHERE slug = 'pub-author'")
+    conn.close()
+
+
+@requires_infra
+def test_post_detail_has_entities_and_related(blog_rows: dict[str, str]) -> None:
+    resp = client.get("/api/content/posts/pub-a2")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["author_obj"]["slug"] == "pub-author"
+    assert body["category_obj"]["slug"] == "visa-guide"
+    related = body["related_posts"]
+    assert len(related) == 3
+    slugs = [r["slug"] for r in related]
+    # 3 newest same-category published, excluding self and drafts.
+    assert slugs == ["pub-a1", "pub-a3", "pub-a4"]
+    assert all(r["status"] == "published" for r in related)
+
+
+@requires_infra
+def test_post_detail_related_falls_back_to_newest(
+    blog_rows: dict[str, str],
+) -> None:
+    resp = client.get("/api/content/posts/pub-b1")
+    assert resp.status_code == 200, resp.text
+    related = resp.json()["related_posts"]
+    assert len(related) == 3
+    # Only one post in cat_b → filled with newest published overall.
+    assert related[0]["slug"] == "pub-a1"
+
+
+@requires_infra
+def test_blog_categories_counts_published_only(
+    blog_rows: dict[str, str],
+) -> None:
+    resp = client.get("/api/content/blog/categories")
+    assert resp.status_code == 200, resp.text
+    rows = {c["slug"]: c["post_count"] for c in resp.json()}
+    assert rows["visa-guide"] == 4  # draft excluded
+    assert rows["band-9"] == 1
+    assert all(set(c) == {"name", "slug", "post_count"} for c in resp.json())
 
 
 def test_all_seed_slugs_have_files() -> None:
