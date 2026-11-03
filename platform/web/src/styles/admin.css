@@ -1738,3 +1738,818 @@ textarea.adm-input {
   }
 }
 
+/* ── storage settings (R2) — TEC-168 ── */
+
+/* status pill in the connection card header */
+.adm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 5px 11px;
+  white-space: nowrap;
+}
+.adm-pill i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.adm-pill.ok {
+  color: var(--adm-ok);
+  background: var(--adm-ok-soft);
+}
+.adm-pill.ok i {
+  background: var(--adm-ok);
+}
+.adm-pill.warn {
+  color: #a0680f;
+  background: var(--adm-amber-soft);
+}
+.adm-pill.warn i {
+  background: var(--adm-amber);
+}
+.adm-pill.bad {
+  color: var(--adm-coral);
+  background: var(--adm-coral-soft);
+}
+.adm-pill.bad i {
+  background: var(--adm-coral);
+}
+
+/* small ghost/compact button variant */
+.adm-btn-sm {
+  min-height: 30px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  border-radius: 9px;
+}
+.adm-btn-danger-g {
+  color: #b73f31;
+}
+.adm-btn-danger-g:hover {
+  color: #a33326;
+  border-color: #e4b3ab;
+  background: #fdf1ef;
+}
+
+/* explanatory note + unreachable warning */
+.adm-store-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid var(--blm-line);
+  border-radius: 10px;
+  background: var(--blm-paper);
+  padding: 11px 13px;
+  color: var(--blm-ink-4);
+}
+.adm-store-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--adm-sky);
+}
+.adm-store-note p {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.adm-store-note b {
+  color: var(--blm-ink-2);
+}
+.adm-store-warn {
+  margin-top: 12px;
+  border: 1px solid #edd7ae;
+  border-left: 3px solid var(--adm-amber);
+  border-radius: 10px;
+  background: #fdf6e7;
+  padding: 10px 13px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #6d5212;
+}
+.adm-store-warn b {
+  color: #573f0a;
+}
+
+/* connection field grid */
+.adm-store-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+.adm-store-lb {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--blm-ink-2);
+}
+.adm-store-hint {
+  margin: 2px 0 7px;
+  font-size: 11px;
+  color: var(--blm-ink-4);
+  line-height: 1.45;
+}
+.adm-store-sub {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--blm-ink-4);
+}
+.adm-store-sub b {
+  color: var(--blm-ink-2);
+}
+
+/* password input with eye toggle */
+.adm-store-pw {
+  position: relative;
+}
+.adm-store-pw .adm-input {
+  padding-right: 38px;
+}
+.adm-store-pw-eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--blm-ink-4);
+  cursor: pointer;
+}
+.adm-store-pw-eye:hover {
+  background: var(--blm-paper-2);
+  color: var(--blm-ink-2);
+}
+
+/* action row under a card body */
+.adm-store-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+}
+.adm-store-actions.pad {
+  margin-top: 0;
+  padding: 13px 16px;
+}
+
+/* list rows — icon slot + active highlight + inline states */
+.adm-store-rowic {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--blm-paper-2);
+  color: var(--blm-ink-4);
+}
+.adm-store-rowic.fold {
+  background: var(--leaf-50);
+  color: var(--leaf-600);
+}
+.adm-store-active {
+  background: var(--leaf-50);
+  box-shadow: inset 3px 0 0 var(--leaf-500);
+}
+.adm-store-folder {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.adm-store-folder:hover {
+  background: var(--blm-paper);
+}
+.adm-store-go {
+  transform: rotate(-90deg);
+  color: var(--blm-ink-4);
+  flex: 0 0 auto;
+}
+.adm-store-empty,
+.adm-store-listerr {
+  padding: 18px 16px;
+  font-size: 12px;
+  color: var(--blm-ink-4);
+  text-align: center;
+}
+.adm-store-listerr {
+  color: #b73f31;
+  font-weight: 600;
+}
+.adm-store-more {
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px;
+}
+
+/* bucket create form — sits as the last row of the flush list */
+.adm-store-create {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 16px;
+  border-top: 1px dashed var(--blm-line-2);
+  background: var(--blm-paper);
+}
+.adm-store-create-fields {
+  flex: 1;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.adm-store-create .adm-btn-sm {
+  margin-top: 3px;
+}
+
+/* explorer breadcrumb */
+.adm-store-crumb {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--blm-line);
+  background: var(--blm-paper);
+  font-size: 12px;
+}
+.adm-store-crumb-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.adm-store-crumb-chev {
+  transform: rotate(-90deg);
+  color: var(--blm-line-2);
+}
+.adm-store-crumb-b {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blm-ink-3);
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+.adm-store-crumb-b:hover {
+  color: var(--leaf-700);
+  background: var(--leaf-50);
+}
+.adm-store-crumb-b.on {
+  color: var(--leaf-700);
+  font-weight: 700;
+}
+
+@media (min-width: 900px) {
+  .adm-store-form {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .adm-store-create-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   CMS BLOGS — posts table, categories tree, post editor + author modal
+   (TEC-167). All selectors under the adm-/adm-cms- namespace; these
+   pages only render inside .adm-shell so nothing leaks to the site.
+═══════════════════════════════════════════════════════════════════ */
+
+/* filter bar — search + status select */
+.adm-cms-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.adm-cms-search {
+  position: relative;
+  flex: 1 1 220px;
+  max-width: 380px;
+  color: var(--blm-ink-4);
+}
+.adm-cms-search svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.adm-cms-search .adm-input {
+  padding-left: 32px;
+}
+.adm-cms-statusf {
+  width: auto;
+  min-width: 150px;
+}
+
+/* data table — shared by posts + authors */
+.adm-cms-tablewrap {
+  overflow-x: auto;
+}
+.adm-cms-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.adm-cms-table th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--blm-ink-4);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--blm-line);
+  white-space: nowrap;
+  background: var(--blm-paper);
+}
+.adm-cms-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--blm-line);
+  vertical-align: middle;
+}
+.adm-cms-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.adm-cms-table tbody tr:hover {
+  background: var(--blm-paper);
+}
+.adm-cms-table th.ra,
+.adm-cms-table td.ra {
+  text-align: right;
+}
+.adm-cms-ptitle {
+  display: block;
+  font-weight: 700;
+  color: var(--blm-ink);
+  text-decoration: none;
+}
+.adm-cms-ptitle:hover {
+  color: var(--leaf-700);
+}
+.adm-cms-pslug {
+  display: block;
+  font-size: 11px;
+  color: var(--blm-ink-4);
+}
+.adm-cms-sub {
+  color: var(--blm-ink-4);
+  font-size: 11.5px;
+}
+.adm-cms-date {
+  white-space: nowrap;
+  color: var(--blm-ink-3);
+}
+.adm-cms-acell {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.adm-cms-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 50%;
+  background: var(--leaf-50);
+  color: var(--leaf-700);
+  font-size: 11px;
+  font-weight: 800;
+  overflow: hidden;
+}
+.adm-cms-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.adm-cms-empty {
+  text-align: center;
+  padding: 26px 14px;
+  color: var(--blm-ink-4);
+  font-size: 12.5px;
+}
+.adm-cms-empty.pad {
+  padding: 30px 14px;
+}
+.adm-cms-skel td,
+.adm-cms-skel {
+  border-bottom: 1px solid var(--blm-line);
+}
+.adm-cms-skel i {
+  display: block;
+  height: 14px;
+  margin: 8px 0;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--blm-paper-2) 25%,
+    var(--blm-line) 50%,
+    var(--blm-paper-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: adm-cms-shimmer 1.2s infinite;
+}
+@keyframes adm-cms-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.adm-cms-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--blm-line);
+  font-size: 12px;
+  color: var(--blm-ink-3);
+}
+.adm-cms-rowact {
+  display: inline-flex;
+  gap: 2px;
+  justify-content: flex-end;
+}
+.adm-icbtn.sm {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 8px;
+}
+.adm-icbtn.sm.danger:hover {
+  color: #b73f31;
+  background: var(--adm-coral-soft);
+}
+
+/* status badge */
+.adm-badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.adm-badge.ok {
+  color: var(--adm-ok);
+  background: var(--adm-ok-soft);
+}
+.adm-badge.warn {
+  color: #a86a08;
+  background: var(--adm-amber-soft);
+}
+.adm-badge.mut {
+  color: var(--blm-ink-4);
+  background: var(--blm-paper-2);
+}
+
+/* small button + link-button helpers */
+.adm-btn.sm {
+  min-height: 30px;
+  padding: 5px 11px;
+  border-radius: 9px;
+  font-size: 12px;
+  gap: 5px;
+}
+.adm-cms-linkbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--leaf-700);
+  cursor: pointer;
+  padding: 4px 0;
+}
+.adm-cms-linkbtn:hover {
+  text-decoration: underline;
+}
+
+/* form fields — used in the author modal and editor sidebar */
+.adm-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+.adm-form-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.adm-fl {
+  display: grid;
+  gap: 5px;
+}
+.adm-fl > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--blm-ink-3);
+}
+.adm-count {
+  font-style: normal;
+  font-weight: 600;
+  font-size: 10.5px;
+  color: var(--blm-ink-4);
+}
+.adm-modal-lg {
+  max-width: 560px;
+}
+@media (min-width: 640px) {
+  .adm-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* categories tree */
+.adm-cat-tree {
+  display: grid;
+}
+.adm-cat-grp {
+  border-bottom: 1px solid var(--blm-line);
+}
+.adm-cat-grp:last-child {
+  border-bottom: none;
+}
+.adm-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+}
+.adm-cat-row.sub {
+  padding-left: 38px;
+  background: var(--blm-paper);
+}
+.adm-cat-row.form,
+.adm-cat-row.sub.form {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  background: var(--leaf-50);
+}
+.adm-cat-chev {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border: none;
+  background: transparent;
+  color: var(--blm-ink-4);
+  cursor: pointer;
+  border-radius: 7px;
+  transition: transform 0.15s;
+}
+.adm-cat-chev:hover {
+  background: var(--blm-paper-2);
+  color: var(--blm-ink-2);
+}
+.adm-cat-chev.open {
+  transform: rotate(180deg);
+}
+.adm-cat-indent {
+  width: 26px;
+  flex: 0 0 26px;
+}
+.adm-cat-info {
+  flex: 1;
+  min-width: 0;
+}
+.adm-cat-info b {
+  font-size: 13px;
+}
+.adm-cat-info p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--blm-ink-4);
+}
+.adm-cat-subs {
+  border-top: 1px dashed var(--blm-line);
+}
+.adm-cat-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  flex: 1;
+}
+.adm-cat-form-act {
+  display: flex;
+  gap: 8px;
+}
+@media (min-width: 760px) {
+  .adm-cat-form {
+    grid-template-columns: 1.4fr 1fr 1.6fr auto;
+    align-items: center;
+  }
+  .adm-cat-form-act {
+    justify-content: flex-end;
+  }
+}
+
+/* post editor — full-width two-column grid */
+.adm-cms-edgrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.adm-cms-edmain {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.adm-cms-side {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.adm-cms-sidecard .adm-card-bd {
+  display: grid;
+  gap: 10px;
+  padding: 13px 14px;
+}
+.adm-cms-title {
+  font-family: var(--adm-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  min-height: 48px;
+}
+.adm-cms-slugline {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+  font-size: 12px;
+  color: var(--blm-ink-4);
+  flex-wrap: wrap;
+}
+.adm-cms-sluglabel {
+  font-weight: 700;
+}
+.adm-cms-slugval i {
+  color: var(--blm-ink-4);
+  font-weight: 400;
+}
+.adm-cms-slugin {
+  flex: 1;
+  max-width: 340px;
+  min-height: 30px;
+  padding: 4px 9px;
+  font-size: 12px;
+}
+.adm-cms-editor .tox-tinymce {
+  border: none;
+  border-radius: 0;
+}
+.adm-cms-note {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--blm-ink-4);
+}
+.adm-cms-sidehint {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--blm-ink-4);
+}
+.adm-cms-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--blm-ink-2);
+  cursor: pointer;
+}
+.adm-cms-sideact {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--blm-line);
+}
+.adm-cms-sideact .adm-btn {
+  flex: 1;
+}
+
+/* tags chips */
+.adm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid var(--blm-line-2);
+  border-radius: 10px;
+  background: var(--blm-surface);
+  padding: 6px 8px;
+  min-height: 38px;
+}
+.adm-chips:focus-within {
+  border-color: var(--leaf-500);
+  box-shadow: 0 0 0 3px var(--leaf-100);
+}
+.adm-chips-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--leaf-700);
+  background: var(--leaf-50);
+  border: 1px solid var(--leaf-200);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+.adm-chips-tag button {
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--leaf-700);
+  cursor: pointer;
+  padding: 1px;
+  border-radius: 50%;
+}
+.adm-chips-tag button:hover {
+  color: #b73f31;
+}
+.adm-chips-in {
+  flex: 1;
+  min-width: 90px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--blm-ink);
+  padding: 3px 2px;
+}
+
+/* featured image */
+.adm-cms-hero {
+  display: grid;
+  gap: 9px;
+}
+.adm-cms-heroprev {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  aspect-ratio: 16 / 9;
+  border: 1px dashed var(--blm-line-2);
+  border-radius: 10px;
+  background: var(--blm-paper-2);
+  color: var(--blm-ink-4);
+  font-size: 11.5px;
+  overflow: hidden;
+}
+.adm-cms-heroprev img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.adm-cms-heroact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* sidebar inline create row */
+.adm-cms-inlineadd {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.adm-cms-inlineadd .adm-input {
+  min-height: 32px;
+  font-size: 12.5px;
+}
+
+/* ── post editor grid ≥1100px — sidebar snaps right ── */
+@media (min-width: 1100px) {
+  .adm-cms-edgrid {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+  .adm-cms-side {
+    position: sticky;
+    top: 70px;
+  }
+}

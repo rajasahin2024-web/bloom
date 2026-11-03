@@ -2,7 +2,7 @@
 
 from app.models.application import Application
 from app.models.base import Base
-from app.models.cms import CmsMedia, CmsPage, CmsPost
+from app.models.cms import CmsAuthor, CmsCategory, CmsMedia, CmsPage, CmsPost
 from app.models.enquiry import Enquiry
 from app.models.enums import (
     ApplicationStage,
@@ -26,6 +26,8 @@ __all__ = [
     "CmsPage",
     "CmsPost",
     "CmsMedia",
+    "CmsAuthor",
+    "CmsCategory",
     "UserRole",
     "ExamTrack",
     "EnquiryStatus",

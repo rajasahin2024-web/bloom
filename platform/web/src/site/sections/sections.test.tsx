@@ -365,6 +365,65 @@ describe("BlogGridSection", () => {
     expect(seen).toBe(3);
     window.removeEventListener(BLOG_POSTS_EVENT, onPosts);
   });
+
+  it("links every card to its /blog/:slug detail page", () => {
+    const { container } = render(<BlogGridSection props={{ ...base, posts }} />);
+    const hrefs = [...container.querySelectorAll("a")].map((a) =>
+      a.getAttribute("href"),
+    );
+    expect(hrefs).toContain("/blog/a");
+    expect(hrefs).toContain("/blog/b");
+    expect(hrefs).toContain("/blog/c");
+    expect(hrefs).not.toContain("/blog");
+  });
+
+  it("swaps in live posts when source:'live' (TEC-169)", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      status: 200,
+      data: {
+        items: [
+          {
+            id: "p9",
+            slug: "live-one",
+            title: "Live post one",
+            category: "Speaking",
+            author: "Live Author",
+            excerpt: "live excerpt",
+            tags: [],
+            read_minutes: 4,
+            featured: false,
+            published_at: "2026-09-01T09:00:00+00:00",
+            created_at: "2026-09-01T09:00:00+00:00",
+          },
+        ],
+        total: 1,
+        page: 1,
+        page_size: 100,
+      },
+    });
+    const { container } = render(
+      <BlogGridSection props={{ ...base, posts, source: "live" }} />,
+    );
+    await waitFor(() =>
+      expect(container.textContent).toContain("Live post one"),
+    );
+    expect(container.textContent).not.toContain("Second post");
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/api/content/posts?page=1&page_size=100",
+    );
+    expect(
+      container.querySelector('a[href="/blog/live-one"]'),
+    ).toBeTruthy();
+  });
+
+  it("keeps seeded posts when the live fetch fails", async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error("API down"));
+    const { container } = render(
+      <BlogGridSection props={{ ...base, posts, source: "live" }} />,
+    );
+    await waitFor(() => expect(apiFetch).toHaveBeenCalled());
+    expect(container.textContent).toContain("Featured post");
+  });
 });
 
 describe("BlogFilterSection", () => {
@@ -398,6 +457,41 @@ describe("BlogFilterSection", () => {
     fireEvent.click(pills[1]);
     expect(seen).toContain("Strategy");
     expect(pills[1].className).toContain("on");
+  });
+
+  it("pulls live categories when source:'live' (TEC-169)", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      status: 200,
+      data: [
+        { name: "Grammar", slug: "grammar", post_count: 4 },
+        { name: "Listening", slug: "listening", post_count: 2 },
+      ],
+    });
+    const { container } = render(
+      <BlogFilterSection
+        props={{ heading: "H", categories: ["Old"], source: "live" }}
+      />,
+    );
+    await waitFor(() => {
+      const pills = container.querySelectorAll(".pill");
+      expect(pills).toHaveLength(3);
+      expect(pills[1].textContent).toContain("Grammar");
+      expect(pills[2].textContent).toContain("Listening");
+    });
+    expect(apiFetch).toHaveBeenCalledWith("/api/content/blog/categories");
+  });
+
+  it("keeps seeded categories when the live fetch fails", async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error("API down"));
+    const { container } = render(
+      <BlogFilterSection
+        props={{ heading: "H", categories: ["Old"], source: "live" }}
+      />,
+    );
+    await waitFor(() => expect(apiFetch).toHaveBeenCalled());
+    const pills = container.querySelectorAll(".pill");
+    expect(pills).toHaveLength(2);
+    expect(pills[1].textContent).toContain("Old");
   });
 });
 

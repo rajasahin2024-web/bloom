@@ -1,33 +1,46 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fmtDate } from "../format";
+import { fetchPublishedPosts, type CardPost } from "../blog";
 import { Icon } from "./Icon";
 import { Inline } from "./shared";
 
 export const BLOG_FILTER_EVENT = "bloom:blog-filter";
 export const BLOG_POSTS_EVENT = "bloom:blog-posts";
 
-interface Post {
-  slug: string;
-  title: string;
-  category: string;
-  author: string;
-  date: string;
-  read_minutes: number;
-  hero_url: string;
-  excerpt: string;
-  featured: boolean;
-  tags?: string[];
-}
-
 interface BlogGridProps {
   variant?: string;
-  posts: Post[];
+  posts?: CardPost[];
+  /** "live" → render GET /api/content/posts; seeded `posts` stay as the
+      error/empty fallback (TEC-169). */
+  source?: string;
   empty?: { title?: string; body?: string };
 }
 
 export function BlogGridSection({ props }: { props: BlogGridProps }) {
-  const { variant, posts, empty } = props;
+  const { variant, posts, source, empty } = props;
   const [cat, setCat] = useState("All");
+  const [livePosts, setLivePosts] = useState<CardPost[] | null>(null);
+
+  /* TEC-169 — the index goes live when no posts are seeded or the section
+     explicitly opts in via source:"live". Seeded props render on fetch
+     error/empty so the page never goes blank mid-migration. */
+  const wantsLive = !posts || source === "live";
+  useEffect(() => {
+    if (!wantsLive) return;
+    let on = true;
+    fetchPublishedPosts()
+      .then((list) => {
+        if (on) setLivePosts(list.length > 0 ? list : null);
+      })
+      .catch(() => {
+        if (on) setLivePosts(null);
+      });
+    return () => {
+      on = false;
+    };
+  }, [wantsLive]);
+
+  const all = useMemo(() => livePosts ?? posts ?? [], [livePosts, posts]);
 
   /* Pairs with BlogFilterSection: it dispatches `bloom:blog-filter` on window
      when a pill is tapped, mirroring the prototype's shared blogCat state.
@@ -35,9 +48,9 @@ export function BlogGridSection({ props }: { props: BlogGridProps }) {
      show per-category counts exactly like the prototype's renderBlog(). */
   useEffect(() => {
     window.dispatchEvent(
-      new CustomEvent(BLOG_POSTS_EVENT, { detail: { posts: posts ?? [] } }),
+      new CustomEvent(BLOG_POSTS_EVENT, { detail: { posts: all } }),
     );
-  }, [posts]);
+  }, [all]);
 
   useEffect(() => {
     const onFilter = (e: Event) => {
@@ -48,7 +61,6 @@ export function BlogGridSection({ props }: { props: BlogGridProps }) {
     return () => window.removeEventListener(BLOG_FILTER_EVENT, onFilter);
   }, []);
 
-  const all = posts ?? [];
   const list = cat === "All" ? all : all.filter((p) => p.category === cat);
   const feat = cat === "All" ? list.filter((p) => p.featured).slice(0, 1) : [];
   const rest = list.filter((p) => !feat.includes(p));
@@ -63,7 +75,7 @@ export function BlogGridSection({ props }: { props: BlogGridProps }) {
           <a
             key={`f${i}`}
             className="card rv in"
-            href="/blog"
+            href={`/blog/${p.slug}`}
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
@@ -102,7 +114,7 @@ export function BlogGridSection({ props }: { props: BlogGridProps }) {
             <a
               key={i}
               className="tcard rv in"
-              href="/blog"
+              href={`/blog/${p.slug}`}
               style={{ display: "flex", padding: 0, overflow: "hidden" }}
             >
               <div style={{ position: "relative", height: 158, background: "var(--paper-2)" }}>

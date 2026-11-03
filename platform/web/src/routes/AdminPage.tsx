@@ -17,6 +17,11 @@ import { GeneralSettings } from "@/components/admin/GeneralSettings";
 import { SeoSettings } from "@/components/admin/SeoSettings";
 import { AioSettings } from "@/components/admin/AioSettings";
 import { SitemapSettings } from "@/components/admin/SitemapSettings";
+import { CmsPosts } from "@/components/admin/CmsPosts";
+import { CmsPostEditor } from "@/components/admin/CmsPostEditor";
+import { CmsAuthors } from "@/components/admin/CmsAuthors";
+import { CmsCategories } from "@/components/admin/CmsCategories";
+import { StorageSettings } from "@/components/admin/StorageSettings";
 import { fetchMe, refreshSession } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
 
@@ -66,6 +71,27 @@ export function AdminPage() {
           <Route
             path="settings/sitemaps"
             element={<SitemapSettings session={session} />}
+          />
+          <Route
+            path="settings/storage"
+            element={<StorageSettings session={session} />}
+          />
+          <Route path="cms/posts" element={<CmsPosts session={session} />} />
+          <Route
+            path="cms/posts/new"
+            element={<CmsPostEditor session={session} />}
+          />
+          <Route
+            path="cms/posts/:id/edit"
+            element={<CmsPostEditor session={session} />}
+          />
+          <Route
+            path="cms/authors"
+            element={<CmsAuthors session={session} />}
+          />
+          <Route
+            path="cms/categories"
+            element={<CmsCategories session={session} />}
           />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>

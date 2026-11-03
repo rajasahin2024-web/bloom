@@ -83,6 +83,11 @@ const PATHS: Record<string, string> = {
   "envelope-circle-check": "M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM2.8 5.5 8 9l5.2-3.5M3 11h10",
   "circle-notch": "M8 1.5A6.5 6.5 0 1 1 1.5 8",
   tag: "M2 2h5l7 7-5 5-7-7zM5.5 5.5h.01",
+  /* Open-with-AI row — abstract monochrome marks, not brand logos. */
+  "ai-chatgpt": "M8 1v4M8 11v4M1 8h4M11 8h4M3.5 3.5l2 2M10.5 10.5l2 2M12.5 3.5l-2 2M5.5 10.5l-2 2",
+  "ai-claude": "M8 2v12M2 8h12M4 4l8 8M12 4l-8 8M8 7a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
+  "ai-gemini": "M8 1c1 4 3 6 7 7-4 1-6 3-7 7-1-4-3-6-7-7 4-1 6-3 7-7z",
+  "ai-codex": "M2 4l4 4-4 4M8 12h6",
 };
 
 export function Icon({ name, size = 14, className }: IconProps) {

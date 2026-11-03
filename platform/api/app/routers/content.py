@@ -12,12 +12,17 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
-from app.models.cms import CmsPage, CmsPost
+from app.models.cms import CmsAuthor, CmsCategory, CmsPage, CmsPost
 from app.models.enums import CmsStatus
-from app.schemas.cms import CmsPageOut, CmsPostOut
+from app.schemas.cms import (
+    BlogCategoryOut,
+    CmsPageOut,
+    CmsPostDetailOut,
+    CmsPostOut,
+)
 from app.schemas.common import Page, Pagination
 from app.services import section_schemas
 
@@ -109,6 +114,12 @@ def get_site_chrome() -> dict[str, Any]:
         ) from exc
 
 
+_POST_LOAD = (
+    selectinload(CmsPost.author_obj).selectinload(CmsAuthor.avatar),
+    selectinload(CmsPost.category_obj),
+)
+
+
 @router.get("/posts", response_model=Page[CmsPostOut])
 def list_published_posts(
     pagination: Pagination = Depends(),
@@ -116,7 +127,11 @@ def list_published_posts(
     featured: bool | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> Page[CmsPostOut]:
-    query = select(CmsPost).where(CmsPost.status == CmsStatus.published)
+    query = (
+        select(CmsPost)
+        .options(*_POST_LOAD)
+        .where(CmsPost.status == CmsStatus.published)
+    )
     if category is not None:
         query = query.where(CmsPost.category == category)
     if featured is not None:
@@ -135,11 +150,78 @@ def list_published_posts(
     )
 
 
-@router.get("/posts/{slug}", response_model=CmsPostOut)
-def get_post_by_slug(slug: str, db: Session = Depends(get_db)) -> CmsPostOut:
+def _related_posts(db: Session, post: CmsPost, limit: int = 3) -> list[CmsPost]:
+    """Newest published posts in the same category, back-filled with the
+    newest published overall so the rail always returns up to ``limit``.
+
+    FK match is preferred; legacy rows without category_id fall back to the
+    denormalized ``category`` text.
+    """
+    base = (
+        select(CmsPost)
+        .options(*_POST_LOAD)
+        .where(CmsPost.status == CmsStatus.published, CmsPost.id != post.id)
+    )
+    related: list[CmsPost] = []
+    if post.category_id is not None:
+        related = list(
+            db.scalars(
+                base.where(CmsPost.category_id == post.category_id)
+                .order_by(CmsPost.published_at.desc().nullslast())
+                .limit(limit)
+            ).all()
+        )
+    elif post.category:
+        related = list(
+            db.scalars(
+                base.where(CmsPost.category == post.category)
+                .order_by(CmsPost.published_at.desc().nullslast())
+                .limit(limit)
+            ).all()
+        )
+    if len(related) < limit:
+        exclude = {r.id for r in related} | {post.id}
+        related += list(
+            db.scalars(
+                base.where(CmsPost.id.notin_(exclude))
+                .order_by(CmsPost.published_at.desc().nullslast())
+                .limit(limit - len(related))
+            ).all()
+        )
+    return related
+
+
+@router.get("/posts/{slug}", response_model=CmsPostDetailOut)
+def get_post_by_slug(slug: str, db: Session = Depends(get_db)) -> CmsPostDetailOut:
     post = db.scalar(
-        select(CmsPost).where(CmsPost.slug == slug, CmsPost.status == CmsStatus.published)
+        select(CmsPost)
+        .options(*_POST_LOAD)
+        .where(CmsPost.slug == slug, CmsPost.status == CmsStatus.published)
     )
     if post is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    return CmsPostOut.model_validate(post)
+    out = CmsPostDetailOut.model_validate(post)
+    out.related_posts = [
+        CmsPostOut.model_validate(r) for r in _related_posts(db, post)
+    ]
+    return out
+
+
+@router.get("/blog/categories", response_model=list[BlogCategoryOut])
+def list_blog_categories(db: Session = Depends(get_db)) -> list[BlogCategoryOut]:
+    """Categories that have ≥1 published post — the public filter rail.
+
+    Legacy posts carrying only the denormalized ``category`` text (no FK)
+    are excluded by design — the slug must come from the entity.
+    """
+    rows = db.execute(
+        select(CmsCategory.name, CmsCategory.slug, func.count(CmsPost.id))
+        .join(CmsPost, CmsPost.category_id == CmsCategory.id)
+        .where(CmsPost.status == CmsStatus.published)
+        .group_by(CmsCategory.id, CmsCategory.name, CmsCategory.slug)
+        .order_by(CmsCategory.name)
+    ).all()
+    return [
+        BlogCategoryOut(name=name, slug=slug, post_count=count)
+        for name, slug, count in rows
+    ]

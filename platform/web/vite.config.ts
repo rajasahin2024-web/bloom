@@ -1,10 +1,24 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 import path from "node:path";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Self-hosted TinyMCE (GPL, no cloud key): serve the package assets at
+    // /tinymce/* in dev and copy them into the build output.
+    viteStaticCopy({
+      targets: [
+        {
+          src: "node_modules/tinymce/**/*",
+          dest: "tinymce",
+          rename: { stripBase: 2 }, // drop node_modules/tinymce/
+        },
+      ],
+    }),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
