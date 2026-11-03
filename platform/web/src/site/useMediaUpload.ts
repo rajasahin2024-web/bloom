@@ -28,20 +28,33 @@ function readFileAsDataURL(file: File): Promise<string> {
   });
 }
 
+/**
+ * Upload one image file to the CMS media store and return the created
+ * media row. The URL-only `useMediaUpload` hook wraps this for site
+ * editor callers that just need the `src`.
+ */
+export async function uploadMediaFile(
+  token: string,
+  file: File,
+): Promise<CmsMediaOut> {
+  if (file.size > MAX_BYTES) {
+    throw new Error("File is too large — keep it under 512KB.");
+  }
+  if (!ALLOWED.has(file.type)) {
+    throw new Error("Only PNG, JPEG and WebP images are allowed.");
+  }
+  const dataUrl = await readFileAsDataURL(file);
+  const { data } = await apiFetch<CmsMediaOut>("/api/cms/media/upload", {
+    method: "POST",
+    token,
+    body: { filename: file.name, mime_type: file.type, data_url: dataUrl },
+  });
+  return data;
+}
+
 export function useMediaUpload(token: string) {
   return async (file: File): Promise<string> => {
-    if (file.size > MAX_BYTES) {
-      throw new Error("File is too large — keep it under 512KB.");
-    }
-    if (!ALLOWED.has(file.type)) {
-      throw new Error("Only PNG, JPEG and WebP images are allowed.");
-    }
-    const dataUrl = await readFileAsDataURL(file);
-    const { data } = await apiFetch<CmsMediaOut>("/api/cms/media/upload", {
-      method: "POST",
-      token,
-      body: { filename: file.name, mime_type: file.type, data_url: dataUrl },
-    });
-    return data.url;
+    const media = await uploadMediaFile(token, file);
+    return media.url;
   };
 }
