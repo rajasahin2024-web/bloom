@@ -88,7 +88,7 @@ jobs:
         # indentation as Python indentation (IndentationError otherwise).
         working-directory: platform/api
         run: |
-          python -c "import psycopg; c=psycopg.connect('postgresql://bloom:bloom_dev_password@localhost:5433/bloom', autocommit=True); c.execute(\"SELECT 1 FROM pg_database WHERE datname='bloom_test'\"); c.execute('CREATE DATABASE bloom_test OWNER bloom') if not c.fetchone() else None"
+          python -c "import psycopg; c=psycopg.connect('postgresql://bloom:bloom_dev_password@localhost:5433/bloom', autocommit=True); cur=c.execute(\"SELECT 1 FROM pg_database WHERE datname='bloom_test'\"); c.execute('CREATE DATABASE bloom_test OWNER bloom') if not cur.fetchone() else None"
 
       - name: Migrate test database
         working-directory: platform/api
