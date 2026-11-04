@@ -155,7 +155,9 @@ def process_job(
         )
     except MailError as exc:
         settings = get_settings()
-        row.last_error = f"{exc.code}: {exc}"[:500]
+        # Provider detail stays in logs; the admin-visible column gets the
+        # taxonomy code + generic text only (Security gate C3).
+        row.last_error = f"{exc.code}: provisioning call failed"[:500]
         if exc.retryable and row.attempts < settings.mail_provision_max_attempts:
             delay = backoff_seconds(row.attempts, exc.retry_after)
             row.status = MailboxStatus.queued

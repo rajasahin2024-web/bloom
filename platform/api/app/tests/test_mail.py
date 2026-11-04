@@ -202,6 +202,19 @@ def test_suspend_payload() -> None:
     assert info.status == "suspended"
 
 
+
+
+def test_mail_url_scheme_gate() -> None:
+    """C1 — https required; loopback http allowed for dev/tests only."""
+    assert mail_api._mail_url_allowed("https://mail.example.com") is True
+    assert mail_api._mail_url_allowed("https://mail.example.com:8443/api") is True
+    assert mail_api._mail_url_allowed("http://localhost:8080") is True
+    assert mail_api._mail_url_allowed("http://127.0.0.1:8080") is True
+    assert mail_api._mail_url_allowed("http://mail.example.com") is False
+    assert mail_api._mail_url_allowed("http://72.61.90.150") is False
+    assert mail_api._mail_url_allowed("mail.example.com") is False
+    assert mail_api._mail_url_allowed("") is False
+
 def test_localpart_rules() -> None:
     assert mail_api.localpart_error("r.sharma") is None
     assert mail_api.localpart_error("a") is None

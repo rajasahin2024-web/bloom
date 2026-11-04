@@ -26,6 +26,7 @@ import json
 import logging
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -411,9 +412,31 @@ class NullProvisioner:
         self._unconfigured()
 
 
+
+# Transport is HTTPS-only per contract; plain http is accepted only for
+# loopback targets (tests/dev) so a misconfigured URL can never leak the
+# bearer token onto the network in cleartext (Security gate C1).
+_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+
+
+def _mail_url_allowed(url: str) -> bool:
+    parsed = urllib.parse.urlparse(url)
+    scheme = parsed.scheme.lower()
+    if scheme == "https":
+        return True
+    return scheme == "http" and (parsed.hostname or "").lower() in _LOOPBACK_HOSTS
+
+
 def _build_provisioner() -> MailProvisioner:
     settings = get_settings()
     if settings.mail_api_url:
+        if not _mail_url_allowed(settings.mail_api_url):
+            logger.error(
+                "MAIL_API_URL must be https (loopback http allowed for "
+                "dev/tests) — refusing to send the token over plaintext: %s",
+                urllib.parse.urlparse(settings.mail_api_url).netloc,
+            )
+            return NullProvisioner()  # fail closed
         return StalwartProvisioner(
             base_url=settings.mail_api_url,
             token=settings.mail_api_token or "",
