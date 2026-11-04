@@ -2025,6 +2025,382 @@ textarea.adm-input {
 
 
 /* ═══════════════════════════════════════════════════════════════════
+   FULL-SCREEN STORAGE EXPLORER (TEC-175) — Windows-like file explorer
+   overlay for the active R2 bucket. .adm-explorer-fs is a fixed layer
+   rendered from the settings page (not a route); all chrome stays in
+   the .adm-xpl-* / .adm-ctx-* namespaces inside .adm-shell so nothing
+   leaks to the site.
+═══════════════════════════════════════════════════════════════════ */
+
+/* overlay shell */
+.adm-explorer-fs {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  background: var(--blm-surface);
+  font-family: var(--adm-sans);
+}
+
+/* header strip */
+.adm-xpl-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--blm-line);
+  background: var(--blm-paper);
+}
+.adm-xpl-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--leaf-700);
+  font-size: 13px;
+}
+.adm-xpl-title b {
+  font-family: var(--adm-display);
+  font-size: 14.5px;
+  letter-spacing: -0.2px;
+  color: var(--blm-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.adm-xpl-title span {
+  color: var(--blm-ink-4);
+  font-weight: 600;
+}
+.adm-xpl-head .adm-icbtn {
+  width: 32px;
+  height: 32px;
+  flex-basis: 32px;
+}
+
+/* toolbar — back/up, breadcrumb, refresh, new folder, upload */
+.adm-xpl-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--blm-line);
+  background: var(--blm-surface);
+  flex-wrap: wrap;
+}
+.adm-xpl-bar .adm-icbtn {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+  border-radius: 8px;
+}
+.adm-xpl-crumbs {
+  flex: 1;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.adm-xpl-bar-act {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* body — list fills, drawer docks right */
+.adm-xpl-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.adm-xpl-list {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+.adm-xpl-list.dragging {
+  outline: 2px dashed var(--leaf-400);
+  outline-offset: -6px;
+  background: var(--leaf-50);
+}
+.adm-xpl-row {
+  cursor: default;
+  user-select: none;
+}
+.adm-xpl-nav {
+  cursor: pointer;
+}
+.adm-xpl-row:hover {
+  background: var(--blm-paper);
+}
+.adm-xpl-dots {
+  width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+  border-radius: 7px;
+  opacity: 0;
+}
+.adm-xpl-row:hover .adm-xpl-dots,
+.adm-xpl-dots:focus-visible {
+  opacity: 1;
+}
+.adm-xpl-inline {
+  max-width: 320px;
+  padding: 5px 9px;
+  font-size: 12.5px;
+}
+
+/* loading skeleton rows */
+.adm-xpl-skel {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--blm-line);
+}
+.adm-xpl-skel span,
+.adm-xpl-skel b,
+.adm-xpl-skel i {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--blm-paper-2) 25%,
+    var(--blm-paper) 50%,
+    var(--blm-paper-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: adm-xpl-shimmer 1.2s infinite;
+}
+.adm-xpl-skel span {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+}
+.adm-xpl-skel b {
+  height: 12px;
+  width: 42%;
+}
+.adm-xpl-skel i {
+  height: 10px;
+  width: 18%;
+  margin-left: auto;
+}
+@keyframes adm-xpl-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* context menu — fixed, clamped to the viewport by the component */
+.adm-ctx-menu {
+  position: fixed;
+  z-index: 110;
+  min-width: 190px;
+  padding: 5px;
+  background: var(--blm-surface);
+  border: 1px solid var(--blm-line);
+  border-radius: 11px;
+  box-shadow: var(--adm-sh-2), 0 12px 32px rgba(20, 53, 29, 0.14);
+}
+.adm-ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blm-ink-2);
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.adm-ctx-item svg {
+  color: var(--blm-ink-4);
+  flex: 0 0 auto;
+}
+.adm-ctx-item:hover {
+  background: var(--leaf-50);
+  color: var(--leaf-700);
+}
+.adm-ctx-item:hover svg {
+  color: var(--leaf-600);
+}
+.adm-ctx-item.div {
+  border-top: 1px solid var(--blm-line);
+  border-radius: 0 0 7px 7px;
+  margin-top: 5px;
+  padding-top: 10px;
+}
+.adm-ctx-item.danger {
+  color: #b73f31;
+}
+.adm-ctx-item.danger svg {
+  color: #b73f31;
+}
+.adm-ctx-item.danger:hover {
+  background: #fdf1ef;
+  color: #a33326;
+}
+
+/* right-side preview/edit drawer inside the overlay */
+.adm-xpl-drawer {
+  flex: 0 0 380px;
+  width: 380px;
+  max-width: 45vw;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--blm-line);
+  background: var(--blm-paper);
+  min-height: 0;
+}
+.adm-xpl-drawer-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--blm-line);
+  background: var(--blm-surface);
+}
+.adm-xpl-drawer-t {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--blm-ink-3);
+  font-size: 12.5px;
+}
+.adm-xpl-drawer-t b {
+  color: var(--blm-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.adm-xpl-drawer-act {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.adm-xpl-drawer-act .adm-icbtn {
+  width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+}
+.adm-xpl-preview {
+  flex: 1;
+  overflow: auto;
+  padding: 14px;
+}
+.adm-xpl-img {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
+  border-radius: 10px;
+  border: 1px solid var(--blm-line);
+  background: var(--blm-surface);
+}
+.adm-xpl-audio {
+  width: 100%;
+  margin-top: 10px;
+}
+.adm-xpl-pre {
+  margin: 0;
+  padding: 12px;
+  background: var(--blm-surface);
+  border: 1px solid var(--blm-line);
+  border-radius: 10px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.adm-xpl-note {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  color: var(--blm-ink-4);
+  line-height: 1.5;
+}
+.adm-xpl-note b {
+  color: var(--blm-ink-2);
+}
+.adm-xpl-edit {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px;
+  gap: 10px;
+}
+.adm-xpl-editor {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.adm-xpl-edit-act {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* share-link modal bits */
+.adm-xpl-ttl {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.adm-xpl-ttl-o {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--blm-line-2);
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blm-ink-2);
+  cursor: pointer;
+}
+.adm-xpl-ttl-o:has(input:checked) {
+  border-color: var(--leaf-500);
+  background: var(--leaf-50);
+  color: var(--leaf-700);
+}
+.adm-xpl-share-link {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.adm-xpl-share-link .adm-input {
+  flex: 1;
+  font-size: 11.5px;
+}
+
+@media (max-width: 720px) {
+  .adm-xpl-drawer {
+    position: absolute;
+    inset: 0 0 0 auto;
+    max-width: 92vw;
+    box-shadow: -8px 0 24px rgba(20, 53, 29, 0.12);
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
    CMS BLOGS — posts table, categories tree, post editor + author modal
    (TEC-167). All selectors under the adm-/adm-cms- namespace; these
    pages only render inside .adm-shell so nothing leaks to the site.

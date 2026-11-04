@@ -10,7 +10,8 @@
  * omitted from the payload so the stored secret is never overwritten by a
  * mask; the backend merges with saved credentials before validating.
  */
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
+import { env } from "@/config/env";
 
 export interface StoragePrefixes {
   media: string | null;
@@ -159,4 +160,168 @@ export async function fetchStorageUsage(
     { token },
   );
   return data;
+}
+
+/* ── object ops (TEC-175 contract — TEC-163 explorer follow-up) ── */
+
+export interface StorageUploadResult {
+  key: string;
+  size: number;
+  mime: string | null;
+}
+
+export interface StorageObjectContent {
+  content: string;
+  mime: string;
+  size: number;
+  truncated: boolean;
+}
+
+export interface StorageShareLink {
+  url: string;
+  expires_at: string;
+}
+
+/** Share-link TTL choices offered by the UI — mirrors the BE allow-list. */
+export const SHARE_TTLS = [
+  { seconds: 3600, label: "1 hour" },
+  { seconds: 86400, label: "24 hours" },
+  { seconds: 604800, label: "7 days" },
+] as const;
+
+/** POST /objects/upload — real multipart file upload (10MB cap, 409 on key collision). */
+export async function uploadStorageObject(
+  token: string,
+  args: { bucket: string; prefix: string; file: File; overwrite?: boolean },
+): Promise<StorageUploadResult> {
+  const params = new URLSearchParams({
+    bucket: args.bucket,
+    prefix: args.prefix,
+  });
+  if (args.overwrite) params.set("overwrite", "true");
+  const formData = new FormData();
+  formData.append("file", args.file);
+  const { data } = await apiFetch<StorageUploadResult>(
+    `/api/admin/storage/objects/upload?${params.toString()}`,
+    { method: "POST", formData, token },
+  );
+  return data;
+}
+
+/** POST /objects/mkdir — zero-byte `{prefix}/` marker; BE appends the slash. */
+export async function mkdirStorageObject(
+  token: string,
+  args: { bucket: string; prefix: string },
+): Promise<{ prefix: string }> {
+  const { data } = await apiFetch<{ prefix: string }>(
+    "/api/admin/storage/objects/mkdir",
+    { method: "POST", body: args, token },
+  );
+  return data;
+}
+
+/**
+ * POST /objects/rename — S3 has no rename; BE does copy+delete. Folder keys
+ * move children and need `recursive: true`.
+ */
+export async function renameStorageObject(
+  token: string,
+  args: { bucket: string; key: string; new_key: string; recursive?: boolean },
+): Promise<{ key: string }> {
+  const { data } = await apiFetch<{ key: string }>(
+    "/api/admin/storage/objects/rename",
+    { method: "POST", body: args, token },
+  );
+  return data;
+}
+
+/** DELETE /objects — folder prefixes need `recursive: true` else the BE 409s. */
+export async function deleteStorageObject(
+  token: string,
+  args: { bucket: string; key: string; recursive?: boolean },
+): Promise<void> {
+  const params = new URLSearchParams({ bucket: args.bucket, key: args.key });
+  if (args.recursive) params.set("recursive", "true");
+  await apiFetch<null>(
+    `/api/admin/storage/objects?${params.toString()}`,
+    { method: "DELETE", token },
+  );
+}
+
+/** GET /objects/content — text mimes only, ≤1MB; binary keys 415. */
+export async function fetchStorageObjectContent(
+  token: string,
+  args: { bucket: string; key: string },
+): Promise<StorageObjectContent> {
+  const params = new URLSearchParams({ bucket: args.bucket, key: args.key });
+  const { data } = await apiFetch<StorageObjectContent>(
+    `/api/admin/storage/objects/content?${params.toString()}`,
+    { token },
+  );
+  return data;
+}
+
+/** PUT /objects/content — write back text; same mime/size caps as the GET. */
+export async function putStorageObjectContent(
+  token: string,
+  args: { bucket: string; key: string; content: string },
+): Promise<{ key: string; size: number }> {
+  const { data } = await apiFetch<{ key: string; size: number }>(
+    "/api/admin/storage/objects/content",
+    { method: "PUT", body: args, token },
+  );
+  return data;
+}
+
+/** POST /objects/share — presigned GET; anyone with the URL reads until expiry. */
+export async function shareStorageObject(
+  token: string,
+  args: { bucket: string; key: string; expires_in: number },
+): Promise<StorageShareLink> {
+  const { data } = await apiFetch<StorageShareLink>(
+    "/api/admin/storage/objects/share",
+    { method: "POST", body: args, token },
+  );
+  return data;
+}
+
+/**
+ * GET /objects/preview — admin-gated byte stream. Returns a Blob so the
+ * caller can hand out an object URL (img/audio preview, download) — the
+ * endpoint needs a bearer header, so it can't be an <img src> directly.
+ */
+export async function fetchStorageObjectBlob(
+  token: string,
+  args: { bucket: string; key: string },
+): Promise<Blob> {
+  const params = new URLSearchParams({ bucket: args.bucket, key: args.key });
+  let res: Response;
+  try {
+    res = await fetch(
+      `${env.apiBaseUrl}/api/admin/storage/objects/preview?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+  } catch {
+    throw new ApiError(
+      "Cannot reach the API — check that the backend is running.",
+      0,
+    );
+  }
+  if (!res.ok) {
+    let message = `Request failed (HTTP ${res.status})`;
+    try {
+      const payload: unknown = await res.json();
+      if (
+        payload &&
+        typeof payload === "object" &&
+        typeof (payload as { detail?: unknown }).detail === "string"
+      ) {
+        message = (payload as { detail: string }).detail;
+      }
+    } catch {
+      /* non-JSON error body — keep the generic message */
+    }
+    throw new ApiError(message, res.status);
+  }
+  return res.blob();
 }

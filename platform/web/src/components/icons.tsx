@@ -372,3 +372,75 @@ export function FolderIcon(props: IconProps) {
     "M1.5 2h4l1.6 2H14a1.5 1.5 0 0 1 1.5 1.5V12a1.5 1.5 0 0 1-1.5 1.5H1.5A1.5 1.5 0 0 1 0 12V3.5A1.5 1.5 0 0 1 1.5 2z",
   );
 }
+
+export function FileTextIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M3 1h7l4 4v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm6.5 1.5V6h3.4L9.5 2.5zM5 7.5h6V9H5V7.5zm0 2.5h6V11.5H5V10z",
+  );
+}
+
+export function ImageIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M1.5 2h13A1.5 1.5 0 0 1 16 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2zm0 1.5v7.3l3.2-3.2a1 1 0 0 1 1.4 0l3.4 3.4 2.7-2.7a1 1 0 0 1 1.4 0l.9.9V3.5h-13zM11 6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z",
+  );
+}
+
+export function DotsIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M8 4.5A1.5 1.5 0 1 0 8 1.5a1.5 1.5 0 0 0 0 3zm0 5A1.5 1.5 0 1 0 8 6.5a1.5 1.5 0 0 0 0 3zm0 5A1.5 1.5 0 1 0 8 11.5a1.5 1.5 0 0 0 0 3z",
+  );
+}
+
+export function ArrowUpIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M8 1.5a.75.75 0 0 1 .53.22l5 5a.75.75 0 0 1-1.06 1.06L8.75 4.06V14a.75.75 0 0 1-1.5 0V4.06L3.53 7.78a.75.75 0 0 1-1.06-1.06l5-5A.75.75 0 0 1 8 1.5z",
+  );
+}
+
+export function DownloadIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M8.75 1v8.19l3.72-3.72a.75.75 0 1 1 1.06 1.06l-5 5a.75.75 0 0 1-1.06 0l-5-5a.75.75 0 0 1 1.06-1.06l3.72 3.72V1h1.5zM2 14.5h12V16H2v-1.5z",
+  );
+}
+
+export function LinkIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M9.5 1a3.5 3.5 0 0 1 2.47 5.97l-1.5 1.5a3.52 3.52 0 0 1-4.24.53.75.75 0 0 1 .8-1.27 2 2 0 0 0 2.38-.27l1.5-1.5a2 2 0 1 0-2.83-2.83l-.87.87a.75.75 0 0 1-1.06-1.06l.87-.87A3.5 3.5 0 0 1 9.5 1zM6.5 6a3.5 3.5 0 0 1 3.44 2.9.75.75 0 1 1-1.48.2A2 2 0 0 0 6.5 7.5l-1.5 1.5a2 2 0 1 0 2.83 2.83l.87-.87a.75.75 0 1 1 1.06 1.06l-.87.87A3.5 3.5 0 1 1 3.53 9.5l1.5-1.5A3.5 3.5 0 0 1 6.5 6z",
+  );
+}
+
+export function CopyIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M4.5 2A1.5 1.5 0 0 1 6 .5h6A1.5 1.5 0 0 1 13.5 2v7a1.5 1.5 0 0 1-1.5 1.5h-.5V4a2.5 2.5 0 0 0-2.5-2.5H4.5V2zm-2 3A1.5 1.5 0 0 1 4 3.5h5A1.5 1.5 0 0 1 10.5 5v8A1.5 1.5 0 0 1 9 14.5H4A1.5 1.5 0 0 1 2.5 13V5z",
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M6 .5h4a1 1 0 0 1 1 1V2h3.5a.75.75 0 0 1 0 1.5h-.79l-.83 10.35A1.75 1.75 0 0 1 11.13 15.5H4.87a1.75 1.75 0 0 1-1.75-1.65L2.29 3.5H1.5a.75.75 0 0 1 0-1.5H5v-.5a1 1 0 0 1 1-1zm.5 2h3v-.5h-3V2.5zM6.25 5.5v7a.75.75 0 0 0 1.5 0v-7a.75.75 0 0 0-1.5 0zm3.5 0v7a.75.75 0 0 0 1.5 0v-7a.75.75 0 0 0-1.5 0z",
+  );
+}
+
+export function FolderPlusIcon(props: IconProps) {
+  return svg(
+    props.size,
+    props.className,
+    "M1.5 2h4l1.6 2H14a1.5 1.5 0 0 1 1.5 1.5V12a1.5 1.5 0 0 1-1.5 1.5H1.5A1.5 1.5 0 0 1 0 12V3.5A1.5 1.5 0 0 1 1.5 2zM8 6a.75.75 0 0 1 .75.75v1.5h1.5a.75.75 0 0 1 0 1.5h-1.5v1.5a.75.75 0 0 1-1.5 0v-1.5h-1.5a.75.75 0 0 1 0-1.5h1.5v-1.5A.75.75 0 0 1 8 6z",
+  );
+}

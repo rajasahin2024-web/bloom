@@ -41,6 +41,7 @@ import type {
   StorageStatus,
   StorageUsage,
 } from "@/lib/storage";
+import { StorageExplorer } from "@/components/admin/StorageExplorer";
 import {
   CheckIcon,
   ChevronIcon,
@@ -202,6 +203,7 @@ export function StorageSettings({ session }: { session: AdminSession }) {
   const [nextToken, setNextToken] = useState<string | null>(null);
   const [explErr, setExplErr] = useState<string | null>(null);
   const [explBusy, setExplBusy] = useState(false);
+  const [fsOpen, setFsOpen] = useState(false);
 
   /* ── prefix mapping ── */
   const [pfxVals, setPfxVals] = useState<StoragePrefixes>({
@@ -902,7 +904,13 @@ export function StorageSettings({ session }: { session: AdminSession }) {
               <h3>Folder explorer</h3>
               <p>Read-only browse of objects in the active bucket</p>
             </div>
-            <FolderIcon size={14} className="adm-hd-ic" />
+            <button
+              type="button"
+              className="adm-btn adm-btn-g adm-btn-sm"
+              onClick={() => setFsOpen(true)}
+            >
+              <FolderIcon size={12} /> Open full-screen
+            </button>
           </div>
           <div className="adm-store-crumb">
             <button
@@ -1036,6 +1044,19 @@ export function StorageSettings({ session }: { session: AdminSession }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* full-screen explorer overlay */}
+      {fsOpen && activeBucket && (
+        <StorageExplorer
+          token={token}
+          bucket={activeBucket}
+          onClose={() => {
+            setFsOpen(false);
+            // The overlay can mutate the bucket — sync the inline list.
+            void loadObjects(activeBucket, prefix, null);
+          }}
+        />
       )}
 
       {/* transient notice */}
