@@ -65,8 +65,12 @@ class _FakeS3:
         self.objects: dict[str, tuple[bytes, str]] = {}
         self.pages: list[dict[str, Any]] = []
         self.put_calls: list[dict[str, Any]] = []
+        self.presign_calls: list[dict[str, Any]] = []
         self.list_error: Exception | None = None
         self.get_error: Exception | None = None
+        self.copy_error_at: int | None = None
+        self.delete_error: Exception | None = None
+        self._copy_count = 0
 
     def list_buckets(self) -> dict[str, Any]:
         if self.list_error:
@@ -85,6 +89,18 @@ class _FakeS3:
     def list_objects_v2(self, **kwargs: Any) -> dict[str, Any]:
         if self.pages:
             return self.pages.pop(0)
+        # recursive folder ops list without a delimiter — derive Contents
+        # straight from the object map
+        if "Delimiter" not in kwargs:
+            prefix = kwargs.get("Prefix", "")
+            keys = sorted(k for k in self.objects if k.startswith(prefix))
+            return {
+                "Contents": [
+                    {"Key": k, "Size": len(self.objects[k][0])} for k in keys
+                ],
+                "CommonPrefixes": [],
+                "IsTruncated": False,
+            }
         return {"Contents": [], "CommonPrefixes": [], "IsTruncated": False}
 
     def put_object(self, **kwargs: Any) -> None:
@@ -94,8 +110,49 @@ class _FakeS3:
     def get_object(self, **kwargs: Any) -> dict[str, Any]:
         if self.get_error:
             raise self.get_error
+        if kwargs["Key"] not in self.objects:
+            raise StorageError("read object: not found", 404)
         body, mime = self.objects[kwargs["Key"]]
         return {"Body": io.BytesIO(body), "ContentLength": len(body), "ContentType": mime}
+
+    def head_object(self, **kwargs: Any) -> dict[str, Any]:
+        if kwargs["Key"] not in self.objects:
+            raise StorageError("check object: not found", 404)
+        body, mime = self.objects[kwargs["Key"]]
+        return {"ContentLength": len(body), "ContentType": mime}
+
+    def copy_object(self, **kwargs: Any) -> None:
+        self._copy_count += 1
+        if self.copy_error_at is not None and self._copy_count > self.copy_error_at:
+            raise StorageError("copy object: storage backend error", 502)
+        src = kwargs["CopySource"]
+        src_key = src["Key"] if isinstance(src, dict) else src.split("/", 1)[-1]
+        if src_key not in self.objects:
+            raise StorageError("copy object: not found", 404)
+        self.objects[kwargs["Key"]] = self.objects[src_key]
+
+    def delete_object(self, **kwargs: Any) -> None:
+        if self.delete_error:
+            raise self.delete_error
+        self.objects.pop(kwargs["Key"], None)
+
+    def delete_objects(self, **kwargs: Any) -> dict[str, Any]:
+        if self.delete_error:
+            raise self.delete_error
+        keys = [o["Key"] for o in kwargs["Delete"]["Objects"]]
+        for k in keys:
+            self.objects.pop(k, None)
+        return {"Deleted": [{"Key": k} for k in keys], "Errors": []}
+
+    def generate_presigned_url(
+        self, op: str, Params: dict[str, Any], ExpiresIn: int
+    ) -> str:
+        call = {"op": op, "Params": Params, "ExpiresIn": ExpiresIn}
+        self.presign_calls.append(call)
+        return (
+            f"https://r2.test/{Params['Bucket']}/{Params['Key']}"
+            f"?X-Amz-Expires={ExpiresIn}&X-Amz-Signature=fake"
+        )
 
 
 @pytest.fixture
@@ -207,6 +264,15 @@ def test_storage_admin_endpoints_require_auth() -> None:
     assert client.post("/api/admin/storage/buckets", json={}).status_code == 401
     assert client.post("/api/admin/storage/select", json={}).status_code == 401
     assert client.get("/api/admin/storage/objects").status_code == 401
+    base = "/api/admin/storage/objects"
+    assert client.post(f"{base}/upload").status_code == 401
+    assert client.post(f"{base}/mkdir", json={}).status_code == 401
+    assert client.post(f"{base}/rename", json={}).status_code == 401
+    assert client.delete(f"{base}?key=a").status_code == 401
+    assert client.get(f"{base}/content?key=a").status_code == 401
+    assert client.put(f"{base}/content", json={}).status_code == 401
+    assert client.post(f"{base}/share", json={}).status_code == 401
+    assert client.get(f"{base}/preview?key=a").status_code == 401
     assert client.put("/api/admin/storage/prefixes", json={}).status_code == 401
     assert client.get("/api/admin/storage/usage").status_code == 401
 
@@ -754,3 +820,695 @@ def test_account_id_format_via_settings_spec() -> None:
         == "0123456789abcdef0123456789abcdef"
     )
     assert errs == {}
+
+
+# ── object ops: upload/mkdir/rename/delete/content/share/preview ────────
+# TEC-174 — explorer write actions + presigned public links.
+
+
+def _connect_r2(token: str) -> None:
+    resp = client.put(
+        "/api/admin/storage/connection",
+        headers=_auth(token),
+        json={
+            "account_id": "00112233445566778899aabbccddeeff",
+            "access_key_id": "AKID",
+            "secret_access_key": "sekret",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    resp = client.post(
+        "/api/admin/storage/select",
+        headers=_auth(token),
+        json={"bucket": "bloom-media"},
+    )
+    assert resp.status_code == 200, resp.text
+
+
+# ── hermetic validators ──────────────────────────────────────────────────
+
+
+def test_validate_key_rejects_traversal() -> None:
+    for bad in ("", "/abs/path", "a/../b", "../x", "x/" + "k" * 1024, "k" * 1025):
+        with pytest.raises(StorageError) as err:
+            storage_service.validate_key(bad)
+        assert err.value.http_status == 422, bad
+    assert storage_service.validate_key("media/a.png") == "media/a.png"
+    assert storage_service.validate_key("folder/") == "folder/"
+
+
+def test_validate_key_rejects_control_chars() -> None:
+    """F2: keys with CR/LF/NUL could smuggle raw bytes into headers."""
+    for bad in ("a\rb", "a\nb", "a\x00b", "a\x7fb", "a\tb"):
+        with pytest.raises(StorageError) as err:
+            storage_service.validate_key(bad)
+        assert err.value.http_status == 422, repr(bad)
+
+
+def test_validate_prefix_allows_empty_and_slash() -> None:
+    assert storage_service.validate_prefix("") == ""
+    assert storage_service.validate_prefix("a/b/") == "a/b/"
+    for bad in ("/a/", "a/../b", "x" * 1025, "a\nb/"):
+        with pytest.raises(StorageError):
+            storage_service.validate_prefix(bad)
+
+
+def test_preview_media_type_allowlist() -> None:
+    """F1: only known-safe renderable mimes may go out inline."""
+    for stored, want in (
+        ("image/png", "image/png"),
+        ("image/jpeg", "image/jpeg"),
+        ("image/webp", "image/webp"),
+        ("image/gif", "image/gif"),
+        ("audio/mpeg", "audio/mpeg"),
+        ("video/mp4", "video/mp4"),
+        ("application/pdf", "application/pdf"),
+        ("text/plain", "text/plain"),
+        ("text/plain; charset=utf-8", "text/plain"),
+        ("IMAGE/PNG", "image/png"),
+    ):
+        assert storage_service.preview_media_type(stored) == want
+    for stored in (
+        "text/html",
+        "application/xhtml+xml",
+        "image/svg+xml",
+        "application/javascript",
+        "text/javascript",
+        "application/octet-stream",
+        None,
+        "",
+    ):
+        got = storage_service.preview_media_type(stored)
+        assert got == "application/octet-stream", stored
+
+
+def test_sanitize_filename_strips_paths() -> None:
+    assert storage_service.sanitize_filename("notes.txt") == "notes.txt"
+    assert storage_service.sanitize_filename("../../etc/passwd") == "passwd"
+    assert (
+        storage_service.sanitize_filename("C:\\fakepath\\hero.png")
+        == "hero.png"
+    )
+    for bad in ("", "..", ".", "a/b/.."):
+        with pytest.raises(StorageError):
+            storage_service.sanitize_filename(bad)
+
+
+def test_is_text_mime_allowlist() -> None:
+    assert storage_service.is_text_mime("text/plain", "a.txt")
+    assert storage_service.is_text_mime("text/markdown; charset=utf-8", "a.md")
+    assert storage_service.is_text_mime("application/json", "a.json")
+    assert storage_service.is_text_mime("application/octet-stream", "a.md")
+    assert not storage_service.is_text_mime("image/png", "a.md")
+    assert not storage_service.is_text_mime("application/octet-stream", "a.bin")
+    assert not storage_service.is_text_mime("application/pdf", "a.txt")
+
+
+# ── upload ───────────────────────────────────────────────────────────────
+
+
+@requires_infra
+def test_upload_object_multipart(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    try:
+        resp = client.post(
+            "/api/admin/storage/objects/upload?prefix=docs/",
+            headers=_auth(admin_token),
+            files={"file": ("notes.txt", io.BytesIO(b"hello"), "text/plain")},
+        )
+        assert resp.status_code == 201, resp.text
+        assert resp.json() == {
+            "key": "docs/notes.txt",
+            "size": 5,
+            "mime": "text/plain",
+        }
+        assert fake_s3.objects["docs/notes.txt"] == (b"hello", "text/plain")
+
+        # collision → 409 unless ?overwrite=true
+        resp = client.post(
+            "/api/admin/storage/objects/upload?prefix=docs/",
+            headers=_auth(admin_token),
+            files={"file": ("notes.txt", io.BytesIO(b"v2"), "text/plain")},
+        )
+        assert resp.status_code == 409
+        assert resp.json()["detail"] == "key_exists"
+        resp = client.post(
+            "/api/admin/storage/objects/upload?prefix=docs/&overwrite=true",
+            headers=_auth(admin_token),
+            files={"file": ("notes.txt", io.BytesIO(b"v2"), "text/plain")},
+        )
+        assert resp.status_code == 201
+        assert fake_s3.objects["docs/notes.txt"][0] == b"v2"
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_upload_sanitizes_filename_and_validates_prefix(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    try:
+        resp = client.post(
+            "/api/admin/storage/objects/upload?prefix=up/",
+            headers=_auth(admin_token),
+            files={
+                "file": ("../../etc/evil.txt", io.BytesIO(b"x"), "text/plain")
+            },
+        )
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["key"] == "up/evil.txt"
+
+        resp = client.post(
+            "/api/admin/storage/objects/upload?prefix=a/../b/",
+            headers=_auth(admin_token),
+            files={"file": ("x.txt", io.BytesIO(b"x"), "text/plain")},
+        )
+        assert resp.status_code == 422
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_upload_enforces_size_cap(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    try:
+        big = io.BytesIO(b"x" * (10 * 1024 * 1024 + 1))
+        resp = client.post(
+            "/api/admin/storage/objects/upload",
+            headers=_auth(admin_token),
+            files={"file": ("big.bin", big, "application/octet-stream")},
+        )
+        assert resp.status_code == 413
+        assert resp.json()["detail"] == "file_too_large"
+        assert not fake_s3.objects
+    finally:
+        _clear_connection(admin_token)
+
+
+# ── mkdir ────────────────────────────────────────────────────────────────
+
+
+@requires_infra
+def test_mkdir_creates_zero_byte_marker(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    try:
+        resp = client.post(
+            "/api/admin/storage/objects/mkdir",
+            headers=_auth(admin_token),
+            json={"prefix": "photos/2026"},
+        )
+        assert resp.status_code == 201, resp.text
+        assert resp.json() == {"prefix": "photos/2026/"}
+        assert fake_s3.objects["photos/2026/"] == (
+            b"",
+            "application/x-directory",
+        )
+
+        # trailing slash already present → idempotent marker
+        resp = client.post(
+            "/api/admin/storage/objects/mkdir",
+            headers=_auth(admin_token),
+            json={"prefix": "photos/"},
+        )
+        assert resp.status_code == 201
+        assert resp.json() == {"prefix": "photos/"}
+
+        for bad in ("/abs", "a/../b", ""):
+            resp = client.post(
+                "/api/admin/storage/objects/mkdir",
+                headers=_auth(admin_token),
+                json={"prefix": bad},
+            )
+            assert resp.status_code == 422, (bad, resp.status_code)
+    finally:
+        _clear_connection(admin_token)
+
+
+# ── rename ───────────────────────────────────────────────────────────────
+
+
+@requires_infra
+def test_rename_file_copies_then_deletes(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    fake_s3.objects["a.txt"] = (b"hi", "text/plain")
+    try:
+        resp = client.post(
+            "/api/admin/storage/objects/rename",
+            headers=_auth(admin_token),
+            json={"key": "a.txt", "new_key": "dir/b.txt"},
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {"key": "dir/b.txt", "moved": 1}
+        assert "a.txt" not in fake_s3.objects
+        assert fake_s3.objects["dir/b.txt"] == (b"hi", "text/plain")
+
+        resp = client.post(
+            "/api/admin/storage/objects/rename",
+            headers=_auth(admin_token),
+            json={"key": "missing.txt", "new_key": "x.txt"},
+        )
+        assert resp.status_code == 404
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_rename_folder_requires_and_runs_recursive(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    fake_s3.objects.update(
+        {
+            "f/": (b"", "application/x-directory"),
+            "f/a.txt": (b"a", "text/plain"),
+            "f/sub/b.txt": (b"b", "text/plain"),
+        }
+    )
+    try:
+        resp = client.post(
+            "/api/admin/storage/objects/rename",
+            headers=_auth(admin_token),
+            json={"key": "f/", "new_key": "g/"},
+        )
+        assert resp.status_code == 409
+        assert resp.json()["detail"] == "recursive_required"
+
+        resp = client.post(
+            "/api/admin/storage/objects/rename",
+            headers=_auth(admin_token),
+            json={"key": "f/", "new_key": "g/", "recursive": True},
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {"key": "g/", "moved": 3}
+        assert sorted(fake_s3.objects) == [
+            "g/",
+            "g/a.txt",
+            "g/sub/b.txt",
+        ]
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_rename_folder_partial_failure_reports_counts(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    fake_s3.objects.update(
+        {
+            "f/": (b"", "application/x-directory"),
+            "f/a.txt": (b"a", "text/plain"),
+            "f/b.txt": (b"b", "text/plain"),
+        }
+    )
+    fake_s3.copy_error_at = 1  # first copy ok, second fails
+    try:
+        resp = client.post(
+            "/api/admin/storage/objects/rename",
+            headers=_auth(admin_token),
+            json={"key": "f/", "new_key": "g/", "recursive": True},
+        )
+        assert resp.status_code == 502
+        detail = resp.json()["detail"]
+        assert detail["error"] == "partial_move"
+        assert detail["moved"] == 1
+        assert detail["deleted"] == 0
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_rename_folder_into_itself_rejected(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    fake_s3.objects["f/"] = (b"", "application/x-directory")
+    try:
+        resp = client.post(
+            "/api/admin/storage/objects/rename",
+            headers=_auth(admin_token),
+            json={"key": "f/", "new_key": "f/g/", "recursive": True},
+        )
+        assert resp.status_code == 422
+    finally:
+        _clear_connection(admin_token)
+
+
+# ── delete ───────────────────────────────────────────────────────────────
+
+
+@requires_infra
+def test_delete_file_and_folder_recursive(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    fake_s3.objects.update(
+        {
+            "a.txt": (b"a", "text/plain"),
+            "f/": (b"", "application/x-directory"),
+            "f/a.txt": (b"a", "text/plain"),
+            "f/sub/b.txt": (b"b", "text/plain"),
+        }
+    )
+    try:
+        resp = client.delete(
+            "/api/admin/storage/objects?key=a.txt",
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 204
+        assert "a.txt" not in fake_s3.objects
+
+        resp = client.delete(
+            "/api/admin/storage/objects?key=f/",
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 409
+        assert resp.json()["detail"] == "recursive_required"
+
+        resp = client.delete(
+            "/api/admin/storage/objects?key=f/&recursive=true",
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 204
+        assert not fake_s3.objects
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_delete_folder_partial_failure_reports_count(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    fake_s3.objects.update(
+        {
+            "f/": (b"", "application/x-directory"),
+            "f/a.txt": (b"a", "text/plain"),
+        }
+    )
+    fake_s3.delete_error = StorageError(
+        "delete objects: storage backend error", 502
+    )
+    try:
+        resp = client.delete(
+            "/api/admin/storage/objects?key=f/&recursive=true",
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 502
+        detail = resp.json()["detail"]
+        assert detail["error"] == "partial_delete"
+        assert detail["deleted"] == 0
+    finally:
+        _clear_connection(admin_token)
+
+
+# ── content read / write ─────────────────────────────────────────────────
+
+
+@requires_infra
+def test_get_content_text_object(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    fake_s3.objects["note.md"] = (b"# hello", "text/markdown")
+    try:
+        resp = client.get(
+            "/api/admin/storage/objects/content?key=note.md",
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {
+            "content": "# hello",
+            "mime": "text/markdown",
+            "size": 7,
+            "truncated": False,
+        }
+
+        resp = client.get(
+            "/api/admin/storage/objects/content?key=missing.txt",
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 404
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_get_content_rejects_binary_and_truncates_big(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    fake_s3.objects["pic.png"] = (b"\x89PNG", "image/png")
+    fake_s3.objects["big.txt"] = (b"x" * (1024 * 1024 + 10), "text/plain")
+    try:
+        resp = client.get(
+            "/api/admin/storage/objects/content?key=pic.png",
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 415
+
+        resp = client.get(
+            "/api/admin/storage/objects/content?key=big.txt",
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["truncated"] is True
+        assert len(body["content"]) == 1024 * 1024
+        assert body["size"] == 1024 * 1024 + 10
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_put_content_writes_and_preserves_mime(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    fake_s3.objects["note.md"] = (b"old", "text/markdown")
+    fake_s3.objects["pic.png"] = (b"\x89PNG", "image/png")
+    try:
+        resp = client.put(
+            "/api/admin/storage/objects/content",
+            headers=_auth(admin_token),
+            json={"key": "note.md", "content": "# new"},
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {"key": "note.md", "size": 5}
+        assert fake_s3.objects["note.md"] == (b"# new", "text/markdown")
+
+        # new key → created as text/plain
+        resp = client.put(
+            "/api/admin/storage/objects/content",
+            headers=_auth(admin_token),
+            json={"key": "fresh.txt", "content": "hi"},
+        )
+        assert resp.status_code == 200
+        assert fake_s3.objects["fresh.txt"] == (b"hi", "text/plain")
+
+        # binary target → 415, untouched
+        resp = client.put(
+            "/api/admin/storage/objects/content",
+            headers=_auth(admin_token),
+            json={"key": "pic.png", "content": "x"},
+        )
+        assert resp.status_code == 415
+        assert fake_s3.objects["pic.png"][0] == b"\x89PNG"
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_put_content_enforces_cap(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    try:
+        # schema caps at 1Mi chars → 422 before the handler runs
+        resp = client.put(
+            "/api/admin/storage/objects/content",
+            headers=_auth(admin_token),
+            json={"key": "a.txt", "content": "x" * (1024 * 1024 + 1)},
+        )
+        assert resp.status_code == 422
+        # multibyte chars pass the char cap but exceed 1Mi utf-8 → 413
+        resp = client.put(
+            "/api/admin/storage/objects/content",
+            headers=_auth(admin_token),
+            json={"key": "a.txt", "content": "é" * (1024 * 1024)},
+        )
+        assert resp.status_code == 413
+        assert "a.txt" not in fake_s3.objects
+    finally:
+        _clear_connection(admin_token)
+
+
+# ── share / presigned links ──────────────────────────────────────────────
+
+
+@requires_infra
+def test_share_returns_presigned_url_with_expiry(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    fake_s3.objects["doc.pdf"] = (b"%PDF", "application/pdf")
+    try:
+        resp = client.post(
+            "/api/admin/storage/objects/share",
+            headers=_auth(admin_token),
+            json={"key": "doc.pdf", "expires_in": 86400},
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert "X-Amz-Expires=86400" in body["url"]
+        assert "doc.pdf" in body["url"]
+        expires_at = datetime.fromisoformat(body["expires_at"])
+        delta = expires_at - datetime.now(UTC)
+        assert 86000 < delta.total_seconds() <= 86400
+
+        call = fake_s3.presign_calls[0]
+        assert call["op"] == "get_object"
+        assert call["Params"] == {"Bucket": "bloom-media", "Key": "doc.pdf"}
+        assert call["ExpiresIn"] == 86400
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_share_rejects_bad_expiry_and_missing_key(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    try:
+        resp = client.post(
+            "/api/admin/storage/objects/share",
+            headers=_auth(admin_token),
+            json={"key": "a.txt", "expires_in": 60},
+        )
+        assert resp.status_code == 422
+
+        resp = client.post(
+            "/api/admin/storage/objects/share",
+            headers=_auth(admin_token),
+            json={"key": "missing.txt", "expires_in": 3600},
+        )
+        assert resp.status_code == 404
+        assert not fake_s3.presign_calls
+    finally:
+        _clear_connection(admin_token)
+
+
+# ── preview stream ───────────────────────────────────────────────────────
+
+
+@requires_infra
+def test_preview_streams_inline_with_passthrough_mime(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    fake_s3.objects["dir/pic.png"] = (b"\x89PNGDATA", "image/png")
+    try:
+        resp = client.get(
+            "/api/admin/storage/objects/preview?key=dir/pic.png",
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.content == b"\x89PNGDATA"
+        assert resp.headers["content-type"].startswith("image/png")
+        assert "inline" in resp.headers["content-disposition"]
+        assert resp.headers["x-content-type-options"] == "nosniff"
+
+        resp = client.get(
+            "/api/admin/storage/objects/preview?key=missing.png",
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 404
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_preview_never_serves_stored_executable_mime_inline(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    """F1: stored mime is attacker-controlled — text/html/SVG/JS must
+    download as octet-stream + attachment, never render same-origin."""
+    _connect_r2(admin_token)
+    fake_s3.objects["evil/page.html"] = (b"<script>x</script>", "text/html")
+    fake_s3.objects["vec.svg"] = (b"<svg/>", "image/svg+xml")
+    fake_s3.objects["app.js"] = (b"alert(1)", "application/javascript")
+    try:
+        for key in ("evil/page.html", "vec.svg", "app.js"):
+            resp = client.get(
+                f"/api/admin/storage/objects/preview?key={key}",
+                headers=_auth(admin_token),
+            )
+            assert resp.status_code == 200, (key, resp.status_code)
+            assert resp.headers["content-type"].startswith(
+                "application/octet-stream"
+            )
+            assert "attachment" in resp.headers["content-disposition"]
+            assert resp.headers["x-content-type-options"] == "nosniff"
+            assert "no-store" in resp.headers["cache-control"]
+
+        # allowlisted types still render inline
+        fake_s3.objects["doc.pdf"] = (b"%PDF-1", "application/pdf")
+        resp = client.get(
+            "/api/admin/storage/objects/preview?key=doc.pdf",
+            headers=_auth(admin_token),
+        )
+        assert resp.headers["content-type"].startswith("application/pdf")
+        assert "inline" in resp.headers["content-disposition"]
+    finally:
+        _clear_connection(admin_token)
+
+
+# ── key validation across every endpoint ─────────────────────────────────
+
+
+@requires_infra
+def test_object_ops_reject_bad_keys(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    _connect_r2(admin_token)
+    bad_keys = ("../x", "a/../b", "/abs", "k" * 1025)
+    try:
+        for bad in bad_keys:
+            assert client.delete(
+                f"/api/admin/storage/objects?key={bad}",
+                headers=_auth(admin_token),
+            ).status_code == 422, bad
+            assert client.get(
+                f"/api/admin/storage/objects/content?key={bad}",
+                headers=_auth(admin_token),
+            ).status_code == 422, bad
+            assert client.get(
+                f"/api/admin/storage/objects/preview?key={bad}",
+                headers=_auth(admin_token),
+            ).status_code == 422, bad
+            assert client.post(
+                "/api/admin/storage/objects/rename",
+                headers=_auth(admin_token),
+                json={"key": bad, "new_key": "b.txt"},
+            ).status_code == 422, bad
+            assert client.post(
+                "/api/admin/storage/objects/share",
+                headers=_auth(admin_token),
+                json={"key": bad, "expires_in": 3600},
+            ).status_code == 422, bad
+            assert client.put(
+                "/api/admin/storage/objects/content",
+                headers=_auth(admin_token),
+                json={"key": bad, "content": "x"},
+            ).status_code == 422, bad
+    finally:
+        _clear_connection(admin_token)

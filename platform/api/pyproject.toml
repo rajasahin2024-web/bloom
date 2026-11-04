@@ -17,6 +17,7 @@ dependencies = [
     "email-validator>=2.2.0",
     "nh3>=0.3.5,<0.4",
     "boto3>=1.40.0",
+    "python-multipart>=0.0.20,<0.0.33",
 ]
 
 [project.optional-dependencies]

@@ -13,6 +13,7 @@ credentials never reach an API response or a log line.
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any, TypeVar
@@ -28,7 +29,52 @@ logger = logging.getLogger(__name__)
 
 _ENDPOINT_TEMPLATE = "https://{account_id}.r2.cloudflarestorage.com"
 _USAGE_OBJECT_CAP = 10_000
+_FOLDER_OP_CAP = 10_000
+_DELETE_BATCH = 1_000
 _STREAM_CHUNK_BYTES = 64 * 1024
+_CONTENT_CAP_BYTES = 1024 * 1024
+_MAX_KEY_LENGTH = 1024
+
+# Mimes that are safe to read/edit as text; anything else is rejected
+# before a byte is read. Extension allowlist covers objects stored with a
+# generic application/octet-stream type.
+_TEXT_MIMES = {
+    "application/json",
+    "application/xml",
+    "application/javascript",
+    "application/x-javascript",
+    "application/yaml",
+    "application/x-yaml",
+    "application/toml",
+    "application/sql",
+    "application/x-sh",
+    "image/svg+xml",
+}
+_TEXT_EXTS = {
+    "txt", "md", "markdown", "json", "js", "mjs", "cjs", "css", "html",
+    "htm", "xml", "yaml", "yml", "csv", "tsv", "svg", "log", "ini", "cfg",
+    "conf", "toml", "env", "py", "ts", "tsx", "jsx", "sql", "sh",
+    "gitignore", "htaccess",
+}
+_GENERIC_MIMES = {"", "application/octet-stream", "binary/octet-stream"}
+
+# Control chars in keys can be smuggled into response headers (a key's
+# basename becomes the Content-Disposition filename). Rejected at key
+# validation; also stripped defensively at the header-build site.
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+
+# Stored ContentType is client-controlled — only these may render inline
+# in the admin preview. Everything else is coerced to octet-stream +
+# attachment so stored HTML/SVG/JS can never execute same-origin.
+_PREVIEW_INLINE_MIMES = {
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+    "text/plain",
+}
+_PREVIEW_INLINE_PREFIXES = ("audio/", "video/")
 
 T = TypeVar("T")
 
@@ -287,3 +333,188 @@ def stream_body(body: Any) -> Iterator[bytes]:
             yield chunk
     else:
         yield from body
+
+
+# ── explorer object ops (TEC-174) ────────────────────────────────────────
+
+
+def validate_key(key: str) -> str:
+    """Traversal guard for object keys — ``..`` segments, leading ``/``
+    and oversized keys are rejected as 422 before any S3 call."""
+    if (
+        not key
+        or key.startswith("/")
+        or len(key) > _MAX_KEY_LENGTH
+        or ".." in key.split("/")
+        or _CONTROL_CHARS.search(key)
+    ):
+        raise StorageError("invalid object key", 422)
+    return key
+
+
+def validate_prefix(prefix: str) -> str:
+    """Same rules as keys but empty is fine (bucket root)."""
+    if (
+        prefix.startswith("/")
+        or len(prefix) > _MAX_KEY_LENGTH
+        or ".." in prefix.split("/")
+        or _CONTROL_CHARS.search(prefix)
+    ):
+        raise StorageError("invalid prefix", 422)
+    return prefix
+
+
+def sanitize_filename(name: str) -> str:
+    """Reduce an upload filename to a plain basename — browsers and
+    clients can send path separators or ``..`` components."""
+    base = name.replace("\\", "/").rsplit("/", 1)[-1].strip()
+    if not base or base in {".", ".."}:
+        raise StorageError("invalid filename", 422)
+    return base
+
+
+def preview_media_type(mime: str | None) -> str:
+    """Coerce a stored ContentType to one safe for inline preview.
+
+    Anything outside the allowlist — ``text/html``, ``image/svg+xml``,
+    ``*javascript*`` included — becomes ``application/octet-stream``;
+    callers pair that with ``Content-Disposition: attachment``.
+    """
+    base = (mime or "").split(";", 1)[0].strip().lower()
+    if base in _PREVIEW_INLINE_MIMES or base.startswith(
+        _PREVIEW_INLINE_PREFIXES
+    ):
+        return base
+    return "application/octet-stream"
+
+
+def is_text_mime(mime: str | None, key: str) -> bool:
+    """Whether an object is safe to read/write through the text editor."""
+    base = (mime or "").split(";", 1)[0].strip().lower()
+    if base.startswith("text/") or base in _TEXT_MIMES:
+        return True
+    if base in _GENERIC_MIMES:
+        ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
+        return ext in _TEXT_EXTS
+    return False
+
+
+def head_object(client: Any, bucket: str, key: str) -> dict[str, Any]:
+    """Metadata for one key — StorageError 404 when missing."""
+    return _call(client.head_object, "check object", Bucket=bucket, Key=key)
+
+
+def object_exists(client: Any, bucket: str, key: str) -> bool:
+    try:
+        head_object(client, bucket, key)
+        return True
+    except StorageError as exc:
+        if exc.http_status == 404:
+            return False
+        raise
+
+
+def copy_object(client: Any, bucket: str, source: str, dest: str) -> None:
+    _call(
+        client.copy_object,
+        "copy object",
+        Bucket=bucket,
+        Key=dest,
+        CopySource={"Bucket": bucket, "Key": source},
+    )
+
+
+def delete_object(client: Any, bucket: str, key: str) -> None:
+    _call(client.delete_object, "delete object", Bucket=bucket, Key=key)
+
+
+def delete_objects(client: Any, bucket: str, keys: list[str]) -> int:
+    """One DeleteObjects batch (caller keeps ≤1000 keys). Returns the
+    number deleted; raises on any per-object error."""
+    resp = _call(
+        client.delete_objects,
+        "delete objects",
+        Bucket=bucket,
+        Delete={
+            "Objects": [{"Key": k} for k in keys],
+            "Quiet": True,
+        },
+    )
+    errors = resp.get("Errors") or []
+    if errors:
+        raise StorageError("delete objects: partial failure", 502)
+    return len(keys)
+
+
+def list_all_keys(
+    client: Any, bucket: str, prefix: str, cap: int = _FOLDER_OP_CAP
+) -> list[str]:
+    """Every key under a prefix (no delimiter) — used by recursive
+    folder ops. Bounded at ``cap`` so a runaway prefix fails cleanly
+    instead of streaming forever."""
+    keys: list[str] = []
+    token: str | None = None
+    while True:
+        kwargs: dict[str, Any] = {
+            "Bucket": bucket,
+            "Prefix": prefix,
+            "MaxKeys": 1000,
+        }
+        if token:
+            kwargs["ContinuationToken"] = token
+        resp = _call(client.list_objects_v2, "list objects", **kwargs)
+        keys.extend(o["Key"] for o in resp.get("Contents", []))
+        if len(keys) > cap:
+            raise StorageError(
+                "too many objects under prefix", 502
+            )
+        if not resp.get("IsTruncated"):
+            break
+        token = resp.get("NextContinuationToken")
+        if not token:
+            break
+    return keys
+
+
+def read_text_content(
+    client: Any, bucket: str, key: str, cap: int = _CONTENT_CAP_BYTES
+) -> dict[str, Any]:
+    """GetObject + text checks for the editor endpoints. Non-text mime →
+    415 before a byte is read; reads at most ``cap`` bytes and flags
+    truncation."""
+    obj = get_object(client, bucket, key)
+    mime = obj.get("ContentType") or "application/octet-stream"
+    if not is_text_mime(mime, key):
+        raise StorageError("not a text object", 415)
+    size = int(obj.get("ContentLength") or 0)
+    body = obj.get("Body")
+    raw = b""
+    if body is not None:
+        raw = body.read(cap + 1) if hasattr(body, "read") else bytes(body)
+    truncated = len(raw) > cap or size > cap
+    raw = raw[:cap]
+    return {
+        "content": raw.decode("utf-8", errors="replace"),
+        "mime": mime,
+        "size": size or len(raw),
+        "truncated": truncated,
+    }
+
+
+def presigned_get_url(
+    client: Any, bucket: str, key: str, expires_in: int
+) -> str:
+    """Time-bounded public GET URL — the "share" primitive for the
+    explorer. Anyone holding it can read the object until expiry."""
+    try:
+        return str(
+            client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": bucket, "Key": key},
+                ExpiresIn=expires_in,
+            )
+        )
+    except (ClientError, BotoCoreError) as exc:
+        raise StorageError(
+            "share object: storage backend error", 502
+        ) from exc
