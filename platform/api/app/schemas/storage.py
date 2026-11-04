@@ -6,6 +6,8 @@ in responses; the secret never leaves the server.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -71,3 +73,62 @@ class StorageUsageOut(BaseModel):
     bytes: int
     object_count: int
     truncated: bool
+
+
+# ── explorer object ops (TEC-174) ────────────────────────────────────────
+
+
+class StorageUploadOut(BaseModel):
+    key: str
+    size: int
+    mime: str
+
+
+class StorageMkdirIn(BaseModel):
+    bucket: str | None = Field(default=None, max_length=63)
+    prefix: str = Field(min_length=1, max_length=1024)
+
+
+class StorageMkdirOut(BaseModel):
+    prefix: str
+
+
+class StorageRenameIn(BaseModel):
+    bucket: str | None = Field(default=None, max_length=63)
+    key: str = Field(min_length=1, max_length=1024)
+    new_key: str = Field(min_length=1, max_length=1024)
+    recursive: bool = False
+
+
+class StorageRenameOut(BaseModel):
+    key: str
+    moved: int
+
+
+class StorageContentOut(BaseModel):
+    content: str
+    mime: str
+    size: int
+    truncated: bool
+
+
+class StorageContentIn(BaseModel):
+    bucket: str | None = Field(default=None, max_length=63)
+    key: str = Field(min_length=1, max_length=1024)
+    content: str
+
+
+class StorageContentPutOut(BaseModel):
+    key: str
+    size: int
+
+
+class StorageShareIn(BaseModel):
+    bucket: str | None = Field(default=None, max_length=63)
+    key: str = Field(min_length=1, max_length=1024)
+    expires_in: Literal[3600, 86400, 604800]
+
+
+class StorageShareOut(BaseModel):
+    url: str
+    expires_at: str

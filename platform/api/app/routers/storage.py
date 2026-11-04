@@ -9,9 +9,19 @@ paths, so no auth — S3 errors are never echoed back raw.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any, NoReturn
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.responses import FileResponse, StreamingResponse
 from redis import Redis
 from sqlalchemy.orm import Session
@@ -24,11 +34,21 @@ from app.schemas.storage import (
     StorageBucketIn,
     StorageBucketOut,
     StorageConnectionIn,
+    StorageContentIn,
+    StorageContentOut,
+    StorageContentPutOut,
+    StorageMkdirIn,
+    StorageMkdirOut,
     StorageObjectsOut,
     StoragePrefixesIn,
     StoragePrefixesOut,
+    StorageRenameIn,
+    StorageRenameOut,
     StorageSelectIn,
+    StorageShareIn,
+    StorageShareOut,
     StorageStatusOut,
+    StorageUploadOut,
     StorageUsageOut,
 )
 from app.services import media as media_service
@@ -46,6 +66,10 @@ media_router = APIRouter(prefix="/api/media", tags=["media"])
 _IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 _SHORT_CACHE = "public, max-age=30"
 _MAX_OBJECTS_PAGE = 100
+_UPLOAD_MAX_BYTES = 10 * 1024 * 1024
+_UPLOAD_CHUNK = 256 * 1024
+_CONTENT_CAP_BYTES = 1024 * 1024
+_DELETE_BATCH = 1_000
 
 
 def _optional_redis() -> Redis | None:
@@ -222,6 +246,305 @@ def list_objects(
         )
     except StorageError as exc:
         _raise(exc)
+
+
+# ── object write ops (TEC-174) ───────────────────────────────────────────
+#
+# Explorer actions for the admin file browser. Every handler validates the
+# key before touching S3 — ``..`` segments, leading ``/`` and >1024 chars
+# are 422. Folder ops require an explicit ``recursive`` flag; a failure
+# mid-way through a folder rename/delete returns 502 with progress counts
+# so the UI can warn instead of guessing.
+
+
+def _validated_key(key: str) -> str:
+    try:
+        return storage_service.validate_key(key)
+    except StorageError as exc:
+        _raise(exc)
+
+
+def _validated_prefix(prefix: str) -> str:
+    try:
+        return storage_service.validate_prefix(prefix)
+    except StorageError as exc:
+        _raise(exc)
+
+
+def _partial(op: str, counts: dict[str, int]) -> NoReturn:
+    raise HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail={"error": f"partial_{op}", **counts},
+    )
+
+
+@admin_router.post(
+    "/objects/upload",
+    status_code=status.HTTP_201_CREATED,
+    response_model=StorageUploadOut,
+)
+async def upload_object(
+    file: UploadFile = File(...),
+    bucket: str | None = Query(default=None),
+    prefix: str = Query(default=""),
+    overwrite: bool = Query(default=False),
+    db: Session = Depends(get_db),
+) -> StorageUploadOut:
+    cfg, client = _require_client(db)
+    bucket_name = _require_bucket(cfg, bucket)
+    clean_prefix = _validated_prefix(prefix)
+    try:
+        name = storage_service.sanitize_filename(file.filename or "")
+        key = storage_service.validate_key(f"{clean_prefix}{name}")
+    except StorageError as exc:
+        _raise(exc)
+    data = bytearray()
+    while chunk := await file.read(_UPLOAD_CHUNK):
+        data += chunk
+        if len(data) > _UPLOAD_MAX_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail="file_too_large",
+            )
+    mime = file.content_type or "application/octet-stream"
+    try:
+        if not overwrite and storage_service.object_exists(
+            client, bucket_name, key
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="key_exists"
+            )
+        storage_service.put_object(client, bucket_name, key, bytes(data), mime)
+    except StorageError as exc:
+        _raise(exc)
+    return StorageUploadOut(key=key, size=len(data), mime=mime)
+
+
+@admin_router.post(
+    "/objects/mkdir",
+    status_code=status.HTTP_201_CREATED,
+    response_model=StorageMkdirOut,
+)
+def mkdir_object(
+    payload: StorageMkdirIn, db: Session = Depends(get_db)
+) -> StorageMkdirOut:
+    cfg, client = _require_client(db)
+    bucket = _require_bucket(cfg, payload.bucket)
+    prefix = _validated_prefix(payload.prefix.rstrip("/"))
+    if not prefix:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="invalid prefix",
+        )
+    marker = f"{prefix}/"
+    try:
+        storage_service.put_object(
+            client, bucket, marker, b"", "application/x-directory"
+        )
+    except StorageError as exc:
+        _raise(exc)
+    return StorageMkdirOut(prefix=marker)
+
+
+@admin_router.post("/objects/rename", response_model=StorageRenameOut)
+def rename_object(
+    payload: StorageRenameIn, db: Session = Depends(get_db)
+) -> StorageRenameOut:
+    cfg, client = _require_client(db)
+    bucket = _require_bucket(cfg, payload.bucket)
+    src = _validated_key(payload.key)
+    dst = _validated_key(payload.new_key)
+    if src == dst:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="same_key",
+        )
+    if not src.endswith("/"):
+        # a destination ending in "/" means "move into that folder"
+        if dst.endswith("/"):
+            dst = _validated_key(f"{dst}{src.rsplit('/', 1)[-1]}")
+        try:
+            storage_service.copy_object(client, bucket, src, dst)
+        except StorageError as exc:
+            _raise(exc)
+        try:
+            storage_service.delete_object(client, bucket, src)
+        except StorageError:
+            _partial("move", {"moved": 1, "deleted": 0})
+        return StorageRenameOut(key=dst, moved=1)
+
+    # folder move — S3 has no rename, so copy+delete every child
+    if not payload.recursive:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="recursive_required"
+        )
+    dst_prefix = dst if dst.endswith("/") else f"{dst}/"
+    if dst_prefix.startswith(src):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="cannot_move_into_itself",
+        )
+    try:
+        keys = storage_service.list_all_keys(client, bucket, src)
+    except StorageError as exc:
+        _raise(exc)
+    moved = 0
+    for key in keys:
+        try:
+            storage_service.copy_object(
+                client, bucket, key, f"{dst_prefix}{key[len(src):]}"
+            )
+        except StorageError:
+            _partial("move", {"moved": moved, "deleted": 0})
+        moved += 1
+    deleted = 0
+    for i in range(0, len(keys), _DELETE_BATCH):
+        try:
+            deleted += storage_service.delete_objects(
+                client, bucket, keys[i : i + _DELETE_BATCH]
+            )
+        except StorageError:
+            _partial("move", {"moved": moved, "deleted": deleted})
+    return StorageRenameOut(key=dst_prefix, moved=moved)
+
+
+@admin_router.delete("/objects", status_code=status.HTTP_204_NO_CONTENT)
+def delete_object(
+    bucket: str | None = Query(default=None),
+    key: str = Query(...),
+    recursive: bool = Query(default=False),
+    db: Session = Depends(get_db),
+) -> Response:
+    cfg, client = _require_client(db)
+    bucket_name = _require_bucket(cfg, bucket)
+    key = _validated_key(key)
+    if key.endswith("/"):
+        if not recursive:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="recursive_required",
+            )
+        try:
+            keys = storage_service.list_all_keys(client, bucket_name, key)
+        except StorageError as exc:
+            _raise(exc)
+        deleted = 0
+        for i in range(0, len(keys), _DELETE_BATCH):
+            try:
+                deleted += storage_service.delete_objects(
+                    client, bucket_name, keys[i : i + _DELETE_BATCH]
+                )
+            except StorageError:
+                _partial("delete", {"deleted": deleted})
+    else:
+        try:
+            storage_service.delete_object(client, bucket_name, key)
+        except StorageError as exc:
+            _raise(exc)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@admin_router.get("/objects/content", response_model=StorageContentOut)
+def get_object_content(
+    bucket: str | None = Query(default=None),
+    key: str = Query(...),
+    db: Session = Depends(get_db),
+) -> StorageContentOut:
+    cfg, client = _require_client(db)
+    bucket_name = _require_bucket(cfg, bucket)
+    key = _validated_key(key)
+    try:
+        return StorageContentOut(
+            **storage_service.read_text_content(client, bucket_name, key)
+        )
+    except StorageError as exc:
+        _raise(exc)
+
+
+@admin_router.put("/objects/content", response_model=StorageContentPutOut)
+def put_object_content(
+    payload: StorageContentIn, db: Session = Depends(get_db)
+) -> StorageContentPutOut:
+    cfg, client = _require_client(db)
+    bucket = _require_bucket(cfg, payload.bucket)
+    key = _validated_key(payload.key)
+    data = payload.content.encode("utf-8")
+    if len(data) > _CONTENT_CAP_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="content_too_large",
+        )
+    try:
+        head = storage_service.head_object(client, bucket, key)
+        mime = head.get("ContentType") or "text/plain"
+        if not storage_service.is_text_mime(mime, key):
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail="not_a_text_object",
+            )
+    except StorageError as exc:
+        if exc.http_status != 404:
+            _raise(exc)
+        mime = "text/plain"
+    try:
+        storage_service.put_object(client, bucket, key, data, mime)
+    except StorageError as exc:
+        _raise(exc)
+    return StorageContentPutOut(key=key, size=len(data))
+
+
+@admin_router.post("/objects/share", response_model=StorageShareOut)
+def share_object(
+    payload: StorageShareIn, db: Session = Depends(get_db)
+) -> StorageShareOut:
+    cfg, client = _require_client(db)
+    bucket = _require_bucket(cfg, payload.bucket)
+    key = _validated_key(payload.key)
+    try:
+        # never hand out a link to an object that isn't there
+        storage_service.head_object(client, bucket, key)
+        url = storage_service.presigned_get_url(
+            client, bucket, key, payload.expires_in
+        )
+    except StorageError as exc:
+        _raise(exc)
+    expires_at = (
+        datetime.now(UTC) + timedelta(seconds=payload.expires_in)
+    ).isoformat()
+    return StorageShareOut(url=url, expires_at=expires_at)
+
+
+@admin_router.get("/objects/preview")
+def preview_object(
+    bucket: str | None = Query(default=None),
+    key: str = Query(...),
+    db: Session = Depends(get_db),
+) -> Response:
+    cfg, client = _require_client(db)
+    bucket_name = _require_bucket(cfg, bucket)
+    key = _validated_key(key)
+    try:
+        obj = storage_service.get_object(client, bucket_name, key)
+    except StorageError as exc:
+        _raise(exc)
+    body = obj.get("Body")
+    if body is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="storage_unavailable",
+        )
+    mime = obj.get("ContentType") or "application/octet-stream"
+    name = key.rsplit("/", 1)[-1].replace('"', "")
+    headers = {
+        "Content-Disposition": f'inline; filename="{name}"',
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "private, no-store",
+    }
+    if obj.get("ContentLength"):
+        headers["Content-Length"] = str(obj["ContentLength"])
+    return StreamingResponse(
+        storage_service.stream_body(body), media_type=mime, headers=headers
+    )
 
 
 @admin_router.put("/prefixes", response_model=StorageStatusOut)
