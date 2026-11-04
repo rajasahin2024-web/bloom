@@ -84,15 +84,11 @@ jobs:
         # via docker-entrypoint-initdb.d, but service containers start before
         # checkout so we cannot mount the init script here — create the DB
         # explicitly instead. Idempotent: skip if it already exists.
+        # NB: kept on one line because python -c treats leading YAML
+        # indentation as Python indentation (IndentationError otherwise).
         working-directory: platform/api
         run: |
-          python -c "
-          import psycopg
-          c = psycopg.connect('postgresql://bloom:bloom_dev_password@localhost:5433/bloom', autocommit=True)
-          c.execute(\"SELECT 1 FROM pg_database WHERE datname='bloom_test'\")
-          if not c.fetchone():
-              c.execute('CREATE DATABASE bloom_test OWNER bloom')
-          "
+          python -c "import psycopg; c=psycopg.connect('postgresql://bloom:bloom_dev_password@localhost:5433/bloom', autocommit=True); c.execute(\"SELECT 1 FROM pg_database WHERE datname='bloom_test'\"); c.execute('CREATE DATABASE bloom_test OWNER bloom') if not c.fetchone() else None"
 
       - name: Migrate test database
         working-directory: platform/api
