@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 from redis import Redis
 from redis.exceptions import RedisError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -20,10 +21,12 @@ from app.core.security import (
     hash_refresh_token,
     verify_password,
 )
-from app.models.enums import UserRole
+from app.integrations import mail_api
+from app.models.enums import MailboxStatus, UserRole
+from app.models.mailbox import Mailbox
 from app.models.user import RefreshToken, Student, User
 from app.schemas.auth import LoginIn, RegisterIn, TokenPair, UserOut
-from app.services import rate_limit
+from app.services import mail_jobs, rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -86,11 +89,32 @@ def _issue_token_pair(db: Session, user: User) -> TokenPair:
     )
 
 
-def register(db: Session, payload: RegisterIn) -> tuple[User, TokenPair]:
+def register(db: Session, redis: Redis, payload: RegisterIn) -> tuple[User, TokenPair]:
     """Self-registration creates a student account (role=student + profile).
 
     Teacher/admin accounts are provisioned by admins, not via this endpoint.
+
+    Mailbox opt-in (TEC-184): when `mail_localpart` is supplied a `mailboxes`
+    mirror row is written in the same transaction (atomic with the account),
+    then a `create_mailbox` job is enqueued post-commit. Signup never blocks
+    on mail availability (arch §11): an enqueue failure leaves the row
+    `pending` for the sweeper to re-drive.
     """
+    localpart: str | None = None
+    if payload.mail_localpart is not None:
+        localpart = mail_api.normalize_localpart(payload.mail_localpart)
+        if err := mail_api.localpart_error(localpart):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"That mailbox username is not available ({err})",
+            )
+        claimed = db.scalar(select(Mailbox.id).where(Mailbox.localpart == localpart))
+        if claimed is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="That mailbox username is already taken",
+            )
+
     existing = db.scalar(select(User.id).where(User.email == payload.email))
     if existing is not None:
         raise HTTPException(
@@ -107,8 +131,39 @@ def register(db: Session, payload: RegisterIn) -> tuple[User, TokenPair]:
     db.add(user)
     db.flush()  # assign user.id before creating the profile
     db.add(Student(user_id=user.id))
+    mailbox: Mailbox | None = None
+    if localpart is not None:
+        assert payload.mail_password is not None  # schema pairs the fields
+        # Student-set password — only the argon2id hash is stored, passed to
+        # the provider as a pre-hashed secret; plaintext never persists.
+        mailbox = Mailbox(
+            user_id=user.id,
+            localpart=localpart,
+            status=MailboxStatus.pending,
+            quota_mb=get_settings().mail_default_quota_mb,
+            mail_secret=hash_password(payload.mail_password),
+        )
+        db.add(mailbox)
     tokens = _issue_token_pair(db, user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Unique race on email or localpart — translate to the right 409.
+        db.rollback()
+        if localpart and db.scalar(
+            select(Mailbox.id).where(Mailbox.localpart == localpart)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="That mailbox username is already taken",
+            ) from None
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists",
+        ) from None
+    if mailbox is not None and mail_jobs.enqueue_create(redis, mailbox.id):
+        mailbox.status = MailboxStatus.queued
+        db.commit()
     db.refresh(user)
     return user, tokens
 

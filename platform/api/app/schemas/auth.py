@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models.enums import OtpChannel, UserRole
 
@@ -15,6 +15,19 @@ class RegisterIn(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=1, max_length=200)
     phone: str | None = Field(default=None, max_length=32)
+    # Optional academy-mailbox opt-in (TEC-184): both fields or neither.
+    # The mailbox password is student-set — the platform stores only its
+    # argon2id hash, passed to the provider as a pre-hashed secret.
+    mail_localpart: str | None = Field(default=None, max_length=64)
+    mail_password: str | None = Field(default=None, min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def _mail_fields_paired(self) -> RegisterIn:
+        if (self.mail_localpart is None) != (self.mail_password is None):
+            raise ValueError(
+                "mail_localpart and mail_password must be provided together"
+            )
+        return self
 
 
 class LoginIn(BaseModel):

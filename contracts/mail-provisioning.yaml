@@ -1,0 +1,528 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Mail Provisioning Contract — FROZEN (TEC-184)
+#
+# Provider-neutral provisioning surface the Bloom platform depends on for
+# student mailboxes on the academy domain (bloomieltsacademy.com). This is the
+# contract every mail-engine implementation must satisfy; the platform never
+# calls provider APIs directly (arch doc §12 adapter rule — modules call
+# app.integrations.mail_api.*, never raw HTTP).
+#
+# Current provider: Stalwart Mail Server on 72.61.90.150 (TEC-182 decision,
+# TEC-183 build). The `x-stalwart` extension on each operation documents how
+# the reference adapter (platform/api/app/integrations/mail_api.py) realizes
+# the operation over Stalwart's management REST API (/api/principal).
+#
+# Status semantics the platform mirrors in its `mailboxes` table:
+#   pending → queued → provisioning → active | failed | suspended
+#
+# Review gates: Tech Lead (contract + schema) and Security Reviewer
+# (bearer-token / credential-handling path) sign off before merge.
+# ─────────────────────────────────────────────────────────────────────────────
+
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+
+info:
+  title: Bloom Mail Provisioning Contract
+  version: 1.0.0
+  summary: >-
+    Contract-first provisioning surface for student mailboxes on
+    bloomieltsacademy.com.
+  description: |
+    ## Scope
+
+    Seven operations the platform consumes to provision and manage student
+    mailboxes (`<localpart>@bloomieltsacademy.com`):
+
+    `check_username`, `create_mailbox`, `suspend`, `unsuspend`,
+    `reset_password`, `set_quota`, `list_mailboxes`.
+
+    ## Authentication
+
+    - `Authorization: Bearer <token>` on every request. The token is a shared
+      service credential issued by the mail host (Stalwart admin/API
+      principal). It is delivered to the platform via the secrets store as
+      `MAIL_API_TOKEN` and is never logged, committed, or echoed in errors.
+    - Transport: HTTPS only. At deploy time the provisioning endpoint is
+      additionally restricted by source-IP allowlist to the app-server egress
+      IP (firewall rule owned by DevOps, TEC-183). Defense in depth: a leaked
+      token is useless off the allowlisted network.
+
+    ## Errors
+
+    All failures use the `Error` envelope. `error.code` is drawn from a
+    closed taxonomy so callers can branch without parsing messages:
+
+    | code                | HTTP          | retryable | meaning                                   |
+    |---------------------|---------------|-----------|-------------------------------------------|
+    | `invalid_localpart` | 422           | no        | localpart fails the naming rules          |
+    | `conflict`          | 409           | no*       | resource already exists / state conflict  |
+    | `not_found`         | 404           | no        | mailbox does not exist                    |
+    | `unauthorized`      | 401 / 403     | no        | missing/insufficient credential — ALERT   |
+    | `invalid_request`   | 400           | no        | malformed body/param                      |
+    | `rate_limited`      | 429           | yes       | honor `Retry-After`                       |
+    | `unavailable`       | 502/503/504   | yes       | transient failure, safe to retry          |
+
+    \* `create_mailbox` treats 409 specially — see that operation.
+
+    ## Retry semantics
+
+    - Mutations are idempotent on `localpart` (the natural key). At-least-once
+      delivery is assumed: the platform worker retries `unavailable` and
+      `rate_limited` failures with exponential backoff
+      (`min(30s * 2^(attempt-1), 1h)` + ≤25% jitter) up to 8 attempts, then
+      marks the mirror row `failed` for admin review.
+      Implementations MUST make every mutation safe to retry.
+    - `Retry-After` (seconds) SHOULD accompany 429 and 503 responses; the
+      worker honors it as the minimum backoff.
+    - Non-retryable codes fail fast — the worker does not requeue them.
+    - `unauthorized` is paged loudly (config fault, not load): no retry.
+
+    ## Localpart rules
+
+    - 1–64 chars, lowercase `a-z0-9`, start/end alphanumeric,
+      interior may contain `.` `_` `-`; no consecutive dots (`..`).
+    - Reserved (rejected with `invalid_localpart` + `reason: reserved`):
+      `postmaster`, `abuse`, `hostmaster`, `webmaster`, `root`, `admin`,
+      `administrator`, `mailer-daemon`, `noreply`, `no-reply`, `dmarc`,
+      `security`, `support`.
+    - Comparison is case-insensitive; all localparts are normalized to
+      lowercase on input.
+
+servers:
+  - url: https://mail.bloomieltsacademy.com
+    description: Production provisioning endpoint (Stalwart behind nginx, IP-allowlisted)
+
+tags:
+  - name: provisioning
+    description: Mailbox lifecycle operations
+
+paths:
+  /v1/usernames/{localpart}/availability:
+    get:
+      operationId: check_username
+      summary: Check whether a mailbox username is available
+      description: >-
+        Drives the debounced live check on `/login?mode=signup`. Cheap read;
+        callers SHOULD debounce ≥300ms client-side. `available: false` +
+        `reason: taken` for an existing mailbox; `reason: invalid` /
+        `reason: reserved` for names the service would refuse to provision.
+      x-stalwart: >-
+        GET /api/principal/{localpart}@bloomieltsacademy.com —
+        200 → taken, 404 → available.
+      tags: [provisioning]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Localpart'
+      responses:
+        '200':
+          description: Availability result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Availability'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /v1/mailboxes:
+    get:
+      operationId: list_mailboxes
+      summary: List provisioned mailboxes (paginated)
+      x-stalwart: >-
+        GET /api/principal?types=individual&page&limit — returns
+        {data:{items,total}}; adapter filters to the academy domain.
+      tags: [provisioning]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: {type: integer, minimum: 1, default: 1}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+      responses:
+        '200':
+          description: Page of mailboxes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailboxPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /v1/mailboxes/{localpart}:
+    put:
+      operationId: create_mailbox
+      summary: Create a mailbox — IDEMPOTENT on localpart
+      description: |
+        PUT on the resource keyed by `localpart` makes retries converge:
+        re-creating an existing mailbox MUST return `200` with the stored
+        mailbox (not a second mailbox, not an error) **provided the request
+        is otherwise valid**. A `conflict` is returned only when the
+        localpart exists with a materially different shape the caller must
+        resolve (in practice: never for a same-semantics retry — the adapter
+        verifies existence and reports success).
+      x-stalwart: >-
+        POST /api/principal {type:"individual",
+        name:"{localpart}@bloomieltsacademy.com", emails:[same], secrets,
+        quota(bytes), roles:["user"]} → {data:id}. On HTTP 409 the adapter
+        GETs the principal and treats a found record as idempotent success.
+      tags: [provisioning]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Localpart'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMailbox'
+      responses:
+        '200':
+          description: Mailbox already existed (idempotent replay)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mailbox'
+        '201':
+          description: Mailbox created — usable within 30s (arch §11)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mailbox'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidLocalpart'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /v1/mailboxes/{localpart}/suspend:
+    post:
+      operationId: suspend
+      summary: Suspend a mailbox — blocks sign-in and send, preserves data
+      description: >-
+        Suspended mailboxes cannot authenticate (any protocol) and cannot
+        send; inbound mail keeps delivering (no bounce) and all data is
+        preserved. Idempotent: suspending a suspended mailbox returns 200.
+      x-stalwart: >-
+        PATCH /api/principal/{name} [{action:addItem,
+        field:disabledPermissions, value:authenticate},{…, value:emailSend}]
+        — disabled permissions override roles; reversible via removeItem.
+      tags: [provisioning]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Localpart'
+      responses:
+        '200':
+          description: Mailbox suspended (or was already suspended)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mailbox'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /v1/mailboxes/{localpart}/unsuspend:
+    post:
+      operationId: unsuspend
+      summary: Lift a suspension — restores sign-in and send
+      x-stalwart: >-
+        PATCH /api/principal/{name} [{action:removeItem,
+        field:disabledPermissions, value:authenticate},{…, value:emailSend}].
+      tags: [provisioning]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Localpart'
+      responses:
+        '200':
+          description: Mailbox active again
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mailbox'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /v1/mailboxes/{localpart}/reset-password:
+    post:
+      operationId: reset_password
+      summary: Replace the mailbox password
+      x-stalwart: >-
+        PATCH /api/principal/{name} [{action:set, field:secrets,
+        value:<secret>}]. `secret` may be plaintext (server hashes with its
+        configured algorithm) or a pre-hashed value in a format Stalwart
+        stores verbatim (`$argon2id…`, `$2y…`/`$2b…` bcrypt, `$6$` sha512-crypt,
+        `$pbkdf2…`, `$scrypt…`, `{SSHA*}` LDAP tags). The platform sends the
+        argon2id hash it computed at signup, so plaintext never touches the
+        queue or the DB.
+      tags: [provisioning]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Localpart'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [secret]
+              properties:
+                secret:
+                  type: string
+                  minLength: 8
+                  maxLength: 256
+                  description: New password or a supported pre-hashed secret.
+      responses:
+        '200':
+          description: Password replaced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mailbox'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /v1/mailboxes/{localpart}/quota:
+    put:
+      operationId: set_quota
+      summary: Set the mailbox storage quota
+      x-stalwart: >-
+        PATCH /api/principal/{name} [{action:set, field:quota,
+        value:<bytes>}]. 0 = unlimited on Stalwart; contract keeps quota_mb ≥1.
+      tags: [provisioning]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Localpart'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quota_mb]
+              properties:
+                quota_mb:
+                  type: integer
+                  minimum: 1
+                  maximum: 51200
+      responses:
+        '200':
+          description: Quota updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mailbox'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: >-
+        Shared service credential (Stalwart admin/API principal token),
+        injected as MAIL_API_TOKEN from the secrets store. Never logged.
+
+  parameters:
+    Localpart:
+      name: localpart
+      in: path
+      required: true
+      description: >-
+        Mailbox username without the domain. Lowercase `a-z0-9`, 1–64 chars,
+        starts/ends alphanumeric, interior `.` `_` `-`, no `..`.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 64
+        pattern: ^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$
+      example: r.sharma
+
+  schemas:
+    Availability:
+      type: object
+      required: [localpart, available, reason]
+      properties:
+        localpart: {type: string}
+        available:
+          type: boolean
+          description: false ⇒ taken; see reason for the cause.
+        reason:
+          type: string
+          enum: [available, taken, invalid, reserved]
+
+    MailboxStatus:
+      type: string
+      enum: [active, suspended]
+      description: Provider-side state. Platform-side mirror adds pending/queued/provisioning/failed.
+
+    Mailbox:
+      type: object
+      required: [localpart, address, status, quota_mb]
+      properties:
+        localpart: {type: string}
+        address:
+          type: string
+          description: Full mailbox address (localpart@domain).
+        status:
+          $ref: '#/components/schemas/MailboxStatus'
+        quota_mb: {type: integer}
+
+    MailboxPage:
+      type: object
+      required: [items, total, page, page_size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Mailbox'
+        total: {type: integer}
+        page: {type: integer}
+        page_size: {type: integer}
+
+    CreateMailbox:
+      type: object
+      required: [secret]
+      properties:
+        secret:
+          type: string
+          minLength: 8
+          maxLength: 256
+          description: >-
+            Initial password, or a pre-hashed secret in a format the
+            provider stores verbatim (see reset-password for the supported
+            set). The platform sends an argon2id hash — plaintext is never
+            persisted in its queue or database.
+        quota_mb:
+          type: integer
+          minimum: 1
+          maximum: 51200
+          default: 1024
+        display_name:
+          type: string
+          maxLength: 200
+          description: Human name for the account record (optional metadata).
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, retryable]
+          properties:
+            code:
+              type: string
+              enum:
+                - invalid_localpart
+                - conflict
+                - not_found
+                - unauthorized
+                - invalid_request
+                - rate_limited
+                - unavailable
+            message:
+              type: string
+              description: Human-readable detail. Never contains credentials.
+            retryable:
+              type: boolean
+            reason:
+              type: string
+              enum: [invalid, reserved]
+              description: Present only with code=invalid_localpart.
+
+  responses:
+    Unauthorized:
+      description: Missing or insufficient credential — alert, do not retry
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            error: {code: unauthorized, message: Authentication required, retryable: false}
+    InvalidLocalpart:
+      description: Localpart fails naming rules — do not retry
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            error: {code: invalid_localpart, message: Reserved mailbox name, retryable: false, reason: reserved}
+    Conflict:
+      description: Resource conflict — do not retry
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            error: {code: conflict, message: Mailbox already exists, retryable: false}
+    NotFound:
+      description: Mailbox does not exist — do not retry
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            error: {code: not_found, message: Mailbox not found, retryable: false}
+    RateLimited:
+      description: Too many requests — retry after `Retry-After`
+      headers:
+        Retry-After:
+          schema: {type: integer}
+          description: Seconds to wait before retrying.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            error: {code: rate_limited, message: Slow down, retryable: true}
+    Unavailable:
+      description: Transient provider failure — retry with backoff
+      headers:
+        Retry-After:
+          schema: {type: integer}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example:
+            error: {code: unavailable, message: Upstream timeout, retryable: true}

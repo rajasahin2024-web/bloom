@@ -82,6 +82,34 @@ class Settings(BaseSettings):
     )
     waise_team_number: str = Field(default="", alias="WAISE_TEAM_NUMBER")
 
+    # Mail provisioning (TEC-184) — contract client for the mail engine
+    # (Stalwart on 72.61.90.150, TEC-183). MAIL_API_TOKEN comes from the
+    # secrets store; leave MAIL_API_URL unset to run with the null adapter —
+    # signups still succeed and mailboxes stay queued until configured.
+    mail_api_url: str | None = Field(default=None, alias="MAIL_API_URL")
+    mail_api_token: str | None = Field(default=None, alias="MAIL_API_TOKEN")
+    mail_api_timeout_seconds: float = Field(
+        default=5.0, alias="MAIL_API_TIMEOUT_SECONDS"
+    )
+    mail_domain: str = Field(
+        default="bloomieltsacademy.com", alias="MAIL_DOMAIN"
+    )
+    mail_default_quota_mb: int = Field(default=1024, alias="MAIL_DEFAULT_QUOTA_MB")
+    # Typeahead throttle on GET /api/mailboxes/availability — per caller IP.
+    mail_username_check_limit: int = Field(
+        default=30, alias="MAIL_USERNAME_CHECK_LIMIT"
+    )
+    mail_username_check_window_seconds: int = Field(
+        default=300, alias="MAIL_USERNAME_CHECK_WINDOW_SECONDS"
+    )
+    # Worker backoff for queued create_mailbox retries (contract §Retry).
+    mail_provision_max_attempts: int = Field(
+        default=8, alias="MAIL_PROVISION_MAX_ATTEMPTS"
+    )
+    mail_provision_base_delay_seconds: float = Field(
+        default=30.0, alias="MAIL_PROVISION_BASE_DELAY_SECONDS"
+    )
+
     # First-run setup — written to `.env` by the setup wizard's apply step.
     # Once true, all /api/setup/* endpoints refuse with 410.
     setup_complete: bool = Field(default=False, alias="SETUP_COMPLETE")

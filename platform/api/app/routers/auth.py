@@ -91,8 +91,9 @@ def register(
     payload: RegisterIn,
     response: Response,
     db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ) -> RegisterOut:
-    user, tokens = auth_service.register(db, payload)
+    user, tokens = auth_service.register(db, redis, payload)
     assert tokens.refresh_token is not None
     _set_refresh_cookie(response, tokens.refresh_token)
     return RegisterOut(user=UserOut.model_validate(user), tokens=tokens)

@@ -119,6 +119,32 @@ services:
     networks:
       - bloom
 
+  worker:
+    # Mail provisioning worker — drains the Redis create_mailbox queue with
+    # retry/backoff so signup never blocks on the mail engine (TEC-184).
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    command: ["python", "-m", "app.worker"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-bloom}:${POSTGRES_PASSWORD:-bloom_dev_password}@${PGBOUNCER_HOST:-pgbouncer}:${PGBOUNCER_PORT:-6432}/${POSTGRES_DB:-bloom}
+      DATABASE_URL_DIRECT: postgresql+psycopg://${POSTGRES_USER:-bloom}:${POSTGRES_PASSWORD:-bloom_dev_password}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-bloom}
+      REDIS_URL: redis://redis:6379/0
+      API_ENV: ${API_ENV:-development}
+      BLOOM_ENV_FILE: /app/config/.env
+    volumes:
+      - api_config:/app/config
+    networks:
+      - bloom
+
   web:
     build:
       context: ./web

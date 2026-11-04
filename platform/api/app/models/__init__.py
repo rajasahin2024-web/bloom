@@ -9,9 +9,11 @@ from app.models.enums import (
     CmsStatus,
     EnquiryStatus,
     ExamTrack,
+    MailboxStatus,
     OtpChannel,
     UserRole,
 )
+from app.models.mailbox import Mailbox
 from app.models.setting import Setting
 from app.models.user import RefreshToken, Student, User
 
@@ -21,6 +23,7 @@ __all__ = [
     "Student",
     "RefreshToken",
     "Enquiry",
+    "Mailbox",
     "Application",
     "Setting",
     "CmsPage",
@@ -31,6 +34,7 @@ __all__ = [
     "UserRole",
     "ExamTrack",
     "EnquiryStatus",
+    "MailboxStatus",
     "ApplicationStage",
     "CmsStatus",
     "OtpChannel",
