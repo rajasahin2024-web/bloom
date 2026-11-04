@@ -76,6 +76,24 @@ jobs:
         working-directory: platform/api
         run: mypy app
 
+      - name: Create test database
+        # The GHA postgres service only ships the default ``bloom`` DB (from
+        # POSTGRES_DB). Tests must target the dedicated ``bloom_test`` DB —
+        # NEVER ``bloom`` (TEC-179: running the suite against ``bloom`` wiped
+        # admin-saved R2 creds). docker/postgres/init.sql handles this locally
+        # via docker-entrypoint-initdb.d, but service containers start before
+        # checkout so we cannot mount the init script here — create the DB
+        # explicitly instead. Idempotent: skip if it already exists.
+        working-directory: platform/api
+        run: |
+          python -c "
+          import psycopg
+          c = psycopg.connect('postgresql://bloom:bloom_dev_password@localhost:5433/bloom', autocommit=True)
+          c.execute(\"SELECT 1 FROM pg_database WHERE datname='bloom_test'\")
+          if not c.fetchone():
+              c.execute('CREATE DATABASE bloom_test OWNER bloom')
+          "
+
       - name: Migrate test database
         working-directory: platform/api
         env:
