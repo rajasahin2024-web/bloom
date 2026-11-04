@@ -19,6 +19,8 @@ Project: **Bloom Academy IELTS Learning Platform** (Techfly client engagement, p
 5. Boss communicates in Banglish and often wants a direct answer only — in ask-mode issues, answer in the thread; don't implement.
 6. **Ported CSS must be committed pre-scoped.** Any CSS block ported from `prototype/` must be scoped under its own shell root (e.g., `.site-root .app`), never bare `.site-root` — bare ported selectors leak onto site elements sharing the class name (regression class: TEC-139, TEC-142).
    - Review-time gate before merging stylesheet changes: `npx vitest run src/styles/css-scope.test.ts` in `platform/web` must pass — it fails on any new bare `.site-root <app-shell-class>` selector that could match markup outside its intended shell. Also check for class-name collisions with existing site components.
+7. **Never run tests or scripts that connect to the live `bloom` database.** Integration tests must target `bloom_test` only — the API suite calls `POST /api/admin/settings/reset` in teardown, and running it against `bloom` wiped all admin-saved settings including the R2 creds (regression class: TEC-163 → TEC-179). Before running any suite or script that touches Postgres, confirm the DB DSN points at `bloom_test` (or another throwaway DB) — if unsure, do not run it.
+   - Second-order: this workspace is production-shaped (live DB, real R2 creds). Verification must be **read-only** unless the task's own diff is being applied — no writes, resets, migrations, or admin mutations "just to verify".
 
 ## Deploy / preview ports (host: 82.112.226.111)
 
