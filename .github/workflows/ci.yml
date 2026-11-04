@@ -35,6 +35,12 @@ jobs:
           DB_USER: bloom
           DB_PASSWORD: bloom_dev_password
           DB_NAME: bloom
+          # Expose both the live ``bloom`` DB and the dedicated ``bloom_test``
+          # DB through PgBouncer, mirroring platform/docker-compose.yml.
+          # conftest.py points the app at pgbouncer:6432/bloom_test; without
+          # this, pgbouncer only knows ``bloom`` (DB_NAME) and rejects
+          # connections to ``bloom_test`` with "no such database" (TEC-181).
+          DATABASE_URLS: postgresql://bloom:bloom_dev_password@postgres:5432/bloom,postgresql://bloom:bloom_dev_password@postgres:5432/bloom_test
           POOL_MODE: transaction
           AUTH_TYPE: scram-sha-256
           LISTEN_PORT: 6432
