@@ -572,7 +572,7 @@ export function StorageSettings({ session }: { session: AdminSession }) {
     key: keyof typeof connVals,
     label: string,
     desc: string,
-    opts?: { secret?: boolean },
+    opts: { secret?: boolean; name: string; autoComplete: string },
   ) {
     const err = connErrors[key];
     const isSecret = opts?.secret;
@@ -593,11 +593,12 @@ export function StorageSettings({ session }: { session: AdminSession }) {
         <div className={isSecret ? "adm-store-pw" : undefined}>
           <input
             id={`store-${key}`}
+            name={opts.name}
             type={isSecret && !showSecret ? "password" : "text"}
             className={`adm-input${connVals[key] ? " dirty" : ""}`}
             value={connVals[key]}
             placeholder={masked ? `${masked} (saved)` : undefined}
-            autoComplete="off"
+            autoComplete={opts.autoComplete}
             spellCheck={false}
             aria-invalid={Boolean(err) || undefined}
             onChange={(e) => editConn(key, e.target.value)}
@@ -686,17 +687,23 @@ export function StorageSettings({ session }: { session: AdminSession }) {
               "account_id",
               "Account ID",
               "From the R2 overview page — the ID in the endpoint https://<account-id>.r2.cloudflarestorage.com.",
+              { name: "r2-acct", autoComplete: "off" },
             )}
             {field(
               "access_key_id",
               "Access key ID",
               "Token’s access key — shown once at creation in the Cloudflare dashboard.",
+              { name: "r2-access-key", autoComplete: "off" },
             )}
             {field(
               "secret_access_key",
               "Secret access key",
               "Stored on the server only — never shown again after saving.",
-              { secret: true },
+              {
+                secret: true,
+                name: "r2-secret",
+                autoComplete: "new-password",
+              },
             )}
           </div>
           <p className="adm-store-sub">

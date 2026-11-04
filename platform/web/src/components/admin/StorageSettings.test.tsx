@@ -103,6 +103,27 @@ describe("StorageSettings", () => {
     void getByText;
   });
 
+  it("opts the credential fields out of password-manager autofill", async () => {
+    vi.mocked(fetchStorageStatus).mockResolvedValue(notConfigured);
+    const { getByLabelText, findByText } = render(
+      <StorageSettings session={session} />,
+    );
+
+    await findByText("Not configured");
+    const acct = getByLabelText("Account ID") as HTMLInputElement;
+    const access = getByLabelText("Access key ID") as HTMLInputElement;
+    const secret = getByLabelText("Secret access key") as HTMLInputElement;
+
+    expect(acct.getAttribute("autocomplete")).toBe("off");
+    expect(access.getAttribute("autocomplete")).toBe("off");
+    // new-password is the reliable Chrome opt-out for saved-login autofill
+    expect(secret.getAttribute("autocomplete")).toBe("new-password");
+    for (const el of [acct, access, secret]) {
+      expect(el.name).toBeTruthy();
+      expect(el.name).not.toMatch(/user|email|login|pass/i);
+    }
+  });
+
   it("shows the unreachable warning and hides dependent cards", async () => {
     vi.mocked(fetchStorageStatus).mockResolvedValue(unreachable);
     const { findByText, queryByText } = render(
