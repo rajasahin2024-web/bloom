@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import MailboxStatus
 
@@ -36,3 +36,15 @@ class MailboxOut(BaseModel):
     attempts: int
     created_at: datetime
     updated_at: datetime
+
+
+class MailboxRetryIn(BaseModel):
+    """Optional body for POST /api/admin/mailboxes/{id}/retry (TEC-187).
+
+    `mail_secret` is purged when a row fails, so retrying a failed row needs
+    fresh credentials: the admin supplies a new mailbox password and only its
+    argon2id hash is stored — cleared again on the next terminal outcome.
+    Supplying it on a row that still holds a secret replaces the stored hash.
+    """
+
+    mail_password: str | None = Field(default=None, min_length=8, max_length=128)

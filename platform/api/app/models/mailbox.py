@@ -8,8 +8,9 @@ The Redis worker drives `pending → queued → provisioning → active | failed
 The row is the source of truth for retries: the queue payload carries only the
 mailbox id, so a worker crash or a failed enqueue self-heals via the sweeper —
 no secrets in Redis. `mail_secret` holds the argon2id hash of the student's
-chosen mailbox password between enqueue and successful provisioning, then is
-cleared (same risk class as `users.password_hash`, shorter-lived).
+chosen mailbox password between enqueue and the first terminal outcome
+(`active` or `failed`), then is cleared (same risk class as
+`users.password_hash`, shorter-lived — TEC-187).
 """
 
 from __future__ import annotations
@@ -53,9 +54,10 @@ class Mailbox(Base):
         index=True,
     )
     quota_mb: Mapped[int] = mapped_column(Integer)
-    # Transient: argon2id hash of the mailbox password, cleared once the
-    # provider confirms creation. NULL for suspended/failed replays after
-    # success — the hash is not needed post-provisioning.
+    # Transient: argon2id hash of the mailbox password — plaintext-equivalent
+    # to the provider, so held only while an attempt can still run. Cleared on
+    # success and on terminal failure (TEC-187); admin retry of a failed row
+    # supplies a fresh password.
     mail_secret: Mapped[str | None] = mapped_column(String(255))
     provisioned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_error: Mapped[str | None] = mapped_column(String(500))

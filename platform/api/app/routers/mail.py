@@ -25,13 +25,14 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.redis import get_redis
+from app.core.security import hash_password
 from app.deps import require_admin
 from app.integrations.mail_api import MailProvisioner, get_mail_provisioner
 from app.models.enums import MailboxStatus
 from app.models.mailbox import Mailbox
 from app.models.user import User
 from app.schemas.common import Page, Pagination
-from app.schemas.mail import AvailabilityOut, MailboxOut
+from app.schemas.mail import AvailabilityOut, MailboxOut, MailboxRetryIn
 from app.services import mail as mail_service
 from app.services import mail_jobs, rate_limit
 
@@ -132,6 +133,7 @@ def get_mailbox(
 @admin_router.post("/{mailbox_id}/retry", response_model=MailboxOut)
 def retry_mailbox(
     mailbox_id: uuid.UUID,
+    payload: MailboxRetryIn | None = None,
     db: Session = Depends(get_db),
     redis: Redis = Depends(get_redis),
     _: User = Depends(require_admin),
@@ -140,6 +142,10 @@ def retry_mailbox(
 
     Resets the attempt counter — an admin retry is a fresh decision, not a
     continuation of the exhausted backoff sequence.
+
+    `mail_secret` is purged when a row goes `failed` (TEC-187), so retrying a
+    failed row requires fresh credentials: pass `mail_password` in the body
+    and it is re-hashed (argon2id) and stored until the next terminal outcome.
     """
     row = db.get(Mailbox, mailbox_id)
     if row is None:
@@ -149,10 +155,12 @@ def retry_mailbox(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Mailbox is {row.status} — retry applies to failed or pending rows",
         )
+    if payload is not None and payload.mail_password is not None:
+        row.mail_secret = hash_password(payload.mail_password)
     if row.mail_secret is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No provisioning secret on record — reset the password first",
+            detail="No provisioning secret on record — supply mail_password to set a fresh one",
         )
     row.status = MailboxStatus.pending
     row.attempts = 0

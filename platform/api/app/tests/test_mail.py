@@ -36,7 +36,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.redis import get_redis
-from app.core.security import create_access_token
+from app.core.security import create_access_token, verify_password
 from app.integrations import mail_api
 from app.integrations.mail_api import (
     MailUnavailableError,
@@ -648,6 +648,7 @@ def test_worker_nonretryable_and_max_attempts_fail(
     mail_jobs.process_job(db, redis_db1, prov, {"mailbox_id": str(box.id)})
     box = _fresh(db, box)
     assert box.status == MailboxStatus.failed
+    assert box.mail_secret is None  # purged on terminal failure (TEC-187)
     assert redis_db1.zrange(mail_jobs.QUEUE_RETRY, 0, -1) == []
 
     box2 = _make_mailbox(db, status=MailboxStatus.queued)
@@ -657,6 +658,7 @@ def test_worker_nonretryable_and_max_attempts_fail(
     mail_jobs.process_job(db, redis_db1, prov, {"mailbox_id": str(box2.id)})
     box2 = _fresh(db, box2)
     assert box2.status == MailboxStatus.failed  # attempts exhausted
+    assert box2.mail_secret is None
     for b in (box, box2):
         _delete_user(db.scalar(select(User.email).where(User.id == b.user_id)))
 
@@ -738,6 +740,53 @@ def test_admin_mailbox_list_detail_and_retry(
             db.commit()
             r = c.post(f"/api/admin/mailboxes/{box.id}/retry", headers=headers)
             assert r.status_code == 409
+    finally:
+        _delete_user(db.scalar(select(User.email).where(User.id == box.user_id)))
+        _delete_user(db.scalar(select(User.email).where(User.id == uuid.UUID(admin_id))))
+
+
+@requires_infra
+def test_admin_retry_failed_requires_fresh_password(
+    db: Session, redis_db1: Redis
+) -> None:
+    """TEC-187: failed rows carry no secret — retry must supply mail_password."""
+    box = _make_mailbox(db, status=MailboxStatus.failed)
+    box.mail_secret = None  # post-TEC-187 failed shape — secret purged
+    db.commit()
+    headers = _admin_headers(db)
+    admin_id = headers.pop("x-admin-id")
+    try:
+        with _client_with(FakeProvisioner(), redis_db1) as c:
+            # No stored secret and no password in the body → 409.
+            r = c.post(f"/api/admin/mailboxes/{box.id}/retry", headers=headers)
+            assert r.status_code == 409
+
+            # Fresh password re-enters the flow: re-hashed and queued.
+            r = c.post(
+                f"/api/admin/mailboxes/{box.id}/retry",
+                headers=headers,
+                json={"mail_password": "fresh-pass-123"},
+            )
+            assert r.status_code == 200, r.text
+            box = _fresh(db, box)
+            assert box.status == MailboxStatus.queued
+            assert box.attempts == 0
+            assert box.mail_secret is not None
+            assert box.mail_secret.startswith("$argon2id$")
+            assert "fresh-pass-123" not in box.mail_secret
+            assert verify_password("fresh-pass-123", box.mail_secret)
+            assert redis_db1.llen(mail_jobs.QUEUE_READY) == 1
+
+            # Password validation happens at the schema boundary.
+            box.status = MailboxStatus.failed
+            box.mail_secret = None
+            db.commit()
+            r = c.post(
+                f"/api/admin/mailboxes/{box.id}/retry",
+                headers=headers,
+                json={"mail_password": "short"},
+            )
+            assert r.status_code == 422
     finally:
         _delete_user(db.scalar(select(User.email).where(User.id == box.user_id)))
         _delete_user(db.scalar(select(User.email).where(User.id == uuid.UUID(admin_id))))
