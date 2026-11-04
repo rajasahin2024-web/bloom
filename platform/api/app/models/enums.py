@@ -61,3 +61,21 @@ class CmsStatus(StrEnum):
 class OtpChannel(StrEnum):
     phone = "phone"
     email = "email"
+
+class MailboxStatus(StrEnum):
+    """Mailbox provisioning lifecycle (TEC-184).
+
+    pending      — mirror row written, enqueue not yet confirmed
+    queued       — job is in the Redis queue (ready or scheduled retry)
+    provisioning — worker attempt in flight
+    active       — provider confirmed creation
+    suspended    — provider-side suspend applied via mail_admin
+    failed       — attempts exhausted or non-retryable error; admin retry
+    """
+
+    pending = "pending"
+    queued = "queued"
+    provisioning = "provisioning"
+    active = "active"
+    suspended = "suspended"
+    failed = "failed"

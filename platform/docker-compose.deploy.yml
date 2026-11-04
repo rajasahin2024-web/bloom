@@ -16,6 +16,13 @@ services:
     environment:
       API_ENV: ${API_ENV:-production}
 
+  worker:
+    build: !reset null
+    # Same image as api, different entrypoint — no extra build artifact.
+    image: ghcr.io/rajasahin2024-web/bloom-api:main
+    environment:
+      API_ENV: ${API_ENV:-production}
+
   web:
     build: !reset null
     image: ghcr.io/rajasahin2024-web/bloom-web:main
