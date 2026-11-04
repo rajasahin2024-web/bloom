@@ -888,7 +888,7 @@ def test_preview_media_type_allowlist() -> None:
         ("IMAGE/PNG", "image/png"),
     ):
         assert storage_service.preview_media_type(stored) == want
-    for stored in (
+    for bad_stored in (
         "text/html",
         "application/xhtml+xml",
         "image/svg+xml",
@@ -898,8 +898,8 @@ def test_preview_media_type_allowlist() -> None:
         None,
         "",
     ):
-        got = storage_service.preview_media_type(stored)
-        assert got == "application/octet-stream", stored
+        got = storage_service.preview_media_type(bad_stored)
+        assert got == "application/octet-stream", bad_stored
 
 
 def test_sanitize_filename_strips_paths() -> None:
