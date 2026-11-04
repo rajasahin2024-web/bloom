@@ -9,6 +9,8 @@ paths, so no auth — S3 errors are never echoed back raw.
 
 from __future__ import annotations
 
+import logging
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any, NoReturn
 
@@ -63,6 +65,8 @@ admin_router = APIRouter(
 )
 media_router = APIRouter(prefix="/api/media", tags=["media"])
 
+logger = logging.getLogger(__name__)
+
 _IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 _SHORT_CACHE = "public, max-age=30"
 _MAX_OBJECTS_PAGE = 100
@@ -70,6 +74,7 @@ _UPLOAD_MAX_BYTES = 10 * 1024 * 1024
 _UPLOAD_CHUNK = 256 * 1024
 _CONTENT_CAP_BYTES = 1024 * 1024
 _DELETE_BATCH = 1_000
+_FILENAME_BAD_CHARS = re.compile(r'[\x00-\x1f\x7f"]')
 
 
 def _optional_redis() -> Redis | None:
@@ -293,6 +298,8 @@ async def upload_object(
     cfg, client = _require_client(db)
     bucket_name = _require_bucket(cfg, bucket)
     clean_prefix = _validated_prefix(prefix)
+    if clean_prefix and not clean_prefix.endswith("/"):
+        clean_prefix = f"{clean_prefix}/"
     try:
         name = storage_service.sanitize_filename(file.filename or "")
         key = storage_service.validate_key(f"{clean_prefix}{name}")
@@ -348,7 +355,9 @@ def mkdir_object(
 
 @admin_router.post("/objects/rename", response_model=StorageRenameOut)
 def rename_object(
-    payload: StorageRenameIn, db: Session = Depends(get_db)
+    payload: StorageRenameIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
 ) -> StorageRenameOut:
     cfg, client = _require_client(db)
     bucket = _require_bucket(cfg, payload.bucket)
@@ -371,6 +380,10 @@ def rename_object(
             storage_service.delete_object(client, bucket, src)
         except StorageError:
             _partial("move", {"moved": 1, "deleted": 0})
+        logger.info(
+            "storage rename admin=%s bucket=%s src=%s dst=%s",
+            user.id, bucket, src, dst,
+        )
         return StorageRenameOut(key=dst, moved=1)
 
     # folder move — S3 has no rename, so copy+delete every child
@@ -405,6 +418,10 @@ def rename_object(
             )
         except StorageError:
             _partial("move", {"moved": moved, "deleted": deleted})
+    logger.info(
+        "storage rename admin=%s bucket=%s src=%s dst=%s moved=%d",
+        user.id, bucket, src, dst_prefix, moved,
+    )
     return StorageRenameOut(key=dst_prefix, moved=moved)
 
 
@@ -414,6 +431,7 @@ def delete_object(
     key: str = Query(...),
     recursive: bool = Query(default=False),
     db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
 ) -> Response:
     cfg, client = _require_client(db)
     bucket_name = _require_bucket(cfg, bucket)
@@ -436,11 +454,19 @@ def delete_object(
                 )
             except StorageError:
                 _partial("delete", {"deleted": deleted})
+        logger.info(
+            "storage delete admin=%s bucket=%s prefix=%s deleted=%d",
+            user.id, bucket_name, key, deleted,
+        )
     else:
         try:
             storage_service.delete_object(client, bucket_name, key)
         except StorageError as exc:
             _raise(exc)
+        logger.info(
+            "storage delete admin=%s bucket=%s key=%s",
+            user.id, bucket_name, key,
+        )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -495,7 +521,9 @@ def put_object_content(
 
 @admin_router.post("/objects/share", response_model=StorageShareOut)
 def share_object(
-    payload: StorageShareIn, db: Session = Depends(get_db)
+    payload: StorageShareIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
 ) -> StorageShareOut:
     cfg, client = _require_client(db)
     bucket = _require_bucket(cfg, payload.bucket)
@@ -511,6 +539,11 @@ def share_object(
     expires_at = (
         datetime.now(UTC) + timedelta(seconds=payload.expires_in)
     ).isoformat()
+    # audit the mint — admin, key, ttl only; never log the presigned URL
+    logger.info(
+        "storage share admin=%s bucket=%s key=%s expires_in=%d",
+        user.id, bucket, key, payload.expires_in,
+    )
     return StorageShareOut(url=url, expires_at=expires_at)
 
 
@@ -533,10 +566,15 @@ def preview_object(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="storage_unavailable",
         )
-    mime = obj.get("ContentType") or "application/octet-stream"
-    name = key.rsplit("/", 1)[-1].replace('"', "")
+    # Stored mime is attacker-controlled — render only the allowlist
+    # inline; anything else becomes a forced download (TEC-177 F1).
+    mime = storage_service.preview_media_type(obj.get("ContentType"))
+    disposition = (
+        "attachment" if mime == "application/octet-stream" else "inline"
+    )
+    name = _FILENAME_BAD_CHARS.sub("", key.rsplit("/", 1)[-1])
     headers = {
-        "Content-Disposition": f'inline; filename="{name}"',
+        "Content-Disposition": f'{disposition}; filename="{name}"',
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, no-store",
     }

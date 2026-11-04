@@ -13,6 +13,7 @@ credentials never reach an API response or a log line.
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any, TypeVar
@@ -56,6 +57,24 @@ _TEXT_EXTS = {
     "gitignore", "htaccess",
 }
 _GENERIC_MIMES = {"", "application/octet-stream", "binary/octet-stream"}
+
+# Control chars in keys can be smuggled into response headers (a key's
+# basename becomes the Content-Disposition filename). Rejected at key
+# validation; also stripped defensively at the header-build site.
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+
+# Stored ContentType is client-controlled — only these may render inline
+# in the admin preview. Everything else is coerced to octet-stream +
+# attachment so stored HTML/SVG/JS can never execute same-origin.
+_PREVIEW_INLINE_MIMES = {
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+    "text/plain",
+}
+_PREVIEW_INLINE_PREFIXES = ("audio/", "video/")
 
 T = TypeVar("T")
 
@@ -327,6 +346,7 @@ def validate_key(key: str) -> str:
         or key.startswith("/")
         or len(key) > _MAX_KEY_LENGTH
         or ".." in key.split("/")
+        or _CONTROL_CHARS.search(key)
     ):
         raise StorageError("invalid object key", 422)
     return key
@@ -338,6 +358,7 @@ def validate_prefix(prefix: str) -> str:
         prefix.startswith("/")
         or len(prefix) > _MAX_KEY_LENGTH
         or ".." in prefix.split("/")
+        or _CONTROL_CHARS.search(prefix)
     ):
         raise StorageError("invalid prefix", 422)
     return prefix
@@ -350,6 +371,21 @@ def sanitize_filename(name: str) -> str:
     if not base or base in {".", ".."}:
         raise StorageError("invalid filename", 422)
     return base
+
+
+def preview_media_type(mime: str | None) -> str:
+    """Coerce a stored ContentType to one safe for inline preview.
+
+    Anything outside the allowlist — ``text/html``, ``image/svg+xml``,
+    ``*javascript*`` included — becomes ``application/octet-stream``;
+    callers pair that with ``Content-Disposition: attachment``.
+    """
+    base = (mime or "").split(";", 1)[0].strip().lower()
+    if base in _PREVIEW_INLINE_MIMES or base.startswith(
+        _PREVIEW_INLINE_PREFIXES
+    ):
+        return base
+    return "application/octet-stream"
 
 
 def is_text_mime(mime: str | None, key: str) -> bool:

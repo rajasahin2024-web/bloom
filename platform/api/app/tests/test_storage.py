@@ -857,12 +857,49 @@ def test_validate_key_rejects_traversal() -> None:
     assert storage_service.validate_key("folder/") == "folder/"
 
 
+def test_validate_key_rejects_control_chars() -> None:
+    """F2: keys with CR/LF/NUL could smuggle raw bytes into headers."""
+    for bad in ("a\rb", "a\nb", "a\x00b", "a\x7fb", "a\tb"):
+        with pytest.raises(StorageError) as err:
+            storage_service.validate_key(bad)
+        assert err.value.http_status == 422, repr(bad)
+
+
 def test_validate_prefix_allows_empty_and_slash() -> None:
     assert storage_service.validate_prefix("") == ""
     assert storage_service.validate_prefix("a/b/") == "a/b/"
-    for bad in ("/a/", "a/../b", "x" * 1025):
+    for bad in ("/a/", "a/../b", "x" * 1025, "a\nb/"):
         with pytest.raises(StorageError):
             storage_service.validate_prefix(bad)
+
+
+def test_preview_media_type_allowlist() -> None:
+    """F1: only known-safe renderable mimes may go out inline."""
+    for stored, want in (
+        ("image/png", "image/png"),
+        ("image/jpeg", "image/jpeg"),
+        ("image/webp", "image/webp"),
+        ("image/gif", "image/gif"),
+        ("audio/mpeg", "audio/mpeg"),
+        ("video/mp4", "video/mp4"),
+        ("application/pdf", "application/pdf"),
+        ("text/plain", "text/plain"),
+        ("text/plain; charset=utf-8", "text/plain"),
+        ("IMAGE/PNG", "image/png"),
+    ):
+        assert storage_service.preview_media_type(stored) == want
+    for stored in (
+        "text/html",
+        "application/xhtml+xml",
+        "image/svg+xml",
+        "application/javascript",
+        "text/javascript",
+        "application/octet-stream",
+        None,
+        "",
+    ):
+        got = storage_service.preview_media_type(stored)
+        assert got == "application/octet-stream", stored
 
 
 def test_sanitize_filename_strips_paths() -> None:
@@ -1296,10 +1333,18 @@ def test_put_content_enforces_cap(
 ) -> None:
     _connect_r2(admin_token)
     try:
+        # schema caps at 1Mi chars → 422 before the handler runs
         resp = client.put(
             "/api/admin/storage/objects/content",
             headers=_auth(admin_token),
             json={"key": "a.txt", "content": "x" * (1024 * 1024 + 1)},
+        )
+        assert resp.status_code == 422
+        # multibyte chars pass the char cap but exceed 1Mi utf-8 → 413
+        resp = client.put(
+            "/api/admin/storage/objects/content",
+            headers=_auth(admin_token),
+            json={"key": "a.txt", "content": "é" * (1024 * 1024)},
         )
         assert resp.status_code == 413
         assert "a.txt" not in fake_s3.objects
@@ -1387,6 +1432,42 @@ def test_preview_streams_inline_with_passthrough_mime(
             headers=_auth(admin_token),
         )
         assert resp.status_code == 404
+    finally:
+        _clear_connection(admin_token)
+
+
+@requires_infra
+def test_preview_never_serves_stored_executable_mime_inline(
+    admin_token: str, fake_s3: _FakeS3
+) -> None:
+    """F1: stored mime is attacker-controlled — text/html/SVG/JS must
+    download as octet-stream + attachment, never render same-origin."""
+    _connect_r2(admin_token)
+    fake_s3.objects["evil/page.html"] = (b"<script>x</script>", "text/html")
+    fake_s3.objects["vec.svg"] = (b"<svg/>", "image/svg+xml")
+    fake_s3.objects["app.js"] = (b"alert(1)", "application/javascript")
+    try:
+        for key in ("evil/page.html", "vec.svg", "app.js"):
+            resp = client.get(
+                f"/api/admin/storage/objects/preview?key={key}",
+                headers=_auth(admin_token),
+            )
+            assert resp.status_code == 200, (key, resp.status_code)
+            assert resp.headers["content-type"].startswith(
+                "application/octet-stream"
+            )
+            assert "attachment" in resp.headers["content-disposition"]
+            assert resp.headers["x-content-type-options"] == "nosniff"
+            assert "no-store" in resp.headers["cache-control"]
+
+        # allowlisted types still render inline
+        fake_s3.objects["doc.pdf"] = (b"%PDF-1", "application/pdf")
+        resp = client.get(
+            "/api/admin/storage/objects/preview?key=doc.pdf",
+            headers=_auth(admin_token),
+        )
+        assert resp.headers["content-type"].startswith("application/pdf")
+        assert "inline" in resp.headers["content-disposition"]
     finally:
         _clear_connection(admin_token)
 

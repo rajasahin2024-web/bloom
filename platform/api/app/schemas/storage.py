@@ -115,7 +115,7 @@ class StorageContentOut(BaseModel):
 class StorageContentIn(BaseModel):
     bucket: str | None = Field(default=None, max_length=63)
     key: str = Field(min_length=1, max_length=1024)
-    content: str
+    content: str = Field(max_length=1_048_576)
 
 
 class StorageContentPutOut(BaseModel):
