@@ -79,9 +79,9 @@ jobs:
       - name: Migrate test database
         working-directory: platform/api
         env:
-          DATABASE_URL_DIRECT: postgresql+psycopg://bloom:bloom_dev_password@localhost:5433/bloom
+          DATABASE_URL_DIRECT: postgresql+psycopg://bloom:bloom_dev_password@localhost:5433/bloom_test
         run: |
-          python -c "import psycopg; c = psycopg.connect('postgresql://bloom:bloom_dev_password@localhost:5433/bloom', autocommit=True); c.execute('CREATE EXTENSION IF NOT EXISTS vector')"
+          python -c "import psycopg; c = psycopg.connect('postgresql://bloom:bloom_dev_password@localhost:5433/bloom_test', autocommit=True); c.execute('CREATE EXTENSION IF NOT EXISTS vector')"
           alembic upgrade head
 
       - name: Test (pytest)

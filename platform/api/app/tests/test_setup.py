@@ -28,7 +28,7 @@ PG_HOST = "localhost"
 PG_PORT = 5433
 PGB_PORT = 6432
 REDIS_PORT = 6380
-PG_DB = "bloom"
+PG_DB = "bloom_test"
 PG_USER = "bloom"
 PG_PASSWORD = "bloom_dev_password"
 

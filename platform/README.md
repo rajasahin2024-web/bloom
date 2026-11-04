@@ -159,6 +159,17 @@ cd api && ruff check app && mypy app && pytest
 cd web && pnpm lint && pnpm typecheck && pnpm test
 ```
 
+### Test database isolation (TEC-179)
+
+API integration tests run against a dedicated **`bloom_test`** database —
+never the live `bloom` database. Tests reset/clear settings rows in `finally`
+blocks (`POST /api/admin/settings/reset`); pointing them at `bloom` wiped
+admin-saved R2 credentials on Nov-4. `bloom_test` is created by
+`docker/postgres/init.sql` (first DB init), exposed through PgBouncer by
+`DATABASE_URLS` in `docker-compose.yml`, and migrated by `scripts/test.sh`
+and the CI workflow before pytest runs. If the docker stack is not up, the
+integration tests skip themselves (`_infra_up` probes `bloom_test`).
+
 ## Connection topology
 
 ```

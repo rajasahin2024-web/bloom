@@ -29,7 +29,7 @@ client = TestClient(app)
 # Local docker-stack coordinates (platform/docker-compose.yml port mappings).
 PG_HOST = "localhost"
 PG_PORT = 5433
-PG_DB = "bloom"
+PG_DB = "bloom_test"
 PG_USER = "bloom"
 PG_PASSWORD = "bloom_dev_password"
 

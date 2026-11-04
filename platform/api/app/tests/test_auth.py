@@ -36,7 +36,7 @@ client = TestClient(app)
 PG_HOST = "localhost"
 PG_PORT = 5433
 REDIS_URL = "redis://localhost:6380/0"
-PG_DSN = "postgresql://bloom:bloom_dev_password@localhost:5433/bloom"
+PG_DSN = "postgresql://bloom:bloom_dev_password@localhost:5433/bloom_test"
 
 
 def _infra_up() -> bool:

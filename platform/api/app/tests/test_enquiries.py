@@ -25,7 +25,7 @@ from app.models.enquiry import Enquiry
 
 PG_HOST = "localhost"
 PG_PORT = 5433
-PG_DSN = "postgresql://bloom:bloom_dev_password@localhost:5433/bloom"
+PG_DSN = "postgresql://bloom:bloom_dev_password@localhost:5433/bloom_test"
 
 
 def _infra_up() -> bool:
