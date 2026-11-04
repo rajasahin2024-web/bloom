@@ -47,7 +47,7 @@ def upgrade() -> None:
         sa.Column("mail_secret", sa.String(length=255), nullable=True),
         sa.Column("provisioned_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_error", sa.String(length=500), nullable=True),
-        sa.Column("attempts", sa.Integer(), nullable=False),
+        sa.Column("attempts", sa.Integer(), server_default="0", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -65,16 +65,10 @@ def upgrade() -> None:
         sa.UniqueConstraint("user_id"),
         sa.UniqueConstraint("localpart"),
     )
-    op.create_index(op.f("ix_mailboxes_user_id"), "mailboxes", ["user_id"], unique=False)
-    op.create_index(
-        op.f("ix_mailboxes_localpart"), "mailboxes", ["localpart"], unique=False
-    )
     op.create_index(op.f("ix_mailboxes_status"), "mailboxes", ["status"], unique=False)
 
 
 def downgrade() -> None:
     op.drop_index(op.f("ix_mailboxes_status"), table_name="mailboxes")
-    op.drop_index(op.f("ix_mailboxes_localpart"), table_name="mailboxes")
-    op.drop_index(op.f("ix_mailboxes_user_id"), table_name="mailboxes")
     op.drop_table("mailboxes")
     sa.Enum(name="mailbox_status").drop(op.get_bind())
