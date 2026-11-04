@@ -68,8 +68,10 @@ type Notice = { text: string; kind: "ok" | "err" } | null;
 
 /* ── key classification (mime isn't part of the listing — infer from ext) ── */
 
+/* Mirrors the BE inline-preview allowlist (TEC-177): anything else comes
+   back as octet-stream + attachment, so svg previews as text instead. */
 const IMAGE_EXT = new Set([
-  "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif",
+  "png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "avif",
 ]);
 const AUDIO_EXT = new Set(["mp3", "wav", "ogg", "m4a", "flac", "aac"]);
 const TEXT_EXT = new Set([
@@ -670,10 +672,18 @@ export function StorageExplorer({
     if (isImageKey(key) || isAudioKey(key)) {
       try {
         const blob = await fetchStorageObjectBlob(token, { bucket, key });
-        if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-        const url = URL.createObjectURL(blob);
-        previewUrlRef.current = url;
-        setPreviewData({ kind: "media", url, audio: isAudioKey(key) });
+        // BE coerces non-allowlisted mimes to octet-stream (attachment) —
+        // render that as "preview only" instead of a broken <img>.
+        if (blob.type === "application/octet-stream") {
+          setPreviewData({ kind: "binary" });
+        } else {
+          if (previewUrlRef.current) {
+            URL.revokeObjectURL(previewUrlRef.current);
+          }
+          const url = URL.createObjectURL(blob);
+          previewUrlRef.current = url;
+          setPreviewData({ kind: "media", url, audio: isAudioKey(key) });
+        }
       } catch (err) {
         setPreviewData({
           kind: "error",
