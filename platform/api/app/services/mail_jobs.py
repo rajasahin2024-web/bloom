@@ -12,7 +12,9 @@ secret ever transits Redis.
 Retry semantics per contracts/mail-provisioning.yaml: retryable errors back
 off exponentially (`base * 2^(attempt-1)`, capped at 1h, ≤25% jitter, honoring
 Retry-After) up to `mail_provision_max_attempts`, then the row goes `failed`
-for admin review. Non-retryable codes fail fast.
+for admin review (and its `mail_secret` is purged — the hash is held only
+while an attempt can still run; admin retry re-enters a fresh password).
+Non-retryable codes fail fast.
 """
 
 from __future__ import annotations
@@ -173,6 +175,10 @@ def process_job(
             )
         else:
             row.status = MailboxStatus.failed
+            # Terminal state — purge the stored secret (TEC-187). The hash is
+            # plaintext-equivalent to the provider and no code path consumes
+            # it again; admin retry supplies a fresh password.
+            row.mail_secret = None
             db.commit()
             logger.warning(
                 "mailbox %s provisioning failed permanently (%s): %s",
