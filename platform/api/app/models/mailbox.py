@@ -34,8 +34,10 @@ class Mailbox(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    # One mailbox per user; cascade with the account.
-    user_id: Mapped[uuid.UUID] = mapped_column(
+    # One mailbox per user; cascade with the account. Nullable since
+    # TEC-188: admin-provisioned mailboxes (service/staff boxes created via
+    # POST /api/admin/mailboxes) have no owning platform account.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         unique=True,

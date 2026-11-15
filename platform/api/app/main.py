@@ -71,6 +71,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(mail.router)
     app.include_router(mail.admin_router)
+    app.include_router(mail.engine_router)
     app.include_router(setup.router)
     app.include_router(branding.router)
     app.include_router(auth.router)

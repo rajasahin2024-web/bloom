@@ -13,6 +13,7 @@ from app.models.enums import (
     OtpChannel,
     UserRole,
 )
+from app.models.mail_audit import MailAdminAudit
 from app.models.mailbox import Mailbox
 from app.models.setting import Setting
 from app.models.user import RefreshToken, Student, User
@@ -24,6 +25,7 @@ __all__ = [
     "RefreshToken",
     "Enquiry",
     "Mailbox",
+    "MailAdminAudit",
     "Application",
     "Setting",
     "CmsPage",

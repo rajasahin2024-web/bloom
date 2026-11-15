@@ -110,6 +110,29 @@ class Settings(BaseSettings):
         default=30.0, alias="MAIL_PROVISION_BASE_DELAY_SECONDS"
     )
 
+    # Mail admin surface (TEC-188) — engine diagnostics + mailbox ops.
+    # MAIL_SERVICE_HOST is the host admins' probes dial (SMTP/IMAP/TLS/DNS
+    # expectations) — the MX host, not necessarily the management API host.
+    mail_service_host: str = Field(
+        default="mail.bloomieltsacademy.com", alias="MAIL_SERVICE_HOST"
+    )
+    # Test-send service account, provisioned by DevOps (TEC-190). Until both
+    # are set, POST /api/admin/mail/test-send reports `unavailable`.
+    mail_test_address: str | None = Field(default=None, alias="MAIL_TEST_ADDRESS")
+    mail_test_secret: str | None = Field(default=None, alias="MAIL_TEST_SECRET")
+    # DoH resolver for the DNS check — dns-json format (Cloudflare/Google).
+    mail_doh_url: str = Field(
+        default="https://1.1.1.1/dns-query", alias="MAIL_DOH_URL"
+    )
+    mail_probe_timeout_seconds: float = Field(
+        default=10.0, alias="MAIL_PROBE_TIMEOUT_SECONDS"
+    )
+    # Per-admin throttle shared by /{id}/test and /test-send.
+    mail_admin_probe_limit: int = Field(default=10, alias="MAIL_ADMIN_PROBE_LIMIT")
+    mail_admin_probe_window_seconds: int = Field(
+        default=60, alias="MAIL_ADMIN_PROBE_WINDOW_SECONDS"
+    )
+
     # First-run setup — written to `.env` by the setup wizard's apply step.
     # Once true, all /api/setup/* endpoints refuse with 410.
     setup_complete: bool = Field(default=False, alias="SETUP_COMPLETE")

@@ -1,0 +1,540 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Mail Admin Contract — FROZEN (TEC-188)
+#
+# Admin-facing "Mail Engine" surface inside the Bloom API (`/api/admin/*`).
+# These routes wrap the live mail engine (Stalwart, TEC-183) plus the
+# platform's `mailboxes` mirror table. Approved on TEC-183 (card 829af2a1);
+# the in-issue contract block is the source of truth — this file codifies it.
+# Deviations need Tech Lead sign-off.
+#
+# Implementation: `platform/api/app/routers/mail.py` (mailbox actions) +
+# `platform/api/app/services/mail_admin.py` (probes) +
+# `platform/api/app/integrations/mail_api.py` (engine adapter, TEC-184).
+# Modules call `mail_api.*` — never raw provider HTTP (arch doc §12).
+#
+# Provider realization (`x-stalwart` on each operation):
+#   - provisioning ops → REST `/api/principal` (TEC-184 surface)
+#   - queue            → REST `/api/queue/messages[/{id}]`
+#   - expected DNS     → REST `/api/dns/records/{domain}` (Stalwart's canonical
+#                        record list — includes DKIM `_domainkey` TXT records)
+#   - delivery inspect → REST `/api/telemetry/traces` (engine-wide) and
+#                        JMAP `Email/query`+`Email/get` (per-account, OSS-safe)
+#
+# Live-state notes verified 2026-11-15 (read-only, no mutations):
+#   - Listeners 25/465/993 open; 587 has no banner (dead by current build).
+#   - Mail ports serve a self-signed `rcgen` cert until TEC-183 lands a real
+#     one — credential probes verify TLS and will report that failure.
+#   - `/api/telemetry/traces` is Enterprise-gated upstream → `available:false`
+#     is the expected OSS path; per-account JMAP inspection works on OSS.
+#   - Queue/traces availability cannot be live-verified until TEC-190 lands
+#     MAIL_API_* on the deployment; code degrades gracefully either way.
+#
+# Security: every route requires an admin JWT (`require_admin`). Mailbox
+# passwords are transient — request-body only, never stored, never logged.
+# Every mutating route plus `/{id}/test` and `/test-send` writes a
+# `mail_admin_audit` row (never containing secrets). Probe endpoints are
+# rate-limited per admin (default 10/min, fixed window via Redis).
+# ─────────────────────────────────────────────────────────────────────────────
+
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+
+info:
+  title: Bloom Mail Admin Contract
+  version: 1.0.0
+  summary: >-
+    Admin "Mail Engine" surface — mailbox actions, engine status, DNS,
+    probes, test-send, queue, delivery inspector.
+  description: |
+    ## Errors
+
+    Provider failures reuse the TEC-184 error taxonomy, mapped at the router:
+
+    | provider code       | HTTP | meaning                                       |
+    |---------------------|------|-----------------------------------------------|
+    | `unavailable`       | 502  | engine unreachable / transport failure        |
+    | `rate_limited`      | 502  | engine rate-limited the platform              |
+    | `unauthorized`      | 502  | platform's engine credential rejected (config fault — logged, never echoed) |
+    | `invalid_request`   | 400  | malformed request to the engine               |
+    | `invalid_localpart` | 422  | localpart fails the naming rules              |
+    | `conflict`          | 409  | resource/state conflict                       |
+    | `not_found`         | 404  | mailbox/message does not exist                |
+
+    Route-level codes: 400 (invalid/reserved localpart on create,
+    malformed bodies), 401 (missing/invalid admin JWT), 403 (non-admin),
+    404 (unknown mirror row), 409 (localpart claimed / bad state),
+    422 (schema validation), 429 (per-admin probe rate limit).
+
+    ## Availability convention
+
+    Diagnostic surfaces never hard-fail on engine problems — they report:
+    - `GET /status` → `apiReachable:false`, `queue:null`, `tls:null`
+    - `GET /queue`, `GET /delivery` → `available:false`, empty `items`
+    - `GET /dns` still evaluates the static records when the engine is down
+      (DKIM rows — which need engine discovery — are omitted)
+
+    ## Audit
+
+    `POST /mailboxes`, `/{id}/suspend`, `/{id}/unsuspend`,
+    `/{id}/reset-password`, `/{id}/test`, `/test-send`, `/queue/retry`
+    each append a `mail_admin_audit` row:
+    `{admin_user_id, action, target, detail(jsonb), created_at}`.
+    `detail` carries outcome metadata only — never passwords or tokens.
+
+servers:
+  - url: /
+    description: Same origin as the Bloom API
+
+tags:
+  - name: mailboxes
+    description: Mailbox mirror actions (`/api/admin/mailboxes`)
+  - name: engine
+    description: Engine diagnostics (`/api/admin/mail/*`)
+
+paths:
+  /api/admin/mailboxes:
+    post:
+      operationId: createMailbox
+      summary: Provision a standalone mailbox
+      description: >-
+        Creates the mailbox on the engine and mirrors it (`status: active`).
+        Standalone boxes have no owning platform account
+        (`mailboxes.user_id` is NULL — schema change justified on TEC-188).
+        Idempotent on `localpart`: a claimed localpart returns 409 whether
+        it lives in the mirror or only on the engine.
+      tags: [mailboxes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [localpart, password]
+              properties:
+                localpart:
+                  type: string
+                  description: Mailbox localpart — TEC-184 naming rules
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  description: >-
+                    Initial mailbox password. Sent to the engine pre-hashed
+                    (argon2id); never stored or logged.
+                quotaMb:
+                  type: integer
+                  minimum: 1
+                  description: Default `MAIL_DEFAULT_QUOTA_MB`
+      responses:
+        '201':
+          description: Provisioned — mirror row
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Mailbox' }
+        '400': { description: invalid or reserved localpart }
+        '401': { description: missing/invalid admin JWT }
+        '403': { description: not an admin }
+        '409': { description: localpart already claimed }
+        '422': { description: body validation failed }
+        '502': { description: engine unreachable }
+
+  /api/admin/mailboxes/{id}/suspend:
+    post:
+      operationId: suspendMailbox
+      summary: Suspend a mailbox
+      description: >-
+        Engine-side suspend (disabled `authenticate`+`emailSend`
+        permissions) then mirrors `status: suspended`.
+      tags: [mailboxes]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Suspended
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [suspended] }
+        '404': { description: unknown mailbox or not provisioned on engine }
+        '502': { description: engine unreachable }
+
+  /api/admin/mailboxes/{id}/unsuspend:
+    post:
+      operationId: unsuspendMailbox
+      summary: Unsuspend a mailbox
+      tags: [mailboxes]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Re-activated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [active] }
+        '404': { description: unknown mailbox or not provisioned on engine }
+        '502': { description: engine unreachable }
+
+  /api/admin/mailboxes/{id}/reset-password:
+    post:
+      operationId: resetMailboxPassword
+      summary: Reset a mailbox password
+      description: >-
+        Generates a 16-char password, applies it engine-side (pre-hashed),
+        purges the mirror `mail_secret`, and returns the plaintext **once**.
+        It is never stored or logged anywhere.
+      tags: [mailboxes]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: New password — returned exactly once
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [password]
+                properties:
+                  password: { type: string }
+        '404': { description: unknown mailbox or not provisioned on engine }
+        '502': { description: engine unreachable }
+
+  /api/admin/mailboxes/{id}/test:
+    post:
+      operationId: testMailbox
+      summary: Probe mailbox SMTP AUTH + IMAP LOGIN
+      description: >-
+        `smtplib` SMTP-SSL AUTH on :465 + `imaplib` IMAP-SSL LOGIN on :993
+        against `MAIL_SERVICE_HOST` (default `mail.<MAIL_DOMAIN>`), with
+        default CA verification. TLS failures (e.g. the current self-signed
+        cert) surface in `error` — credentials are never sent over an
+        unverified channel. The password is transient: request body only.
+        Rate-limited: shared 10/min bucket per admin with `/test-send`.
+      tags: [mailboxes]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, maxLength: 128 }
+      responses:
+        '200':
+          description: Probe result — always 200 once auth+rate-limit pass
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailboxTestResult' }
+        '404': { description: unknown mailbox }
+        '429': { description: probe rate limit exceeded }
+
+  /api/admin/mail/status:
+    get:
+      operationId: mailEngineStatus
+      summary: Engine health snapshot
+      description: >-
+        Adapter roundtrip (`apiReachable`) + TCP connect probes on
+        25/587/465/993 + TLS handshake cert capture on :993 + queue
+        counts. Never raises on engine problems — the flags carry state.
+      x-stalwart: >-
+        apiReachable: GET /api/principal?page=1&limit=1 (any response,
+        including 401/404, counts as reachable; transport failure does not).
+        queue: GET /api/queue/messages?page=1&limit=100 — items classified
+        active when any recipient/domain status is in-flight, else deferred;
+        `null` when the OSS build doesn't expose it (404/501).
+      tags: [engine]
+      responses:
+        '200':
+          description: Snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EngineStatus' }
+
+  /api/admin/mail/dns:
+    get:
+      operationId: mailDnsCheck
+      summary: Verify public DNS against expected records
+      description: >-
+        Expected records come from `GET /api/dns/records/{domain}`
+        (Stalwart's canonical list — MX, SPF, DKIM `_domainkey` TXT) plus
+        static platform expectations (`_dmarc`, PTR derived from the mail
+        host's public A record). Lookups go over DoH
+        (`MAIL_DOH_URL`, Cloudflare dns-json) — never the system resolver.
+      tags: [engine]
+      responses:
+        '200':
+          description: Record-by-record comparison
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DnsReport' }
+
+  /api/admin/mail/test-send:
+    post:
+      operationId: mailTestSend
+      summary: Send a real test message via the service account
+      description: >-
+        SMTP-SSL :465 AUTH as `MAIL_TEST_ADDRESS`/`MAIL_TEST_SECRET`
+        (DevOps-provisioned, TEC-190). Until those env vars land the route
+        answers 503 with `accepted:false,error:"unavailable"`. Rate-limited:
+        shared 10/min bucket per admin with `/{id}/test`.
+      tags: [engine]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to]
+              properties:
+                to: { type: string, format: email }
+      responses:
+        '200':
+          description: Send outcome
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestSendResult' }
+        '429': { description: probe rate limit exceeded }
+        '503':
+          description: Test account not provisioned yet
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestSendResult' }
+
+  /api/admin/mail/queue:
+    get:
+      operationId: mailQueueList
+      summary: List deferred queue entries
+      x-stalwart: GET /api/queue/messages?page=1&limit=100&values=1 —
+        `available:false` when the OSS build doesn't expose it.
+      tags: [engine]
+      responses:
+        '200':
+          description: Deferred entries
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QueueReport' }
+        '502': { description: engine unreachable (non-availability failure) }
+
+  /api/admin/mail/queue/retry:
+    post:
+      operationId: mailQueueRetry
+      summary: Reschedule deferred queue entries for delivery
+      x-stalwart: >-
+        `ids` → PATCH /api/queue/messages/{id} per id;
+        `"all"` → PATCH /api/queue/messages?filter=all.
+      tags: [engine]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QueueRetryIn' }
+      responses:
+        '200':
+          description: Retry outcome
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QueueRetryResult' }
+        '502': { description: engine unreachable or endpoint not exposed }
+
+  /api/admin/mail/delivery:
+    get:
+      operationId: mailDeliveryInspect
+      summary: Delivery inspector — metadata only, never body
+      description: >-
+        With `account`: JMAP `Email/query`+`Email/get`+`Mailbox/get` in one
+        roundtrip against that mailbox (admin token; OSS-safe) — the
+        inspector answers "what arrived/left and where it landed".
+        Without `account`: engine-wide `/api/telemetry/traces`
+        (Enterprise-gated upstream → `available:false` on OSS).
+        **Message bodies are never fetched or returned.**
+      tags: [engine]
+      parameters:
+        - { name: account, in: query, required: false, schema: { type: string, format: email } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+      responses:
+        '200':
+          description: Inspector result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeliveryReport' }
+
+components:
+  schemas:
+    Mailbox:
+      type: object
+      description: Mirror row shape — identical to `GET /api/admin/mailboxes` items.
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid, nullable: true }
+        localpart: { type: string }
+        address: { type: string }
+        status:
+          type: string
+          enum: [pending, queued, provisioning, active, suspended, failed]
+        quota_mb: { type: integer }
+        provisioned_at: { type: string, format: date-time, nullable: true }
+        last_error: { type: string, nullable: true }
+        attempts: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    MailboxTestResult:
+      type: object
+      required: [smtpAuth, imap, error]
+      properties:
+        smtpAuth: { type: boolean, description: SMTP-SSL :465 AUTH succeeded }
+        imap: { type: boolean, description: IMAP-SSL :993 LOGIN succeeded }
+        error:
+          type: string
+          nullable: true
+          description: First failure detail(s), `null` when both probes pass
+
+    EngineStatus:
+      type: object
+      required: [engine, checkedAt, apiReachable, listeners, tls, queue]
+      properties:
+        engine: { type: string, enum: [stalwart] }
+        checkedAt: { type: string, format: date-time }
+        apiReachable: { type: boolean }
+        listeners:
+          type: array
+          items:
+            type: object
+            required: [name, port, ok]
+            properties:
+              name: { type: string, enum: [smtp, submission, smtps, imaps] }
+              port: { type: integer, enum: [25, 587, 465, 993] }
+              ok: { type: boolean }
+        tls:
+          type: object
+          nullable: true
+          required: [host, expiresAt, daysRemaining]
+          description: >-
+            The certificate the engine *presents* on :993 (captured
+            unverified — informational only; credential probes verify trust
+            independently and surface failures in `error`).
+          properties:
+            host: { type: string }
+            expiresAt: { type: string, format: date-time }
+            daysRemaining: { type: integer }
+        queue:
+          type: object
+          nullable: true
+          required: [active, deferred]
+          properties:
+            active: { type: integer, description: in-flight deliveries }
+            deferred: { type: integer, description: scheduled/retry-waiting }
+
+    DnsReport:
+      type: object
+      required: [checkedAt, records]
+      properties:
+        checkedAt: { type: string, format: date-time }
+        records:
+          type: array
+          items:
+            type: object
+            required: [name, expected, found, ok]
+            properties:
+              name: { type: string, description: FQDN queried (or PTR name) }
+              expected: { type: string, description: required content }
+              found:
+                type: string
+                nullable: true
+                description: resolved value(s), `;`-joined
+              ok: { type: boolean }
+
+    TestSendResult:
+      type: object
+      required: [accepted, messageId, error]
+      properties:
+        accepted: { type: boolean, description: engine accepted for delivery }
+        messageId:
+          type: string
+          nullable: true
+          description: Message-ID header of the accepted test mail
+        error:
+          type: string
+          nullable: true
+          description: failure detail, or `unavailable` when unconfigured
+
+    QueueReport:
+      type: object
+      required: [available, items, total]
+      properties:
+        available: { type: boolean }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              returnPath: { type: string, nullable: true }
+              size: { type: integer, nullable: true }
+              created: { type: string, format: date-time, nullable: true }
+              status: { type: string, nullable: true }
+              nextRetry: { type: string, format: date-time, nullable: true }
+              recipients: { type: integer, nullable: true }
+        total: { type: integer }
+
+    QueueRetryIn:
+      oneOf:
+        - type: object
+          required: [all]
+          properties:
+            all: { const: true }
+        - type: object
+          required: [ids]
+          properties:
+            ids:
+              type: array
+              minItems: 1
+              maxItems: 100
+              items: { type: string, minLength: 1 }
+
+    QueueRetryResult:
+      type: object
+      required: [available, retried, error]
+      properties:
+        available: { type: boolean }
+        retried: { type: integer, description: messages rescheduled }
+        error: { type: string, nullable: true }
+
+    DeliveryReport:
+      type: object
+      required: [available, items]
+      properties:
+        available: { type: boolean }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              direction: { type: string, enum: [inbound, outbound], nullable: true }
+              from: { type: string, nullable: true }
+              to:
+                type: array
+                items: { type: string }
+              subject: { type: string, nullable: true }
+              receivedAt: { type: string, format: date-time, nullable: true }
+              status: { type: string, nullable: true, description: seen|unseen|trace status }
+              folder: { type: string, nullable: true, description: mailbox/folder name }
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []

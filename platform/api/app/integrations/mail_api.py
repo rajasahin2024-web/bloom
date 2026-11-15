@@ -30,7 +30,7 @@ import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, NoReturn, Protocol
+from typing import Any, NoReturn, Protocol, cast
 
 from app.core.config import get_settings
 
@@ -152,6 +152,55 @@ class MailboxPage:
     total: int = 0
 
 
+# ── Engine-admin return shapes (contracts/mail-admin.yaml, TEC-188) ───────────
+
+
+@dataclass
+class QueueMessage:
+    """One deferred/in-flight queue entry (GET /api/queue/messages item)."""
+
+    id: str
+    return_path: str | None
+    size: int | None
+    created: str | None
+    status: str | None
+    next_retry: str | None
+    recipients: int | None
+    in_flight: bool  # True when the engine is actively delivering it
+
+
+@dataclass
+class QueueSnapshot:
+    items: list[QueueMessage] = field(default_factory=list)
+    total: int = 0
+    active: int = 0
+    deferred: int = 0
+
+
+@dataclass
+class DnsRecord:
+    """Expected record from GET /api/dns/records/{domain}."""
+
+    type: str
+    name: str
+    content: str
+
+
+@dataclass
+class DeliveryItem:
+    """Metadata-only delivery row — subject/folder are engine metadata,
+    never message body (approved inspector scope on TEC-188)."""
+
+    id: str
+    direction: str | None  # "inbound" | "outbound"
+    sender: str | None
+    to: list[str] = field(default_factory=list)
+    subject: str | None = None
+    received_at: str | None = None
+    status: str | None = None
+    folder: str | None = None
+
+
 # ── Protocol ──────────────────────────────────────────────────────────────────
 
 
@@ -181,6 +230,30 @@ class MailProvisioner(Protocol):
     def set_quota(self, localpart: str, quota_mb: int) -> MailboxInfo: ...
 
     def list_mailboxes(self, page: int, limit: int) -> MailboxPage: ...
+
+
+class MailEngineInspector(Protocol):
+    """Read-mostly engine surface behind `/api/admin/mail/*` (TEC-188).
+
+    Distinct from `MailProvisioner` — diagnostic reads + queue ops, not
+    provisioning lifecycle. `None` returns mean "not exposed by this
+    engine build" (the contract's `available:false` path), as opposed to
+    `MailError` raises which mean "the call itself failed".
+    """
+
+    def ping(self) -> bool:
+        """False only when the engine can't be reached at all."""
+        ...
+
+    def queue_snapshot(self, limit: int = 100) -> QueueSnapshot | None: ...
+
+    def queue_retry_all(self) -> bool: ...
+
+    def queue_retry_one(self, message_id: str) -> bool: ...
+
+    def dns_records(self, domain: str) -> list[DnsRecord] | None: ...
+
+    def delivery_items(self, account: str | None, limit: int) -> list[DeliveryItem] | None: ...
 
 
 Transport = Callable[[str, str, dict[str, str], Any], tuple[int, Any, dict[str, str]]]
@@ -350,9 +423,7 @@ class StalwartProvisioner:
         return self._fetch(address)
 
     def list_mailboxes(self, page: int, limit: int) -> MailboxPage:
-        parsed = self._request(
-            "GET", f"/api/principal?types=individual&page={page}&limit={limit}"
-        )
+        parsed = self._request("GET", f"/api/principal?types=individual&page={page}&limit={limit}")
         data = parsed.get("data", {}) if isinstance(parsed, dict) else {}
         items: list[MailboxInfo] = []
         suffix = f"@{self._domain}"
@@ -372,6 +443,275 @@ class StalwartProvisioner:
                 )
             )
         return MailboxPage(items=items, total=int(data.get("total") or 0))
+
+    # ── engine-admin operations (contracts/mail-admin.yaml, TEC-188) ──────
+
+    def ping(self) -> bool:
+        try:
+            self._request("GET", "/api/principal?page=1&limit=1")
+        except MailUnavailableError:
+            return False
+        except MailError:
+            return True  # engine answered — even an auth rejection counts
+        return True
+
+    def queue_snapshot(self, limit: int = 100) -> QueueSnapshot | None:
+        try:
+            parsed = self._request("GET", f"/api/queue/messages?page=1&limit={limit}&values=1")
+        except (MailNotFoundError, MailInvalidRequestError):
+            return None  # OSS build doesn't expose the queue endpoints
+        data = parsed.get("data", {}) if isinstance(parsed, dict) else {}
+        snap = QueueSnapshot(total=int(data.get("total") or 0))
+        for raw in data.get("items") or []:
+            msg = _queue_message(raw)
+            snap.items.append(msg)
+            if msg.in_flight:
+                snap.active += 1
+            else:
+                snap.deferred += 1
+        if not snap.items:
+            # Item detail unavailable (or queue empty) — report the total as
+            # deferred; `active` inflight split needs per-item statuses.
+            snap.deferred = snap.total
+        return snap
+
+    def queue_retry_all(self) -> bool:
+        try:
+            parsed = self._request("PATCH", "/api/queue/messages?filter=all")
+        except (MailNotFoundError, MailInvalidRequestError):
+            return False
+        return bool(parsed.get("data", True)) if isinstance(parsed, dict) else True
+
+    def queue_retry_one(self, message_id: str) -> bool:
+        try:
+            parsed = self._request(
+                "PATCH",
+                f"/api/queue/messages/{urllib.parse.quote(message_id, safe='')}",
+            )
+        except MailNotFoundError:
+            return False
+        return bool(parsed.get("data", True)) if isinstance(parsed, dict) else True
+
+    def dns_records(self, domain: str) -> list[DnsRecord] | None:
+        """Stalwart's canonical DNS list for the domain — includes the DKIM
+        `_domainkey` TXT records the engine expects to be published."""
+        try:
+            parsed = self._request("GET", f"/api/dns/records/{urllib.parse.quote(domain, safe='')}")
+        except (MailNotFoundError, MailInvalidRequestError):
+            return None
+        data = parsed.get("data") if isinstance(parsed, dict) else None
+        records: list[DnsRecord] = []
+        for raw in data or []:
+            if isinstance(raw, dict) and raw.get("name") and raw.get("type"):
+                records.append(
+                    DnsRecord(
+                        type=str(raw["type"]).upper(),
+                        name=str(raw["name"]),
+                        content=str(raw.get("content") or ""),
+                    )
+                )
+        return records
+
+    def delivery_items(self, account: str | None, limit: int) -> list[DeliveryItem] | None:
+        if account:
+            return self._jmap_delivery(account, limit)
+        try:
+            parsed = self._request("GET", f"/api/telemetry/traces?limit={limit}&values=1")
+        except (MailNotFoundError, MailInvalidRequestError):
+            return None
+        # OSS/Enterprise gate: 200 {"error": "unsupported", "details": ...}
+        if isinstance(parsed, dict) and parsed.get("error"):
+            return None
+        data = parsed.get("data", {}) if isinstance(parsed, dict) else {}
+        items: list[DeliveryItem] = []
+        for raw in data.get("items") or []:
+            if not isinstance(raw, dict):
+                continue
+            items.append(
+                DeliveryItem(
+                    id=str(raw.get("id") or raw.get("queueId") or raw.get("queue_id") or ""),
+                    direction=_trace_direction(raw),
+                    sender=raw.get("from") or raw.get("sender"),
+                    to=[str(t) for t in raw.get("to") or []],
+                    received_at=raw.get("timestamp") or raw.get("receivedAt"),
+                    status=raw.get("status") or raw.get("type"),
+                )
+            )
+        return items
+
+    # ── JMAP (Stalwart's primary management surface) ──────────────────────
+
+    def _jmap(self, method_calls: list[list[Any]]) -> Any:
+        body = {
+            "using": [
+                "urn:ietf:params:jmap:core",
+                "urn:ietf:params:jmap:mail",
+            ],
+            "methodCalls": method_calls,
+        }
+        return self._request("POST", "/jmap/", body)
+
+    def _jmap_delivery(self, account: str, limit: int) -> list[DeliveryItem] | None:
+        """Per-account inspector: what arrived/left and where it landed.
+
+        One JMAP roundtrip — Email/query + Email/get (metadata properties
+        only, never `body`/`textBody`/`htmlBody`) + mailbox names via a
+        result reference. No N+1 fan-out.
+        """
+        parsed = self._jmap(
+            [
+                [
+                    "Email/query",
+                    {
+                        "accountId": account,
+                        "sort": [{"property": "receivedAt", "isAscending": False}],
+                        "limit": limit,
+                        "position": 0,
+                    },
+                    "q",
+                ],
+                [
+                    "Email/get",
+                    {
+                        "accountId": account,
+                        "#ids": {
+                            "resultOf": "q",
+                            "name": "Email/query",
+                            "path": "/ids",
+                        },
+                        "properties": [
+                            "id",
+                            "subject",
+                            "receivedAt",
+                            "from",
+                            "to",
+                            "mailboxIds",
+                            "keywords",
+                        ],
+                    },
+                    "e",
+                ],
+                ["Mailbox/query", {"accountId": account}, "mq"],
+                [
+                    "Mailbox/get",
+                    {
+                        "accountId": account,
+                        "#ids": {
+                            "resultOf": "mq",
+                            "name": "Mailbox/query",
+                            "path": "/ids",
+                        },
+                        "properties": ["id", "name"],
+                    },
+                    "m",
+                ],
+            ]
+        )
+        responses = parsed.get("methodResponses") if isinstance(parsed, dict) else None
+        if not responses:
+            return None
+        by_call: dict[str, Any] = {}
+        for resp in responses:
+            if not isinstance(resp, list) or len(resp) < 3:
+                continue
+            if resp[0] == "error":
+                return None  # accountNotFound / forbidden / unknownMethod
+            by_call[str(resp[2])] = resp[1]
+        emails = (by_call.get("e") or {}).get("list") or []
+        folders = {
+            str(mb.get("id")): str(mb.get("name") or "")
+            for mb in (by_call.get("m") or {}).get("list") or []
+            if isinstance(mb, dict)
+        }
+        account_l = account.lower()
+        items: list[DeliveryItem] = []
+        for em in emails:
+            if not isinstance(em, dict):
+                continue
+            sender = None
+            senders = em.get("from") or []
+            if senders and isinstance(senders[0], dict):
+                sender = senders[0].get("email")
+            mailbox_ids = em.get("mailboxIds") or {}
+            folder = next((folders[mid] for mid in mailbox_ids if mid in folders), None)
+            items.append(
+                DeliveryItem(
+                    id=str(em.get("id") or ""),
+                    direction=("outbound" if sender and sender.lower() == account_l else "inbound"),
+                    sender=sender,
+                    to=[
+                        str(t.get("email"))
+                        for t in em.get("to") or []
+                        if isinstance(t, dict) and t.get("email")
+                    ],
+                    subject=em.get("subject"),
+                    received_at=em.get("receivedAt"),
+                    status=("seen" if "$seen" in (em.get("keywords") or {}) else "unseen"),
+                    folder=folder,
+                )
+            )
+        return items
+
+
+_IN_FLIGHT_STATUSES = frozenset(
+    {
+        "inflight",
+        "in-progress",
+        "in_progress",
+        "processing",
+        "active",
+        "locked",
+        "delivering",
+        "scheduled_inflight",
+    }
+)
+
+
+def _queue_message(raw: Any) -> QueueMessage:
+    """Parse a /api/queue/messages item (openapi: id, return_path, domains[]
+    with name/status/recipients[]/retry_num/next_retry, created, size)."""
+    if not isinstance(raw, dict):
+        return QueueMessage(
+            id=str(raw),
+            return_path=None,
+            size=None,
+            created=None,
+            status=None,
+            next_retry=None,
+            recipients=None,
+            in_flight=False,
+        )
+    statuses: set[str] = set()
+    recipients = 0
+    next_retry: str | None = None
+    for domain in raw.get("domains") or []:
+        if not isinstance(domain, dict):
+            continue
+        if domain.get("status"):
+            statuses.add(str(domain["status"]).lower())
+        next_retry = next_retry or domain.get("next_retry")
+        for recipient in domain.get("recipients") or []:
+            recipients += 1
+            if isinstance(recipient, dict) and recipient.get("status"):
+                statuses.add(str(recipient["status"]).lower())
+    return QueueMessage(
+        id=str(raw.get("id") or raw.get("queue_id") or ""),
+        return_path=raw.get("return_path") or raw.get("returnPath"),
+        size=int(raw["size"]) if raw.get("size") is not None else None,
+        created=raw.get("created"),
+        status=sorted(statuses)[0] if statuses else None,
+        next_retry=next_retry,
+        recipients=recipients or None,
+        in_flight=bool(statuses & _IN_FLIGHT_STATUSES),
+    )
+
+
+def _trace_direction(raw: dict[str, Any]) -> str | None:
+    for key in ("direction", "type", "kind"):
+        value = str(raw.get(key) or "").lower()
+        if value in ("inbound", "outbound"):
+            return value
+    return None
 
 
 class NullProvisioner:
@@ -411,6 +751,25 @@ class NullProvisioner:
     def list_mailboxes(self, page: int, limit: int) -> MailboxPage:
         self._unconfigured()
 
+    # ── engine-admin operations (TEC-188) — all report unavailable ────────
+
+    def ping(self) -> bool:
+        return False
+
+    def queue_snapshot(self, limit: int = 100) -> QueueSnapshot | None:
+        self._unconfigured()
+
+    def queue_retry_all(self) -> bool:
+        self._unconfigured()
+
+    def queue_retry_one(self, message_id: str) -> bool:
+        self._unconfigured()
+
+    def dns_records(self, domain: str) -> list[DnsRecord] | None:
+        self._unconfigured()
+
+    def delivery_items(self, account: str | None, limit: int) -> list[DeliveryItem] | None:
+        self._unconfigured()
 
 
 # Transport is HTTPS-only per contract; plain http is accepted only for
@@ -449,3 +808,9 @@ def _build_provisioner() -> MailProvisioner:
 def get_mail_provisioner() -> MailProvisioner:
     """FastAPI dependency — picks the adapter from settings (tests override)."""
     return _build_provisioner()
+
+
+def get_mail_inspector() -> MailEngineInspector:
+    """FastAPI dependency — the engine-admin surface (TEC-188). Both
+    implementations satisfy both protocols, so this is the same factory."""
+    return cast(MailEngineInspector, _build_provisioner())
