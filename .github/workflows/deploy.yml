@@ -107,6 +107,16 @@ jobs:
             # Only redis + app containers run here — Postgres/PgBouncer live
             # on a remote host via POSTGRES_HOST/PGBOUNCER_HOST in .env.
             docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --no-deps redis api web
+            # worker stays out of the up-list until the mail-provisioning gate
+            # clears (TEC-196); it reuses the api image when enabled.
+            api_env=""
+            for i in $(seq 1 30); do
+              api_env=$(docker compose -f docker-compose.yml -f docker-compose.deploy.yml exec -T api python -c "import json,urllib.request; print(json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=5)).get('env',''))" 2>/dev/null || true)
+              [ "$api_env" = "production" ] && break
+              sleep 2
+            done
+            echo "api health env: ${api_env:-unreachable}"
+            [ "$api_env" = "production" ]
             # Migrations run after the new code is up, through DATABASE_URL_DIRECT
             # (never DDL through the PgBouncer transaction pool).
             docker compose -f docker-compose.yml -f docker-compose.deploy.yml exec -T api alembic upgrade head

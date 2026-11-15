@@ -11,9 +11,9 @@ name: bloom
 
 networks:
   # The mail engine's compose project (Stalwart on this host, /opt/stalwart).
-  # Attaching api+worker lets them reach the management API at
-  # http://stalwart:8080 — it binds host loopback only, so bridge IPs and
-  # host.docker.internal can never reach it. MAIL_API_URL uses this alias.
+  # api/worker stay attached so an internal management path remains available,
+  # but MAIL_API_URL below uses the verified public HTTPS JMAP endpoint — the
+  # adapter rejects plaintext http to non-loopback hosts (Security gate C1).
   stalwart-mail:
     name: stalwart_default
     external: true
@@ -23,7 +23,13 @@ services:
     build: !reset null
     image: ghcr.io/rajasahin2024-web/bloom-api:main
     environment:
-      API_ENV: ${API_ENV:-production}
+      # Deploy overlay is production-only — never inherit API_ENV=development
+      # from the server `.env` (TEC-195).
+      API_ENV: production
+      # Verified live for Stalwart JMAP management calls (TEC-192). Kept as a
+      # compose literal so a stale server `.env` cannot point prod at the
+      # loopback-only http alias or leave the adapter unconfigured.
+      MAIL_API_URL: https://mailengine.bloomieltsacademy.com
     networks:
       - bloom
       - stalwart-mail
@@ -33,7 +39,8 @@ services:
     # Same image as api, different entrypoint — no extra build artifact.
     image: ghcr.io/rajasahin2024-web/bloom-api:main
     environment:
-      API_ENV: ${API_ENV:-production}
+      API_ENV: production
+      MAIL_API_URL: https://mailengine.bloomieltsacademy.com
     networks:
       - bloom
       - stalwart-mail
