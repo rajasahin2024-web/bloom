@@ -7,8 +7,14 @@ taxonomy, and the bearer-auth transport.
 
 Adapter rule (arch doc §12): modules call `mail_api.*`, never raw HTTP. The
 only provider-specific code lives here — `StalwartProvisioner` maps each
-contract operation onto Stalwart's management REST API (`/api/principal`
-CRUD); swapping the mail engine means swapping this file.
+contract operation onto Stalwart's JMAP management surface
+(`POST /jmap/`, `urn:stalwart:jmap` — `x:Account/*`, `x:Domain/*`,
+`x:QueuedMessage/*`); swapping the mail engine means swapping this file.
+
+Provider floor: **Stalwart ≥0.16** (TEC-191/TEC-192). v0.16 removed the legacy
+`/api/*` management REST surface entirely; management is JMAP method calls
+under the same bearer token. Management objects use Stalwart's object encoding
+(lists/sets are JSON objects keyed by index/`true`, unions carry `@type`).
 
 Config via env (`MAIL_API_URL`, `MAIL_API_TOKEN` from the secrets store) —
 never hardcoded, never logged. When `MAIL_API_URL` is unset the factory
@@ -30,6 +36,7 @@ import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any, NoReturn, Protocol, cast
 
 from app.core.config import get_settings
@@ -157,7 +164,7 @@ class MailboxPage:
 
 @dataclass
 class QueueMessage:
-    """One deferred/in-flight queue entry (GET /api/queue/messages item)."""
+    """One deferred queue entry (`x:QueuedMessage` on the JMAP surface)."""
 
     id: str
     return_path: str | None
@@ -179,7 +186,7 @@ class QueueSnapshot:
 
 @dataclass
 class DnsRecord:
-    """Expected record from GET /api/dns/records/{domain}."""
+    """Expected record parsed from the domain's `dnsZoneFile`."""
 
     type: str
     name: str
@@ -283,8 +290,73 @@ def _urllib_transport(timeout: float) -> Transport:
     return call
 
 
+# ── JMAP plumbing (Stalwart ≥0.16 management surface) ─────────────────────
+
+_USING_MGMT = ["urn:ietf:params:jmap:core", "urn:stalwart:jmap"]
+_USING_MAIL = ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"]
+
+# Method-level ["error",{type},callId] responses inside HTTP 200 → taxonomy.
+_METHOD_ERROR_MAP: dict[str, type[MailError]] = {
+    "forbidden": MailUnauthorizedError,
+    "notFound": MailNotFoundError,
+    "accountNotFound": MailNotFoundError,
+    "serverUnavailable": MailUnavailableError,
+    "serverFail": MailUnavailableError,
+    "unknownMethod": MailUnavailableError,  # provisioning paths; inspector
+    # reads treat it as "not exposed" → available:false via _jmap_lenient.
+}
+
+# Foo/set per-record notCreated/notUpdated/notDestroyed `type` → taxonomy.
+_SET_ERROR_MAP: dict[str, type[MailError]] = {
+    "alreadyExists": MailConflictError,
+    "primaryKeyViolation": MailConflictError,  # v0.16+ name for alreadyExists
+    "forbidden": MailUnauthorizedError,
+    "notFound": MailNotFoundError,
+}
+
+_CREATE_CONFLICT_TYPES = frozenset({"alreadyExists", "primaryKeyViolation"})
+
+
+def _err_detail(raw: Any) -> str:
+    if isinstance(raw, dict):
+        return str(raw.get("description") or raw.get("detail") or raw.get("title") or "")
+    return ""
+
+
+def _method_error(raw: Any) -> MailError:
+    etype = str(raw.get("type") or "") if isinstance(raw, dict) else ""
+    cls = _METHOD_ERROR_MAP.get(etype, MailInvalidRequestError)
+    return cls(_err_detail(raw) or etype or "JMAP method error")
+
+
+def _set_error(raw: Any) -> MailError:
+    etype = str(raw.get("type") or "") if isinstance(raw, dict) else ""
+    cls = _SET_ERROR_MAP.get(etype, MailInvalidRequestError)
+    return cls(_err_detail(raw) or etype or "JMAP set error")
+
+
+def _raise_set_errors(args: dict[str, Any], err_key: str) -> None:
+    """Foo/set result: raise the first notCreated/notUpdated/notDestroyed
+    entry's mapped contract error (they're per-record, not method errors)."""
+    errs = args.get(err_key) or {}
+    if errs:
+        raise _set_error(next(iter(errs.values())))
+
+
+def _utc_now() -> str:
+    """JMAP UTCDateTime for `nextRetry` reschedules."""
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 class StalwartProvisioner:
-    """Contract operations over Stalwart's /api/principal management API."""
+    """Contract operations over Stalwart's JMAP management surface (≥0.16).
+
+    Verified live against mailengine.bloomieltsacademy.com (v1.0.0, TEC-192):
+    management calls take no `accountId` (server injects the caller's);
+    `Password.secret` stores a well-formed `$argon2id$` hash verbatim;
+    `x:Account/query` `name` filter is exact; ids are opaque; duplicate
+    create lands in `notCreated` as `primaryKeyViolation`.
+    """
 
     # Suspension = disabled permissions that override every role (contract):
     # blocks sign-in and send; inbound delivery continues so mail isn't lost.
@@ -302,6 +374,7 @@ class StalwartProvisioner:
         self._token = token
         self._domain = domain
         self._call = transport or _urllib_transport(timeout)
+        self._domain_id_cache: str | None = None  # resolved once, cached
 
     def _address(self, localpart: str) -> str:
         return f"{localpart}@{self._domain}"
@@ -312,6 +385,10 @@ class StalwartProvisioner:
             "Authorization": f"Bearer {self._token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            # The engine sits behind Cloudflare: its signature ban (error
+            # 1010) rejects urllib's default `Python-urllib/3.11` UA — send an
+            # explicit one (verified live: any non-banned UA passes).
+            "User-Agent": "bloom-platform/1.0",
         }
         status, parsed, resp_headers = self._call(method, url, headers, body)
         if status == 429:
@@ -327,33 +404,139 @@ class StalwartProvisioner:
             raise MailUnavailableError(f"mail API HTTP {status}")
         if status >= 400:
             err_cls = _STATUS_MAP.get(status, MailInvalidRequestError)
-            detail = ""
-            if isinstance(parsed, dict):
-                detail = str(parsed.get("detail") or parsed.get("title") or "")
+            detail = _err_detail(parsed)
             raise err_cls(detail or f"mail API HTTP {status}")
         return parsed
 
-    def _fetch(self, address: str) -> MailboxInfo:
-        parsed = self._request("GET", f"/api/principal/{address}")
-        data = parsed.get("data", {}) if isinstance(parsed, dict) else {}
-        disabled = data.get("disabledPermissions") or []
-        suspended = "authenticate" in disabled
-        localpart = address.split("@", 1)[0]
-        return MailboxInfo(
-            localpart=localpart,
-            address=address,
-            status="suspended" if suspended else "active",
-            quota_mb=int(data.get("quota") or 0) // 1_048_576,
+    # ── JMAP plumbing ─────────────────────────────────────────────────────
+
+    def _jmap_send(self, method_calls: list[list[Any]], using: list[str]) -> list[Any]:
+        parsed = self._request(
+            "POST", "/jmap/", {"using": using, "methodCalls": method_calls}
         )
+        responses = parsed.get("methodResponses") if isinstance(parsed, dict) else None
+        if not isinstance(responses, list):
+            raise MailUnavailableError("mail API: malformed JMAP response")
+        return responses
+
+    @staticmethod
+    def _collect(responses: list[Any]) -> dict[str, Any]:
+        """Index methodResponses by call id; raise on method-level errors."""
+        out: dict[str, Any] = {}
+        for resp in responses:
+            if not isinstance(resp, list) or len(resp) < 3:
+                raise MailUnavailableError("mail API: malformed JMAP method response")
+            name, args, call_id = resp[0], resp[1], str(resp[2])
+            if name == "error":
+                raise _method_error(args)
+            out[call_id] = args if isinstance(args, dict) else {}
+        return out
+
+    def _jmap(
+        self, method_calls: list[list[Any]], using: list[str] | None = None
+    ) -> dict[str, Any]:
+        return self._collect(self._jmap_send(method_calls, using or _USING_MGMT))
+
+    def _jmap_lenient(
+        self, method_calls: list[list[Any]], using: list[str] | None = None
+    ) -> dict[str, Any] | None:
+        """Inspector variant: `unknownMethod` → None (the contract's
+        `available:false` for surfaces an engine build doesn't expose).
+        Other method errors still raise the mapped taxonomy error."""
+        responses = self._jmap_send(method_calls, using or _USING_MGMT)
+        for resp in responses:
+            if (
+                isinstance(resp, list)
+                and len(resp) >= 2
+                and resp[0] == "error"
+                and isinstance(resp[1], dict)
+                and resp[1].get("type") == "unknownMethod"
+            ):
+                return None
+        return self._collect(responses)
+
+    # ── object resolution (batched query+get, one roundtrip) ─────────────
+
+    def _domain_id(self) -> str:
+        """Id of the MAIL_DOMAIN Domain object — resolved once, cached.
+        Missing domain = engine misconfiguration → `unavailable`."""
+        if self._domain_id_cache is None:
+            res = self._jmap(
+                [["x:Domain/query", {"filter": {"name": self._domain}}, "dq"]]
+            )
+            ids = res.get("dq", {}).get("ids") or []
+            if not ids:
+                raise MailUnavailableError(
+                    f"mail domain {self._domain} is not configured on the engine"
+                )
+            self._domain_id_cache = str(ids[0])
+        return self._domain_id_cache
+
+    def _account_lookup(self, localpart: str) -> dict[str, Any] | None:
+        """`x:Account/query{name,domainId}` + `x:Account/get` in one batch →
+        the account dict whose `name` exactly matches (the engine's name
+        filter is exact — verified — but the contract requires an
+        adapter-side exact match regardless)."""
+        res = self._jmap(
+            [
+                [
+                    "x:Account/query",
+                    {"filter": {"name": localpart, "domainId": self._domain_id()}},
+                    "aq",
+                ],
+                [
+                    "x:Account/get",
+                    {
+                        "#ids": {
+                            "resultOf": "aq",
+                            "name": "x:Account/query",
+                            "path": "/ids",
+                        }
+                    },
+                    "ag",
+                ],
+            ]
+        )
+        lp = localpart.lower()
+        for item in res.get("ag", {}).get("list") or []:
+            if isinstance(item, dict) and str(item.get("name") or "").lower() == lp:
+                return item
+        return None
+
+    def _mailbox_info(self, localpart: str, acct: dict[str, Any]) -> MailboxInfo:
+        perms = acct.get("permissions")
+        disabled: dict[str, Any] = {}
+        if isinstance(perms, dict) and perms.get("@type") in ("Merge", "Replace"):
+            disabled = perms.get("disabledPermissions") or {}
+        quotas = acct.get("quotas") or {}
+        return MailboxInfo(
+            localpart=str(acct.get("name") or localpart),
+            address=str(acct.get("emailAddress") or self._address(localpart)),
+            status="suspended" if "authenticate" in disabled else "active",
+            quota_mb=int(quotas.get("maxDiskQuota") or 0) // 1_048_576,
+        )
+
+    def _fetch(self, localpart: str) -> MailboxInfo:
+        acct = self._account_lookup(localpart)
+        if acct is None:
+            raise MailNotFoundError(f"mailbox {self._address(localpart)} not found")
+        return self._mailbox_info(localpart, acct)
+
+    def _update_account(self, localpart: str, patch: dict[str, Any]) -> MailboxInfo:
+        acct = self._account_lookup(localpart)
+        if acct is None:
+            raise MailNotFoundError(f"mailbox {self._address(localpart)} not found")
+        res = self._jmap(
+            [["x:Account/set", {"update": {str(acct["id"]): patch}}, "s"]]
+        )
+        args = res.get("s") or {}
+        _raise_set_errors(args, "notUpdated")
+        return self._fetch(localpart)
 
     # ── contract operations ────────────────────────────────────────────────
 
     def check_username(self, localpart: str) -> bool:
-        try:
-            self._request("GET", f"/api/principal/{self._address(localpart)}")
-        except MailNotFoundError:
-            return True
-        return False
+        return self._account_lookup(normalize_localpart(localpart)) is None
 
     def create_mailbox(
         self,
@@ -363,92 +546,109 @@ class StalwartProvisioner:
         display_name: str | None = None,
     ) -> MailboxInfo:
         address = self._address(localpart)
-        payload = {
-            "type": "individual",
-            "name": address,
-            "description": display_name or "",
-            "secrets": [secret],
-            "emails": [address],
-            "quota": quota_mb * 1_048_576,
-            "urls": [],
-            "memberOf": [],
-            "roles": ["user"],
-            "lists": [],
-            "members": [],
-            "enabledPermissions": [],
-            "disabledPermissions": [],
-            "externalMembers": [],
+        create_obj = {
+            "@type": "User",
+            "name": localpart,
+            "domainId": self._domain_id(),
+            "credentials": {"0": {"@type": "Password", "secret": secret}},
+            "quotas": {"maxDiskQuota": quota_mb * 1_048_576},
+            "roles": {"@type": "User"},
+            "permissions": {"@type": "Inherit"},
+            "memberGroupIds": {},
+            "aliases": {},
+            "encryptionAtRest": {"@type": "Disabled"},
         }
-        try:
-            self._request("POST", "/api/principal", payload)
-        except MailConflictError:
-            # Idempotent-on-localpart: a replay sees the stored mailbox.
-            logger.info("create_mailbox conflict for %s — verifying existing", address)
-            return self._fetch(address)
-        logger.info("create_mailbox ok: %s", address)
-        return MailboxInfo(localpart, address, "active", quota_mb)
-
-    def _set_suspension(self, localpart: str, suspended: bool) -> MailboxInfo:
-        address = self._address(localpart)
-        action = "addItem" if suspended else "removeItem"
-        ops = [
-            {"action": action, "field": "disabledPermissions", "value": perm}
-            for perm in self._SUSPENDED_PERMS
-        ]
-        self._request("PATCH", f"/api/principal/{address}", ops)
-        return self._fetch(address)
+        if display_name:
+            # Empty-string description is rejected (`invalidPatch`) and would
+            # mask the real `primaryKeyViolation` on idempotent replays.
+            create_obj["description"] = display_name
+        res = self._jmap([["x:Account/set", {"create": {"c1": create_obj}}, "s"]])
+        args = res.get("s") or {}
+        if "c1" in (args.get("created") or {}):
+            logger.info("create_mailbox ok: %s", address)
+            return MailboxInfo(localpart, address, "active", quota_mb)
+        err = (args.get("notCreated") or {}).get("c1")
+        if err is not None:
+            etype = str(err.get("type") or "") if isinstance(err, dict) else ""
+            if etype in _CREATE_CONFLICT_TYPES:
+                # Idempotent-on-localpart: a replay sees the stored mailbox.
+                logger.info(
+                    "create_mailbox conflict for %s — verifying existing", address
+                )
+                return self._fetch(localpart)
+            raise _set_error(err)
+        raise MailUnavailableError("mail API: unexpected x:Account/set response")
 
     def suspend(self, localpart: str) -> MailboxInfo:
-        return self._set_suspension(localpart, True)
+        return self._update_account(
+            localpart,
+            {
+                "permissions": {
+                    "@type": "Merge",
+                    "disabledPermissions": {
+                        perm: True for perm in self._SUSPENDED_PERMS
+                    },
+                }
+            },
+        )
 
     def unsuspend(self, localpart: str) -> MailboxInfo:
-        return self._set_suspension(localpart, False)
+        return self._update_account(
+            localpart, {"permissions": {"@type": "Inherit"}}
+        )
 
     def reset_password(self, localpart: str, secret: str) -> MailboxInfo:
-        address = self._address(localpart)
-        self._request(
-            "PATCH",
-            f"/api/principal/{address}",
-            [{"action": "set", "field": "secrets", "value": secret}],
+        # Replaces the primary Password credential (slot "0" — verified live:
+        # old password rejects, new one authenticates).
+        return self._update_account(
+            localpart,
+            {"credentials": {"0": {"@type": "Password", "secret": secret}}},
         )
-        return self._fetch(address)
 
     def set_quota(self, localpart: str, quota_mb: int) -> MailboxInfo:
-        address = self._address(localpart)
-        self._request(
-            "PATCH",
-            f"/api/principal/{address}",
-            [{"action": "set", "field": "quota", "value": quota_mb * 1_048_576}],
+        return self._update_account(
+            localpart, {"quotas": {"maxDiskQuota": quota_mb * 1_048_576}}
         )
-        return self._fetch(address)
 
     def list_mailboxes(self, page: int, limit: int) -> MailboxPage:
-        parsed = self._request("GET", f"/api/principal?types=individual&page={page}&limit={limit}")
-        data = parsed.get("data", {}) if isinstance(parsed, dict) else {}
-        items: list[MailboxInfo] = []
-        suffix = f"@{self._domain}"
-        for raw in data.get("items") or []:
-            if not isinstance(raw, dict):
-                continue
-            name = str(raw.get("name", ""))
-            if not name.endswith(suffix):
-                continue
-            disabled = raw.get("disabledPermissions") or []
-            items.append(
-                MailboxInfo(
-                    localpart=name[: -len(suffix)],
-                    address=name,
-                    status="suspended" if "authenticate" in disabled else "active",
-                    quota_mb=int(raw.get("quota") or 0) // 1_048_576,
-                )
-            )
-        return MailboxPage(items=items, total=int(data.get("total") or 0))
+        res = self._jmap(
+            [
+                [
+                    "x:Account/query",
+                    {
+                        "filter": {"domainId": self._domain_id()},
+                        "sort": [{"property": "name"}],
+                        "position": max(page - 1, 0) * limit,
+                        "limit": limit,
+                        "calculateTotal": True,
+                    },
+                    "aq",
+                ],
+                [
+                    "x:Account/get",
+                    {
+                        "#ids": {
+                            "resultOf": "aq",
+                            "name": "x:Account/query",
+                            "path": "/ids",
+                        }
+                    },
+                    "ag",
+                ],
+            ]
+        )
+        items = [
+            self._mailbox_info(str(item.get("name") or ""), item)
+            for item in res.get("ag", {}).get("list") or []
+            if isinstance(item, dict) and item.get("@type") == "User"
+        ]
+        return MailboxPage(items=items, total=int(res.get("aq", {}).get("total") or 0))
 
     # ── engine-admin operations (contracts/mail-admin.yaml, TEC-188) ──────
 
     def ping(self) -> bool:
         try:
-            self._request("GET", "/api/principal?page=1&limit=1")
+            self._request("GET", "/jmap/session")
         except MailUnavailableError:
             return False
         except MailError:
@@ -456,18 +656,45 @@ class StalwartProvisioner:
         return True
 
     def queue_snapshot(self, limit: int = 100) -> QueueSnapshot | None:
-        try:
-            parsed = self._request("GET", f"/api/queue/messages?page=1&limit={limit}&values=1")
-        except (MailNotFoundError, MailInvalidRequestError):
-            return None  # OSS build doesn't expose the queue endpoints
-        data = parsed.get("data", {}) if isinstance(parsed, dict) else {}
-        snap = QueueSnapshot(total=int(data.get("total") or 0))
-        for raw in data.get("items") or []:
+        res = self._jmap_lenient(
+            [
+                [
+                    "x:QueuedMessage/query",
+                    {"position": 0, "limit": limit, "calculateTotal": True},
+                    "q",
+                ],
+                [
+                    "x:QueuedMessage/get",
+                    {
+                        "#ids": {
+                            "resultOf": "q",
+                            "name": "x:QueuedMessage/query",
+                            "path": "/ids",
+                        },
+                        "properties": [
+                            "id",
+                            "returnPath",
+                            "size",
+                            "createdAt",
+                            "nextRetry",
+                            "recipients",
+                            "priority",
+                            "flags",
+                        ],
+                    },
+                    "g",
+                ],
+            ]
+        )
+        if res is None:
+            return None
+        snap = QueueSnapshot(total=int(res.get("q", {}).get("total") or 0))
+        for raw in res.get("g", {}).get("list") or []:
             msg = _queue_message(raw)
             snap.items.append(msg)
             if msg.in_flight:
                 snap.active += 1
-            else:
+            elif msg.status != "completed":
                 snap.deferred += 1
         if not snap.items:
             # Item detail unavailable (or queue empty) — report the total as
@@ -476,140 +703,178 @@ class StalwartProvisioner:
         return snap
 
     def queue_retry_all(self) -> bool:
-        try:
-            parsed = self._request("PATCH", "/api/queue/messages?filter=all")
-        except (MailNotFoundError, MailInvalidRequestError):
-            return False
-        return bool(parsed.get("data", True)) if isinstance(parsed, dict) else True
+        """Reschedule every queued message's next attempt to now.
+
+        Pages `x:QueuedMessage/query` for ids (bounded), then batches
+        `x:QueuedMessage/set` updates (≤500 objects per call, ≤16 calls per
+        request — inside the engine's published limits)."""
+        ids: list[str] = []
+        position = 0
+        while len(ids) < _QUEUE_RETRY_MAX:
+            res = self._jmap_lenient(
+                [
+                    [
+                        "x:QueuedMessage/query",
+                        {
+                            "position": position,
+                            "limit": _QUEUE_PAGE,
+                            "calculateTotal": True,
+                        },
+                        "q",
+                    ]
+                ]
+            )
+            if res is None:
+                return False
+            q = res.get("q") or {}
+            page = [str(i) for i in q.get("ids") or []]
+            ids.extend(page)
+            position += len(page)
+            total = int(q.get("total") or 0)
+            if not page or position >= total:
+                break
+        if not ids:
+            return True  # empty queue — vacuous success
+        now = _utc_now()
+        calls = [
+            [
+                "x:QueuedMessage/set",
+                {
+                    "update": {
+                        mid: {"nextRetry": now}
+                        for mid in ids[i : i + _QUEUE_PAGE]
+                    }
+                },
+                f"s{i // _QUEUE_PAGE}",
+            ]
+            for i in range(0, min(len(ids), _QUEUE_RETRY_MAX), _QUEUE_PAGE)
+        ]
+        res = self._jmap(calls)
+        for call_id in (f"s{i // _QUEUE_PAGE}" for i in range(0, len(ids), _QUEUE_PAGE)):
+            if (res.get(call_id) or {}).get("notUpdated"):
+                return False
+        return True
 
     def queue_retry_one(self, message_id: str) -> bool:
-        try:
-            parsed = self._request(
-                "PATCH",
-                f"/api/queue/messages/{urllib.parse.quote(message_id, safe='')}",
-            )
-        except MailNotFoundError:
+        res = self._jmap_lenient(
+            [
+                [
+                    "x:QueuedMessage/set",
+                    {"update": {message_id: {"nextRetry": _utc_now()}}},
+                    "s",
+                ]
+            ]
+        )
+        if res is None:
             return False
-        return bool(parsed.get("data", True)) if isinstance(parsed, dict) else True
+        args = res.get("s") or {}
+        return message_id in (args.get("updated") or {})
 
     def dns_records(self, domain: str) -> list[DnsRecord] | None:
-        """Stalwart's canonical DNS list for the domain — includes the DKIM
-        `_domainkey` TXT records the engine expects to be published."""
-        try:
-            parsed = self._request("GET", f"/api/dns/records/{urllib.parse.quote(domain, safe='')}")
-        except (MailNotFoundError, MailInvalidRequestError):
+        """Stalwart's canonical DNS list for the domain — the server-set
+        `dnsZoneFile` on the Domain object (zone-file text) parsed into
+        records; includes the DKIM `_domainkey` TXT records the engine
+        expects to be published."""
+        res = self._jmap_lenient(
+            [
+                ["x:Domain/query", {"filter": {"name": domain}}, "dq"],
+                [
+                    "x:Domain/get",
+                    {
+                        "#ids": {
+                            "resultOf": "dq",
+                            "name": "x:Domain/query",
+                            "path": "/ids",
+                        }
+                    },
+                    "dg",
+                ],
+            ]
+        )
+        if res is None:
             return None
-        data = parsed.get("data") if isinstance(parsed, dict) else None
         records: list[DnsRecord] = []
-        for raw in data or []:
-            if isinstance(raw, dict) and raw.get("name") and raw.get("type"):
-                records.append(
-                    DnsRecord(
-                        type=str(raw["type"]).upper(),
-                        name=str(raw["name"]),
-                        content=str(raw.get("content") or ""),
-                    )
-                )
+        for item in res.get("dg", {}).get("list") or []:
+            if not isinstance(item, dict):
+                continue
+            zone = item.get("dnsZoneFile")
+            if isinstance(zone, str):
+                records.extend(_parse_zone(zone))
         return records
 
     def delivery_items(self, account: str | None, limit: int) -> list[DeliveryItem] | None:
-        if account:
-            return self._jmap_delivery(account, limit)
-        try:
-            parsed = self._request("GET", f"/api/telemetry/traces?limit={limit}&values=1")
-        except (MailNotFoundError, MailInvalidRequestError):
+        if not account:
+            # Engine-wide tracing is Enterprise-only in v0.16+ — same OSS
+            # `available:false` degradation as the removed REST surface.
             return None
-        # OSS/Enterprise gate: 200 {"error": "unsupported", "details": ...}
-        if isinstance(parsed, dict) and parsed.get("error"):
-            return None
-        data = parsed.get("data", {}) if isinstance(parsed, dict) else {}
-        items: list[DeliveryItem] = []
-        for raw in data.get("items") or []:
-            if not isinstance(raw, dict):
-                continue
-            items.append(
-                DeliveryItem(
-                    id=str(raw.get("id") or raw.get("queueId") or raw.get("queue_id") or ""),
-                    direction=_trace_direction(raw),
-                    sender=raw.get("from") or raw.get("sender"),
-                    to=[str(t) for t in raw.get("to") or []],
-                    received_at=raw.get("timestamp") or raw.get("receivedAt"),
-                    status=raw.get("status") or raw.get("type"),
-                )
-            )
-        return items
+        localpart = normalize_localpart(account.split("@", 1)[0])
+        acct = self._account_lookup(localpart)
+        if acct is None:
+            return None  # unknown account → same no-data surface as before
+        account_id = str(acct.get("id") or "")
+        address = str(acct.get("emailAddress") or self._address(localpart))
+        return self._jmap_delivery(account_id, address, limit)
 
-    # ── JMAP (Stalwart's primary management surface) ──────────────────────
+    # ── per-account delivery inspector (mail JMAP) ────────────────────────
 
-    def _jmap(self, method_calls: list[list[Any]]) -> Any:
-        body = {
-            "using": [
-                "urn:ietf:params:jmap:core",
-                "urn:ietf:params:jmap:mail",
-            ],
-            "methodCalls": method_calls,
-        }
-        return self._request("POST", "/jmap/", body)
-
-    def _jmap_delivery(self, account: str, limit: int) -> list[DeliveryItem] | None:
+    def _jmap_delivery(
+        self, account_id: str, address: str, limit: int
+    ) -> list[DeliveryItem] | None:
         """Per-account inspector: what arrived/left and where it landed.
 
         One JMAP roundtrip — Email/query + Email/get (metadata properties
         only, never `body`/`textBody`/`htmlBody`) + mailbox names via a
-        result reference. No N+1 fan-out.
+        result reference. No N+1 fan-out. `accountId` is the engine's opaque
+        account id (v0.16: not an email address) resolved by the caller.
         """
-        parsed = self._jmap(
+        method_calls = [
             [
-                [
-                    "Email/query",
-                    {
-                        "accountId": account,
-                        "sort": [{"property": "receivedAt", "isAscending": False}],
-                        "limit": limit,
-                        "position": 0,
+                "Email/query",
+                {
+                    "accountId": account_id,
+                    "sort": [{"property": "receivedAt", "isAscending": False}],
+                    "limit": limit,
+                    "position": 0,
+                },
+                "q",
+            ],
+            [
+                "Email/get",
+                {
+                    "accountId": account_id,
+                    "#ids": {
+                        "resultOf": "q",
+                        "name": "Email/query",
+                        "path": "/ids",
                     },
-                    "q",
-                ],
-                [
-                    "Email/get",
-                    {
-                        "accountId": account,
-                        "#ids": {
-                            "resultOf": "q",
-                            "name": "Email/query",
-                            "path": "/ids",
-                        },
-                        "properties": [
-                            "id",
-                            "subject",
-                            "receivedAt",
-                            "from",
-                            "to",
-                            "mailboxIds",
-                            "keywords",
-                        ],
+                    "properties": [
+                        "id",
+                        "subject",
+                        "receivedAt",
+                        "from",
+                        "to",
+                        "mailboxIds",
+                        "keywords",
+                    ],
+                },
+                "e",
+            ],
+            ["Mailbox/query", {"accountId": account_id}, "mq"],
+            [
+                "Mailbox/get",
+                {
+                    "accountId": account_id,
+                    "#ids": {
+                        "resultOf": "mq",
+                        "name": "Mailbox/query",
+                        "path": "/ids",
                     },
-                    "e",
-                ],
-                ["Mailbox/query", {"accountId": account}, "mq"],
-                [
-                    "Mailbox/get",
-                    {
-                        "accountId": account,
-                        "#ids": {
-                            "resultOf": "mq",
-                            "name": "Mailbox/query",
-                            "path": "/ids",
-                        },
-                        "properties": ["id", "name"],
-                    },
-                    "m",
-                ],
-            ]
-        )
-        responses = parsed.get("methodResponses") if isinstance(parsed, dict) else None
-        if not responses:
-            return None
+                    "properties": ["id", "name"],
+                },
+                "m",
+            ],
+        ]
+        responses = self._jmap_send(method_calls, _USING_MAIL)
         by_call: dict[str, Any] = {}
         for resp in responses:
             if not isinstance(resp, list) or len(resp) < 3:
@@ -623,7 +888,7 @@ class StalwartProvisioner:
             for mb in (by_call.get("m") or {}).get("list") or []
             if isinstance(mb, dict)
         }
-        account_l = account.lower()
+        account_l = address.lower()
         items: list[DeliveryItem] = []
         for em in emails:
             if not isinstance(em, dict):
@@ -653,23 +918,30 @@ class StalwartProvisioner:
         return items
 
 
-_IN_FLIGHT_STATUSES = frozenset(
-    {
-        "inflight",
-        "in-progress",
-        "in_progress",
-        "processing",
-        "active",
-        "locked",
-        "delivering",
-        "scheduled_inflight",
-    }
+# Queue page/cap bounds — inside Stalwart's published limits
+# (maxObjectsInGet/Set=500, maxCallsInRequest=16).
+_QUEUE_PAGE = 500
+_QUEUE_RETRY_MAX = 4_000
+
+# Recipient @type → representative status precedence (worst wins).
+_RECIPIENT_STATUS_PRECEDENCE = (
+    "permanent_failure",
+    "temporary_failure",
+    "scheduled",
+    "completed",
 )
 
 
+def _snake(name: str) -> str:
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+
 def _queue_message(raw: Any) -> QueueMessage:
-    """Parse a /api/queue/messages item (openapi: id, return_path, domains[]
-    with name/status/recipients[]/retry_num/next_retry, created, size)."""
+    """Parse an `x:QueuedMessage` (recipients is a map of address →
+    QueuedRecipient{status:{@type},retryDue,queueName,...}).
+
+    v0.16 exposes no in-flight delivery signal — `in_flight` is always
+    False; per-recipient `status` drives the deferred classification."""
     if not isinstance(raw, dict):
         return QueueMessage(
             id=str(raw),
@@ -682,36 +954,115 @@ def _queue_message(raw: Any) -> QueueMessage:
             in_flight=False,
         )
     statuses: set[str] = set()
+    next_retry = raw.get("nextRetry")
     recipients = 0
-    next_retry: str | None = None
-    for domain in raw.get("domains") or []:
-        if not isinstance(domain, dict):
+    for rcpt in (raw.get("recipients") or {}).values():
+        recipients += 1
+        if not isinstance(rcpt, dict):
             continue
-        if domain.get("status"):
-            statuses.add(str(domain["status"]).lower())
-        next_retry = next_retry or domain.get("next_retry")
-        for recipient in domain.get("recipients") or []:
-            recipients += 1
-            if isinstance(recipient, dict) and recipient.get("status"):
-                statuses.add(str(recipient["status"]).lower())
+        st = rcpt.get("status")
+        etype = st.get("@type") if isinstance(st, dict) else st
+        if etype:
+            statuses.add(_snake(str(etype)))
+        next_retry = next_retry or rcpt.get("retryDue")
+    status = next(
+        (s for s in _RECIPIENT_STATUS_PRECEDENCE if s in statuses), None
+    ) or ("completed" if statuses else None)
     return QueueMessage(
-        id=str(raw.get("id") or raw.get("queue_id") or ""),
-        return_path=raw.get("return_path") or raw.get("returnPath"),
+        id=str(raw.get("id") or ""),
+        return_path=raw.get("returnPath"),
         size=int(raw["size"]) if raw.get("size") is not None else None,
-        created=raw.get("created"),
-        status=sorted(statuses)[0] if statuses else None,
+        created=raw.get("createdAt"),
+        status=status,
         next_retry=next_retry,
         recipients=recipients or None,
-        in_flight=bool(statuses & _IN_FLIGHT_STATUSES),
+        in_flight=False,
     )
 
 
-def _trace_direction(raw: dict[str, Any]) -> str | None:
-    for key in ("direction", "type", "kind"):
-        value = str(raw.get(key) or "").lower()
-        if value in ("inbound", "outbound"):
-            return value
-    return None
+_ZONE_RECORD_RE = re.compile(
+    r"^(?P<name>\S+)"                       # owner name (absolute or relative)
+    r"(?:\s+(?P<ttl>\d+[smhdwSMHDW]?))?"    # optional TTL
+    r"(?:\s+(?P<class>[Ii][Nn]))?"          # optional class
+    r"\s+(?P<type>[A-Za-z]+)\s+(?P<rdata>.*)$"
+)
+_ZONE_TYPES = frozenset(
+    {"A", "AAAA", "MX", "TXT", "SRV", "CAA", "CNAME", "NS", "PTR", "TLSA"}
+)
+
+
+def _zone_logical_lines(zone: str) -> list[str]:
+    """Collapse RFC 1035 continuation groups `( ... )` into single lines and
+    strip `;` comments (which run to end of physical line) outside quotes."""
+    lines: list[str] = []
+    buf = ""
+    depth = 0
+    in_quote = False
+    in_comment = False
+    for ch in zone:
+        if in_comment:
+            if ch == "\n":
+                in_comment = False
+                if depth == 0:
+                    lines.append(buf)
+                    buf = ""
+            continue
+        if in_quote:
+            buf += ch
+            if ch == '"':
+                in_quote = False
+            continue
+        if ch == '"':
+            in_quote = True
+            buf += ch
+        elif ch == ";":
+            in_comment = True
+        elif ch == "(":
+            depth += 1
+            buf += " "
+        elif ch == ")":
+            depth = max(0, depth - 1)
+            buf += " "
+        elif ch == "\n":
+            if depth == 0:
+                lines.append(buf)
+                buf = ""
+            else:
+                buf += " "
+        else:
+            buf += ch
+    if buf.strip():
+        lines.append(buf)
+    return lines
+
+
+def _zone_txt(rdata: str) -> str:
+    """TXT rdata → content: concat quoted char-strings, else raw."""
+    quoted = re.findall(r'"((?:[^"\\]|\\.)*)"', rdata)
+    if quoted:
+        return "".join(quoted)
+    return rdata.strip()
+
+
+def _parse_zone(zone: str) -> list[DnsRecord]:
+    """Parse Stalwart's `dnsZoneFile` text into contract DnsRecords."""
+    records: list[DnsRecord] = []
+    for line in _zone_logical_lines(zone):
+        line = line.strip()
+        if not line or line.startswith(("$", "@ ")):
+            continue
+        m = _ZONE_RECORD_RE.match(line)
+        if not m:
+            continue
+        rtype = m.group("type").upper()
+        if rtype not in _ZONE_TYPES:
+            continue
+        rdata = m.group("rdata").strip()
+        content = _zone_txt(rdata) if rtype == "TXT" else rdata
+        records.append(
+            DnsRecord(type=rtype, name=m.group("name"), content=content)
+        )
+    return records
 
 
 class NullProvisioner:

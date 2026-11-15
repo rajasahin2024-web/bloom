@@ -39,11 +39,15 @@ from app.models.user import User
 from app.services import mail_admin
 from app.tests.test_mail import (
     FakeTransport,
+    _account,
     _admin_headers,
     _delete_user,
     _fresh,
+    _jmap_resp,
     _make_mailbox,
     _provisioner,
+    _push_domain,
+    _push_lookup,
     requires_infra,
 )
 
@@ -73,7 +77,7 @@ def redis_db1() -> Generator[Redis, None, None]:
 
 
 def test_ping_reachability() -> None:
-    p = _provisioner(FakeTransport().push(200, {"data": {"items": []}}))
+    p = _provisioner(FakeTransport().push(200, {"accounts": {"b": {}}}))
     assert p.ping() is True
     # Engine answering 401 still counts as reachable — the API responded.
     p = _provisioner(FakeTransport().push(401, {"detail": "nope"}))
@@ -85,177 +89,280 @@ def test_ping_unreachable() -> None:
     t.raise_error = mail_api.MailUnavailableError("down")
     p = _provisioner(t)
     assert p.ping() is False
+    assert t.calls[0][1].endswith("/jmap/session")
+
+
+def _queued_msg(mid: str, rcpts: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "id": mid,
+        "returnPath": "a@b.c",
+        "size": 900,
+        "createdAt": "2026-11-15T10:00:00Z",
+        "recipients": rcpts,
+    }
 
 
 def test_queue_snapshot_parses_and_classifies() -> None:
     t = FakeTransport().push(
         200,
-        {
-            "data": {
-                "total": 2,
-                "items": [
-                    {
-                        "id": 123,
-                        "return_path": "a@b.c",
-                        "size": 900,
-                        "created": "2026-11-15T10:00:00Z",
-                        "domains": [
+        _jmap_resp(
+            [
+                "x:QueuedMessage/query",
+                {"accountId": "b", "position": 0, "ids": ["m1", "m2"], "total": 2},
+                "q",
+            ],
+            [
+                "x:QueuedMessage/get",
+                {
+                    "accountId": "b",
+                    "list": [
+                        _queued_msg(
+                            "m1",
                             {
-                                "name": "x.y",
-                                "status": "scheduled",
-                                "recipients": [{"address": "r@x.y", "status": "scheduled"}],
-                                "next_retry": "2026-11-15T11:00:00Z",
-                            }
-                        ],
-                    },
-                    {
-                        "id": 124,
-                        "return_path": "c@d.e",
-                        "size": 100,
-                        "created": "2026-11-15T10:01:00Z",
-                        "domains": [
+                                "r@x.y": {
+                                    "status": {"@type": "Scheduled"},
+                                    "retryDue": "2026-11-15T11:00:00Z",
+                                    "queueName": "schedule",
+                                }
+                            },
+                        ),
+                        _queued_msg(
+                            "m2",
                             {
-                                "name": "z.w",
-                                "status": "inflight",
-                                "recipients": [{"address": "q@z.w", "status": "delivering"}],
-                            }
-                        ],
-                    },
-                ],
-            }
-        },
+                                "q@z.w": {
+                                    "status": {"@type": "TemporaryFailure"},
+                                    "retryDue": "2026-11-15T11:30:00Z",
+                                    "queueName": "schedule",
+                                },
+                                "ok@z.w": {"status": {"@type": "Completed"}},
+                            },
+                        ),
+                    ],
+                    "notFound": [],
+                },
+                "g",
+            ],
+        ),
     )
     snap = _provisioner(t).queue_snapshot()
     assert snap is not None
-    assert snap.total == 2 and snap.deferred == 1 and snap.active == 1
+    assert snap.total == 2 and snap.deferred == 2 and snap.active == 0
     m0 = snap.items[0]
-    assert m0.id == "123" and m0.recipients == 1
+    assert m0.id == "m1" and m0.recipients == 1
+    assert m0.status == "scheduled"
     assert m0.next_retry == "2026-11-15T11:00:00Z"
-    assert t.calls[0][1].endswith("/api/queue/messages?page=1&limit=100&values=1")
+    m1 = snap.items[1]
+    assert m1.recipients == 2 and m1.status == "temporary_failure"
+    # one JMAP call — query + get batched
+    assert len(t.calls) == 1 and t.calls[0][1].endswith("/jmap/")
+    query_args = t.calls[0][2]["methodCalls"][0][1]
+    assert query_args["limit"] == 100 and query_args["calculateTotal"] is True
 
 
 def test_queue_snapshot_not_exposed() -> None:
-    t = FakeTransport().push(404, {"detail": "no route"})
+    # method-level unknownMethod → the contract's available:false
+    t = FakeTransport().push(
+        200,
+        _jmap_resp(["error", {"type": "unknownMethod"}, "q"]),
+    )
     assert _provisioner(t).queue_snapshot() is None
 
 
 def test_queue_retry() -> None:
-    t = FakeTransport().push(200, {"data": True})
+    # retry_all: query ids → one batched set of nextRetry updates
+    t = FakeTransport()
+    t.push(
+        200,
+        _jmap_resp(
+            [
+                "x:QueuedMessage/query",
+                {"accountId": "b", "position": 0, "ids": ["m1", "m2"], "total": 2},
+                "q",
+            ]
+        ),
+    )
+    t.push(
+        200,
+        _jmap_resp(
+            [
+                "x:QueuedMessage/set",
+                {"accountId": "b", "updated": {"m1": None, "m2": None}},
+                "s0",
+            ]
+        ),
+    )
     assert _provisioner(t).queue_retry_all() is True
-    assert t.calls[0][0] == "PATCH"
-    assert t.calls[0][1].endswith("/api/queue/messages?filter=all")
+    update = t.calls[1][2]["methodCalls"][0][1]["update"]
+    assert set(update) == {"m1", "m2"}
+    assert all("nextRetry" in v for v in update.values())
 
-    t = FakeTransport().push(200, {"data": True})
+    # partial failure → False
+    t = FakeTransport()
+    t.push(
+        200,
+        _jmap_resp(
+            [
+                "x:QueuedMessage/query",
+                {"accountId": "b", "position": 0, "ids": ["m1"], "total": 1},
+                "q",
+            ]
+        ),
+    )
+    t.push(
+        200,
+        _jmap_resp(
+            [
+                "x:QueuedMessage/set",
+                {
+                    "accountId": "b",
+                    "notUpdated": {"m1": {"type": "notFound"}},
+                },
+                "s0",
+            ]
+        ),
+    )
+    assert _provisioner(t).queue_retry_all() is False
+
+    t = FakeTransport().push(
+        200,
+        _jmap_resp(
+            [
+                "x:QueuedMessage/set",
+                {"accountId": "b", "updated": {"99": None}},
+                "s",
+            ]
+        ),
+    )
     assert _provisioner(t).queue_retry_one("99") is True
-    assert t.calls[0][1].endswith("/api/queue/messages/99")
 
-    t = FakeTransport().push(404)
+    t = FakeTransport().push(
+        200,
+        _jmap_resp(
+            [
+                "x:QueuedMessage/set",
+                {
+                    "accountId": "b",
+                    "notUpdated": {"gone": {"type": "notFound"}},
+                },
+                "s",
+            ]
+        ),
+    )
     assert _provisioner(t).queue_retry_one("gone") is False
 
 
 def test_dns_records_parse() -> None:
+    zone = (
+        'v1-rsa-20261107._domainkey.bloomieltsacademy.com. IN TXT (\n'
+        '    "v=DKIM1; k=rsa; h=sha256; p=MIIB"\n'
+        '    "IjANBg=="\n'
+        ')\n'
+        'bloomieltsacademy.com. IN TXT "v=spf1 mx -all"\n'
+        'bloomieltsacademy.com. IN MX 10 mail.bloomieltsacademy.com.\n'
+        '_imaps._tcp.bloomieltsacademy.com. IN SRV 0 1 993 mail.bloomieltsacademy.com.\n'
+        'mta-sts.bloomieltsacademy.com. IN CNAME mail.bloomieltsacademy.com.\n'
+        'bloomieltsacademy.com. IN CAA 0 issue "letsencrypt.org"\n'
+    )
     t = FakeTransport().push(
         200,
-        {
-            "data": [
+        _jmap_resp(
+            [
+                "x:Domain/query",
+                {"accountId": "b", "position": 0, "ids": ["b"]},
+                "dq",
+            ],
+            [
+                "x:Domain/get",
                 {
-                    "type": "MX",
-                    "name": "bloomieltsacademy.com.",
-                    "content": "10 mail.bloomieltsacademy.com.",
+                    "accountId": "b",
+                    "list": [{"id": "b", "name": "bloomieltsacademy.com",
+                              "dnsZoneFile": zone}],
+                    "notFound": [],
                 },
-                {
-                    "type": "TXT",
-                    "name": "v1-rsa._domainkey.bloomieltsacademy.com.",
-                    "content": "v=DKIM1; k=rsa; p=ABC",
-                },
-            ]
-        },
+                "dg",
+            ],
+        ),
     )
     recs = _provisioner(t).dns_records("bloomieltsacademy.com")
-    assert recs is not None and len(recs) == 2
-    assert recs[1].name.startswith("v1-rsa._domainkey")
-    t = FakeTransport().push(404)
+    assert recs is not None and len(recs) == 6
+    by_type = {r.type: r for r in recs}
+    dkim = recs[0]
+    assert dkim.type == "TXT" and dkim.name.startswith("v1-rsa-20261107._domainkey")
+    assert dkim.content == "v=DKIM1; k=rsa; h=sha256; p=MIIBIjANBg=="
+    assert by_type["MX"].content == "10 mail.bloomieltsacademy.com."
+    assert by_type["SRV"].name.startswith("_imaps._tcp")
+    assert by_type["CAA"].type == "CAA"
+    t = FakeTransport().push(200, _jmap_resp(["error", {"type": "unknownMethod"}, "dq"]))
     assert _provisioner(t).dns_records("bloomieltsacademy.com") is None
 
 
-def test_delivery_traces_unsupported_and_items() -> None:
-    t = FakeTransport().push(200, {"error": "unsupported", "details": "no tracing store"})
+def test_delivery_engine_wide_unavailable() -> None:
+    """delivery_items(None) → available:false without an engine call —
+    engine-wide tracing is Enterprise-only on v0.16+."""
+    t = FakeTransport()
     assert _provisioner(t).delivery_items(None, 10) is None
+    assert t.calls == []
 
-    t = FakeTransport().push(
+
+def test_jmap_delivery_resolves_account_then_one_roundtrip() -> None:
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, _account("s"))
+    t.push(
         200,
-        {
-            "data": {
-                "items": [
-                    {
-                        "id": "t1",
-                        "type": "inbound",
-                        "from": "ext@x.y",
-                        "to": ["s@bloomieltsacademy.com"],
-                        "timestamp": "2026-11-15T09:00:00Z",
-                        "status": "completed",
-                    }
-                ]
-            }
-        },
-    )
-    items = _provisioner(t).delivery_items(None, 10)
-    assert items is not None and len(items) == 1
-    assert items[0].direction == "inbound"
-    assert items[0].sender == "ext@x.y"
-
-
-def test_jmap_delivery_parses_single_roundtrip() -> None:
-    t = FakeTransport().push(
-        200,
-        {
-            "methodResponses": [
-                ["Email/query", {"ids": ["m1", "m2"]}, "q"],
-                [
-                    "Email/get",
-                    {
-                        "list": [
-                            {
-                                "id": "m1",
-                                "subject": "hi",
-                                "receivedAt": "2026-11-15T08:00:00Z",
-                                "from": [{"email": "ext@x.y"}],
-                                "to": [{"email": "s@bloomieltsacademy.com"}],
-                                "mailboxIds": {"box-in": True},
-                                "keywords": {"$seen": True},
-                            },
-                            {
-                                "id": "m2",
-                                "subject": "out",
-                                "receivedAt": "2026-11-15T08:05:00Z",
-                                "from": [{"email": "s@bloomieltsacademy.com"}],
-                                "to": [{"email": "friend@y.z"}],
-                                "mailboxIds": {"box-sent": True},
-                                "keywords": {},
-                            },
-                        ]
-                    },
-                    "e",
-                ],
-                ["Mailbox/query", {"ids": ["box-in", "box-sent"]}, "mq"],
-                [
-                    "Mailbox/get",
-                    {
-                        "list": [
-                            {"id": "box-in", "name": "Inbox"},
-                            {"id": "box-sent", "name": "Sent"},
-                        ]
-                    },
-                    "m",
-                ],
-            ]
-        },
+        _jmap_resp(
+            ["Email/query", {"ids": ["m1", "m2"]}, "q"],
+            [
+                "Email/get",
+                {
+                    "list": [
+                        {
+                            "id": "m1",
+                            "subject": "hi",
+                            "receivedAt": "2026-11-15T08:00:00Z",
+                            "from": [{"email": "ext@x.y"}],
+                            "to": [{"email": "s@bloomieltsacademy.com"}],
+                            "mailboxIds": {"box-in": True},
+                            "keywords": {"$seen": True},
+                        },
+                        {
+                            "id": "m2",
+                            "subject": "out",
+                            "receivedAt": "2026-11-15T08:05:00Z",
+                            "from": [{"email": "s@bloomieltsacademy.com"}],
+                            "to": [{"email": "friend@y.z"}],
+                            "mailboxIds": {"box-sent": True},
+                            "keywords": {},
+                        },
+                    ]
+                },
+                "e",
+            ],
+            ["Mailbox/query", {"ids": ["box-in", "box-sent"]}, "mq"],
+            [
+                "Mailbox/get",
+                {
+                    "list": [
+                        {"id": "box-in", "name": "Inbox"},
+                        {"id": "box-sent", "name": "Sent"},
+                    ]
+                },
+                "m",
+            ],
+        ),
     )
     items = _provisioner(t).delivery_items("s@bloomieltsacademy.com", 10)
-    # one JMAP call, all four methods — no fan-out
-    assert len(t.calls) == 1
-    assert t.calls[0][1].endswith("/jmap/")
-    assert len(t.calls[0][2]["methodCalls"]) == 4
+    # lookup batch + one mail-JMAP roundtrip — no fan-out
+    assert len(t.calls) == 3
+    mail_call = t.calls[2]
+    assert mail_call[1].endswith("/jmap/")
+    assert mail_call[2]["using"] == [
+        "urn:ietf:params:jmap:core",
+        "urn:ietf:params:jmap:mail",
+    ]
+    assert len(mail_call[2]["methodCalls"]) == 4
+    # resolved opaque account id, not the address
+    assert mail_call[2]["methodCalls"][0][1]["accountId"] == "c"
     assert items is not None and len(items) == 2
     inbound, outbound = items[0], items[1]
     assert inbound.direction == "inbound" and inbound.folder == "Inbox" and inbound.status == "seen"
@@ -267,11 +374,23 @@ def test_jmap_delivery_parses_single_roundtrip() -> None:
 
 
 def test_jmap_delivery_error_returns_none() -> None:
-    t = FakeTransport().push(
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, _account("s"))
+    t.push(
         200,
-        {"methodResponses": [["error", {"type": "accountNotFound"}, "q"]]},
+        _jmap_resp(["error", {"type": "accountNotFound"}, "q"]),
     )
-    assert _provisioner(t).delivery_items("ghost@bloomieltsacademy.com", 10) is None
+    assert _provisioner(t).delivery_items("s@bloomieltsacademy.com", 10) is None
+
+
+def test_delivery_unknown_account_returns_none() -> None:
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, None)
+    p = _provisioner(t)
+    assert p.delivery_items("ghost@bloomieltsacademy.com", 10) is None
+    assert len(t.calls) == 2  # no mail-JMAP call was made
 
 
 # ── Service helpers (no infra) ─────────────────────────────────────────────────

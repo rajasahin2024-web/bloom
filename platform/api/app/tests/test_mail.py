@@ -76,6 +76,7 @@ class FakeTransport:
 
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, Any]] = []
+        self.call_headers: list[dict[str, str]] = []
         self.responses: list[tuple[int, Any, dict[str, str]]] = []
         self.raise_error: Exception | None = None
 
@@ -89,6 +90,7 @@ class FakeTransport:
         self, method: str, url: str, headers: dict[str, str], body: Any
     ) -> tuple[int, Any, dict[str, str]]:
         self.calls.append((method, url, body))
+        self.call_headers.append(headers)
         if self.raise_error is not None:
             raise self.raise_error
         assert self.responses, f"unexpected call: {method} {url}"
@@ -108,56 +110,189 @@ def _provisioner(transport: FakeTransport) -> StalwartProvisioner:
     )
 
 
+# ── JMAP fixtures (Stalwart ≥0.16 shapes — verified live, TEC-192) ────────────
+
+
+def _jmap_resp(*calls: list[Any]) -> dict[str, Any]:
+    return {"methodResponses": [list(c) for c in calls], "sessionState": "s1"}
+
+
+def _push_domain(t: FakeTransport, ids: list[str] | None = None) -> None:
+    t.push(
+        200,
+        _jmap_resp(
+            [
+                "x:Domain/query",
+                {"accountId": "b", "position": 0,
+                 "ids": ["b"] if ids is None else ids},
+                "dq",
+            ]
+        ),
+    )
+
+
+def _account(localpart: str, **over: Any) -> dict[str, Any]:
+    acct: dict[str, Any] = {
+        "id": "c",
+        "@type": "User",
+        "name": localpart,
+        "domainId": "b",
+        "emailAddress": f"{localpart}@bloomieltsacademy.com",
+        "permissions": {"@type": "Inherit"},
+        "quotas": {"maxDiskQuota": 2 * 1_048_576},
+        "roles": {"@type": "User"},
+        "description": "",
+    }
+    acct.update(over)
+    return acct
+
+
+def _push_lookup(t: FakeTransport, acct: dict[str, Any] | None) -> None:
+    """query{name,domainId} + get(#ids) batch — one HTTP call."""
+    t.push(
+        200,
+        _jmap_resp(
+            [
+                "x:Account/query",
+                {
+                    "accountId": "b",
+                    "position": 0,
+                    "ids": [acct["id"]] if acct else [],
+                },
+                "aq",
+            ],
+            [
+                "x:Account/get",
+                {
+                    "accountId": "b",
+                    "list": [acct] if acct else [],
+                    "notFound": [],
+                },
+                "ag",
+            ],
+        )
+    )
+
+
 # ── Adapter unit tests (no infra) ──────────────────────────────────────────────
 
 
 def test_adapter_sends_bearer_and_create_shape() -> None:
-    t = FakeTransport().push(200, {"data": 7})
+    t = FakeTransport()
+    _push_domain(t)
+    t.push(
+        200,
+        _jmap_resp(
+            ["x:Account/set", {"accountId": "b", "created": {"c1": {"id": "e"}}}, "s"]
+        ),
+    )
     p = _provisioner(t)
     info = p.create_mailbox("r.sharma", "$argon2id$hash", 1024, "R Sharma")
-    method, url, body = t.calls[0]
-    assert method == "POST" and url == "https://mail.test/api/principal"
-    assert body["name"] == "r.sharma@bloomieltsacademy.com"
-    assert body["emails"] == ["r.sharma@bloomieltsacademy.com"]
-    assert body["secrets"] == ["$argon2id$hash"]  # pre-hashed — never plaintext
-    assert body["quota"] == 1024 * 1_048_576
-    assert body["roles"] == ["user"]
+    # Call 0: domain resolution; call 1: the create — both POST /jmap/.
+    assert t.calls[0][0] == "POST" and t.calls[0][1] == "https://mail.test/jmap/"
+    assert t.calls[0][2]["methodCalls"][0][0] == "x:Domain/query"
+    method, url, body = t.calls[1]
+    assert method == "POST" and url == "https://mail.test/jmap/"
+    assert body["using"] == ["urn:ietf:params:jmap:core", "urn:stalwart:jmap"]
+    name, args, _cid = body["methodCalls"][0]
+    assert name == "x:Account/set"
+    create = args["create"]["c1"]
+    assert create["@type"] == "User"
+    assert create["name"] == "r.sharma"  # localpart, not the address
+    assert create["domainId"] == "b"
+    # pre-hashed argon2id goes verbatim into the Password credential
+    assert create["credentials"] == {
+        "0": {"@type": "Password", "secret": "$argon2id$hash"}
+    }
+    assert create["quotas"] == {"maxDiskQuota": 1024 * 1_048_576}
+    assert create["roles"] == {"@type": "User"}
+    assert create["description"] == "R Sharma"
+    headers = t.call_headers[1]
+    assert headers["Authorization"] == "Bearer test-token"
+    assert headers["User-Agent"]  # explicit UA — Cloudflare bans urllib's
     assert info.status == "active" and info.quota_mb == 1024
 
 
-def test_adapter_create_conflict_is_idempotent() -> None:
-    """Provider 409 → GET verifies the mailbox exists → idempotent success."""
-    t = FakeTransport().push(409).push(
+def test_create_omits_empty_description() -> None:
+    """`description:""` is rejected `invalidPatch` live — and would mask the
+    `primaryKeyViolation` on idempotent replays, so it's omitted."""
+    t = FakeTransport()
+    _push_domain(t)
+    t.push(
         200,
-        {
-            "data": {
-                "name": "r.sharma@bloomieltsacademy.com",
-                "quota": 2 * 1_048_576,
-                "disabledPermissions": [],
-            }
-        },
+        _jmap_resp(
+            ["x:Account/set", {"accountId": "b", "created": {"c1": {"id": "e"}}}, "s"]
+        ),
     )
+    _provisioner(t).create_mailbox("r.sharma", "h", 1024)  # no display_name
+    create = t.calls[1][2]["methodCalls"][0][1]["create"]["c1"]
+    assert "description" not in create
+
+
+def test_adapter_create_conflict_is_idempotent() -> None:
+    """Duplicate → `notCreated` primaryKeyViolation → re-fetch → success."""
+    t = FakeTransport()
+    _push_domain(t)
+    t.push(
+        200,
+        _jmap_resp(
+            [
+                "x:Account/set",
+                {
+                    "accountId": "b",
+                    "notCreated": {
+                        "c1": {
+                            "type": "primaryKeyViolation",
+                            "properties": ["email"],
+                            "objectId": {"object": "Account", "id": "c"},
+                        }
+                    },
+                },
+                "s",
+            ]
+        ),
+    )
+    _push_lookup(t, _account("r.sharma"))
     p = _provisioner(t)
     first = p.create_mailbox("r.sharma", "h1", 1024)
-    t.push(409).push(
+    # replay — same path (domain id is cached, no re-query)
+    t.push(
         200,
-        {
-            "data": {
-                "name": "r.sharma@bloomieltsacademy.com",
-                "quota": 2 * 1_048_576,
-                "disabledPermissions": [],
-            }
-        },
+        _jmap_resp(
+            [
+                "x:Account/set",
+                {
+                    "accountId": "b",
+                    "notCreated": {
+                        "c1": {"type": "primaryKeyViolation", "properties": ["email"]}
+                    },
+                },
+                "s",
+            ]
+        ),
     )
+    _push_lookup(t, _account("r.sharma"))
     second = p.create_mailbox("r.sharma", "h1", 1024)
     assert first.status == second.status == "active"
+    assert first.address == "r.sharma@bloomieltsacademy.com"
 
 
 def test_check_username() -> None:
-    t = FakeTransport().push(404)
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, None)  # no exact match → free
     assert _provisioner(t).check_username("free") is True
-    t = FakeTransport().push(200, {"data": {"name": "taken@bloomieltsacademy.com"}})
+
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, _account("taken"))
     assert _provisioner(t).check_username("taken") is False
+
+    # adapter-side exact match: a substring-different result still means free
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, _account("taken2"))
+    assert _provisioner(t).check_username("taken") is True
 
 
 def test_error_taxonomy() -> None:
@@ -173,7 +308,11 @@ def test_error_taxonomy() -> None:
         (503, MailUnavailableError, True),
     ]
     for status, exc_cls, retryable in cases:
-        t = FakeTransport().push(status, {"detail": "x"}, {"Retry-After": "7"})
+        # HTTP layer: RFC 9457 problem+json envelope
+        t = FakeTransport().push(
+            status, {"type": "about:blank", "title": "x", "status": status},
+            {"Retry-After": "7"},
+        )
         p = _provisioner(t)
         with pytest.raises(exc_cls) as ei:
             p.list_mailboxes(1, 10)
@@ -182,24 +321,203 @@ def test_error_taxonomy() -> None:
             assert ei.value.retry_after == 7.0
 
 
-def test_suspend_payload() -> None:
-    t = FakeTransport().push(200, {"data": None}).push(
+def test_method_error_mapping() -> None:
+    """Method-level ["error",{type},call] inside HTTP 200 → taxonomy."""
+    cases = [
+        ("forbidden", mail_api.MailUnauthorizedError),
+        ("invalidArguments", mail_api.MailInvalidRequestError),
+        ("notFound", mail_api.MailNotFoundError),
+        ("serverUnavailable", MailUnavailableError),
+        ("serverFail", MailUnavailableError),
+    ]
+    for etype, exc_cls in cases:
+        t = FakeTransport()
+        _push_domain(t)
+        t.push(200, _jmap_resp(["error", {"type": etype, "description": "d"}, "aq"]))
+        with pytest.raises(exc_cls):
+            _provisioner(t).check_username("x")
+
+
+def test_set_error_mapping() -> None:
+    """`notUpdated`/`notCreated` per-record errors → taxonomy."""
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, _account("a"))
+    t.push(
         200,
-        {
-            "data": {
-                "name": "a@bloomieltsacademy.com",
-                "quota": 0,
-                "disabledPermissions": ["authenticate", "emailSend"],
-            }
+        _jmap_resp(
+            [
+                "x:Account/set",
+                {
+                    "accountId": "b",
+                    "notUpdated": {"c": {"type": "forbidden", "description": "no"}},
+                },
+                "s",
+            ]
+        ),
+    )
+    with pytest.raises(mail_api.MailUnauthorizedError):
+        _provisioner(t).suspend("a")
+
+    t = FakeTransport()
+    _push_domain(t)
+    t.push(
+        200,
+        _jmap_resp(
+            [
+                "x:Account/set",
+                {
+                    "accountId": "b",
+                    "notCreated": {
+                        "c1": {"type": "invalidProperties", "properties": ["name"]}
+                    },
+                },
+                "s",
+            ]
+        ),
+    )
+    with pytest.raises(mail_api.MailInvalidRequestError):
+        _provisioner(t).create_mailbox("new.box", "h", 1)
+
+
+def test_missing_domain_is_unavailable() -> None:
+    t = FakeTransport()
+    _push_domain(t, ids=[])  # MAIL_DOMAIN absent on the engine
+    with pytest.raises(MailUnavailableError):
+        _provisioner(t).check_username("x")
+
+
+def test_domain_id_cached() -> None:
+    """Domain id resolves once — repeat calls skip the Domain/query hop."""
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, _account("one"))
+    _push_lookup(t, _account("two"))
+    p = _provisioner(t)
+    p.check_username("one")
+    p.check_username("two")
+    domain_queries = [
+        c for c in t.calls
+        if c[2]["methodCalls"][0][0] == "x:Domain/query"
+    ]
+    assert len(domain_queries) == 1
+    assert len(t.calls) == 3  # domain + 2 lookup batches
+
+
+def test_suspend_payload() -> None:
+    acct = _account("a")
+    suspended = _account(
+        "a",
+        permissions={
+            "@type": "Merge",
+            "enabledPermissions": {},
+            "disabledPermissions": {"authenticate": True, "emailSend": True},
         },
     )
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, acct)  # resolve id
+    t.push(
+        200,
+        _jmap_resp(
+            ["x:Account/set", {"accountId": "b", "updated": {"c": None}}, "s"]
+        ),
+    )
+    _push_lookup(t, suspended)  # _fetch confirms the new state
     p = _provisioner(t)
     info = p.suspend("a")
-    method, url, body = t.calls[0]
-    assert method == "PATCH" and url.endswith("/api/principal/a@bloomieltsacademy.com")
-    assert {op["value"] for op in body} == {"authenticate", "emailSend"}
-    assert all(op["action"] == "addItem" for op in body)
+    set_call = t.calls[2][2]["methodCalls"][0]
+    assert set_call[0] == "x:Account/set"
+    update = set_call[1]["update"]["c"]
+    assert update == {
+        "permissions": {
+            "@type": "Merge",
+            "disabledPermissions": {"authenticate": True, "emailSend": True},
+        }
+    }
     assert info.status == "suspended"
+
+
+def test_unsuspend_and_reset_and_quota() -> None:
+    acct = _account("a")
+    t = FakeTransport()
+    _push_domain(t)
+    p = _provisioner(t)
+    ops: list[tuple[Any, ...]] = [
+        (p.unsuspend, "a"),
+        (p.reset_password, "a", "h2"),
+        (p.set_quota, "a", 512),
+    ]
+    for op, *args in ops:
+        _push_lookup(t, acct)
+        t.push(
+            200,
+            _jmap_resp(
+                ["x:Account/set", {"accountId": "b", "updated": {"c": None}}, "s"]
+            ),
+        )
+        _push_lookup(t, acct)
+        info = op(*args)
+        assert info.status == "active"
+    patches = [
+        t.calls[i][2]["methodCalls"][0][1]["update"]["c"]
+        for i in (2, 5, 8)
+    ]
+    assert patches[0] == {"permissions": {"@type": "Inherit"}}
+    assert patches[1]["credentials"]["0"]["secret"] == "h2"
+    assert patches[2] == {"quotas": {"maxDiskQuota": 512 * 1_048_576}}
+
+
+def test_suspend_missing_is_not_found() -> None:
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, None)
+    with pytest.raises(mail_api.MailNotFoundError):
+        _provisioner(t).suspend("ghost")
+
+
+def test_list_mailboxes_maps_users_only() -> None:
+    t = FakeTransport()
+    _push_domain(t)
+    t.push(
+        200,
+        _jmap_resp(
+            [
+                "x:Account/query",
+                {"accountId": "b", "position": 0, "ids": ["c", "g"], "total": 2},
+                "aq",
+            ],
+            [
+                "x:Account/get",
+                {
+                    "accountId": "b",
+                    "list": [
+                        _account("r.sharma"),
+                        {
+                            "id": "g",
+                            "@type": "Group",
+                            "name": "staff",
+                            "domainId": "b",
+                        },
+                    ],
+                    "notFound": [],
+                },
+                "ag",
+            ],
+        )
+    )
+    page = _provisioner(t).list_mailboxes(1, 10)
+    assert page.total == 2
+    assert len(page.items) == 1  # the Group row is filtered out
+    item = page.items[0]
+    assert item.localpart == "r.sharma"
+    assert item.address == "r.sharma@bloomieltsacademy.com"
+    assert item.status == "active" and item.quota_mb == 2
+    # pagination args
+    query_args = t.calls[1][2]["methodCalls"][0][1]
+    assert query_args["position"] == 0 and query_args["limit"] == 10
+    assert query_args["filter"] == {"domainId": "b"}
+    assert query_args["calculateTotal"] is True
 
 
 

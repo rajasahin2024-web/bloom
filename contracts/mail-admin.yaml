@@ -12,22 +12,24 @@
 # `platform/api/app/integrations/mail_api.py` (engine adapter, TEC-184).
 # Modules call `mail_api.*` — never raw provider HTTP (arch doc §12).
 #
-# Provider realization (`x-stalwart` on each operation):
-#   - provisioning ops → REST `/api/principal` (TEC-184 surface)
-#   - queue            → REST `/api/queue/messages[/{id}]`
-#   - expected DNS     → REST `/api/dns/records/{domain}` (Stalwart's canonical
-#                        record list — includes DKIM `_domainkey` TXT records)
-#   - delivery inspect → REST `/api/telemetry/traces` (engine-wide) and
-#                        JMAP `Email/query`+`Email/get` (per-account, OSS-safe)
+# Provider realization (`x-stalwart` on each operation) — requires
+# Stalwart >=0.16 (JMAP management surface; the /api/* REST surface was
+# removed upstream — TEC-191/TEC-192):
+#   - provisioning ops → JMAP `x:Account/query|get|set` (TEC-184 surface)
+#   - queue            → JMAP `x:QueuedMessage/query|get|set`
+#   - expected DNS     → JMAP `x:Domain/query|get` → `dnsZoneFile` zone text
+#                        (includes DKIM `_domainkey` TXT records)
+#   - delivery inspect → JMAP `Email/query`+`Email/get` (per-account,
+#                        OSS-safe); engine-wide tracing is Enterprise-only
 #
 # Live-state notes verified 2026-11-15 (read-only, no mutations):
 #   - Listeners 25/465/993 open; 587 has no banner (dead by current build).
 #   - Mail ports serve a self-signed `rcgen` cert until TEC-183 lands a real
 #     one — credential probes verify TLS and will report that failure.
-#   - `/api/telemetry/traces` is Enterprise-gated upstream → `available:false`
+#   - Engine-wide delivery tracing is Enterprise-only → `available:false`
 #     is the expected OSS path; per-account JMAP inspection works on OSS.
-#   - Queue/traces availability cannot be live-verified until TEC-190 lands
-#     MAIL_API_* on the deployment; code degrades gracefully either way.
+#   - v0.16 QueuedRecipient.status ∈ Scheduled|Completed|TemporaryFailure|
+#     PermanentFailure — no in-flight signal; queue reports deferred-only.
 #
 # Security: every route requires an admin JWT (`require_admin`). Mailbox
 # passwords are transient — request-body only, never stored, never logged.
@@ -246,11 +248,11 @@ paths:
         25/587/465/993 + TLS handshake cert capture on :993 + queue
         counts. Never raises on engine problems — the flags carry state.
       x-stalwart: >-
-        apiReachable: GET /api/principal?page=1&limit=1 (any response,
-        including 401/404, counts as reachable; transport failure does not).
-        queue: GET /api/queue/messages?page=1&limit=100 — items classified
-        active when any recipient/domain status is in-flight, else deferred;
-        `null` when the OSS build doesn't expose it (404/501).
+        apiReachable: GET /jmap/session (any HTTP answer, including 401,
+        counts as reachable; transport failure does not).
+        queue: POST /jmap/ x:QueuedMessage/query+get — `deferred` counts
+        recipients with non-Completed status; v0.16 exposes no in-flight
+        signal so `active` is 0; `null` when the surface isn't exposed.
       tags: [engine]
       responses:
         '200':
@@ -264,8 +266,8 @@ paths:
       operationId: mailDnsCheck
       summary: Verify public DNS against expected records
       description: >-
-        Expected records come from `GET /api/dns/records/{domain}`
-        (Stalwart's canonical list — MX, SPF, DKIM `_domainkey` TXT) plus
+        Expected records come from the domain's `dnsZoneFile`
+        (JMAP `x:Domain/query|get` — MX, SPF, DKIM `_domainkey` TXT) plus
         static platform expectations (`_dmarc`, PTR derived from the mail
         host's public A record). Lookups go over DoH
         (`MAIL_DOH_URL`, Cloudflare dns-json) — never the system resolver.
@@ -313,8 +315,9 @@ paths:
     get:
       operationId: mailQueueList
       summary: List deferred queue entries
-      x-stalwart: GET /api/queue/messages?page=1&limit=100&values=1 —
-        `available:false` when the OSS build doesn't expose it.
+      x-stalwart: POST /jmap/ x:QueuedMessage/query{position,limit,
+        calculateTotal} + x:QueuedMessage/get (#ids, one batch) —
+        `available:false` when the surface isn't exposed (unknownMethod).
       tags: [engine]
       responses:
         '200':
@@ -329,8 +332,9 @@ paths:
       operationId: mailQueueRetry
       summary: Reschedule deferred queue entries for delivery
       x-stalwart: >-
-        `ids` → PATCH /api/queue/messages/{id} per id;
-        `"all"` → PATCH /api/queue/messages?filter=all.
+        `ids` → x:QueuedMessage/set update {id:{nextRetry:<now>}} per id;
+        `"all"` → x:QueuedMessage/query ids (paged) → batched
+        x:QueuedMessage/set nextRetry updates.
       tags: [engine]
       requestBody:
         required: true
@@ -350,11 +354,13 @@ paths:
       operationId: mailDeliveryInspect
       summary: Delivery inspector — metadata only, never body
       description: >-
-        With `account`: JMAP `Email/query`+`Email/get`+`Mailbox/get` in one
-        roundtrip against that mailbox (admin token; OSS-safe) — the
-        inspector answers "what arrived/left and where it landed".
-        Without `account`: engine-wide `/api/telemetry/traces`
-        (Enterprise-gated upstream → `available:false` on OSS).
+        With `account`: accountId resolved via `x:Account/query`
+        (v0.16 ids are opaque, not addresses), then JMAP
+        `Email/query`+`Email/get`+`Mailbox/get` in one roundtrip against
+        that mailbox (admin token; OSS-safe) — the inspector answers
+        "what arrived/left and where it landed".
+        Without `account`: engine-wide tracing is Enterprise-only
+        (`available:false` on OSS).
         **Message bodies are never fetched or returned.**
       tags: [engine]
       parameters:

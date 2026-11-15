@@ -10,7 +10,9 @@
 # Current provider: Stalwart Mail Server on 72.61.90.150 (TEC-182 decision,
 # TEC-183 build). The `x-stalwart` extension on each operation documents how
 # the reference adapter (platform/api/app/integrations/mail_api.py) realizes
-# the operation over Stalwart's management REST API (/api/principal).
+# the operation over Stalwart's JMAP management surface (POST /jmap/,
+# urn:stalwart:jmap). Provider realization requires Stalwart >=0.16 —
+# v0.16 removed the legacy /api/* management REST surface (TEC-191/TEC-192).
 #
 # Status semantics the platform mirrors in its `mailboxes` table:
 #   pending → queued → provisioning → active | failed | suspended
@@ -108,8 +110,9 @@ paths:
         `reason: taken` for an existing mailbox; `reason: invalid` /
         `reason: reserved` for names the service would refuse to provision.
       x-stalwart: >-
-        GET /api/principal/{localpart}@bloomieltsacademy.com —
-        200 → taken, 404 → available.
+        POST /jmap/ x:Account/query {filter:{name:<localpart>,
+        domainId:<domain>}} + x:Account/get on returned ids (same batch)
+        — taken when an exact `name` match exists in the domain.
       tags: [provisioning]
       security:
         - bearerAuth: []
@@ -134,8 +137,9 @@ paths:
       operationId: list_mailboxes
       summary: List provisioned mailboxes (paginated)
       x-stalwart: >-
-        GET /api/principal?types=individual&page&limit — returns
-        {data:{items,total}}; adapter filters to the academy domain.
+        POST /jmap/ x:Account/query {filter:{domainId}, position, limit,
+        calculateTotal} → total + ids → x:Account/get (same batch);
+        adapter keeps @type=="User" rows.
       tags: [provisioning]
       security:
         - bearerAuth: []
@@ -173,10 +177,12 @@ paths:
         resolve (in practice: never for a same-semantics retry — the adapter
         verifies existence and reports success).
       x-stalwart: >-
-        POST /api/principal {type:"individual",
-        name:"{localpart}@bloomieltsacademy.com", emails:[same], secrets,
-        quota(bytes), roles:["user"]} → {data:id}. On HTTP 409 the adapter
-        GETs the principal and treats a found record as idempotent success.
+        POST /jmap/ x:Account/set create {@type:"User", name:<localpart>,
+        domainId, credentials:{"0":{@type:"Password",secret:<hash>}},
+        quotas:{maxDiskQuota:<bytes>}, roles:{@type:"User"},
+        permissions:{@type:"Inherit"}, description?} → created.<cid>.id.
+        On notCreated alreadyExists/primaryKeyViolation the adapter
+        re-fetches and treats the stored mailbox as idempotent success.
       tags: [provisioning]
       security:
         - bearerAuth: []
@@ -221,9 +227,9 @@ paths:
         send; inbound mail keeps delivering (no bounce) and all data is
         preserved. Idempotent: suspending a suspended mailbox returns 200.
       x-stalwart: >-
-        PATCH /api/principal/{name} [{action:addItem,
-        field:disabledPermissions, value:authenticate},{…, value:emailSend}]
-        — disabled permissions override roles; reversible via removeItem.
+        POST /jmap/ x:Account/set update {permissions:{@type:"Merge",
+        disabledPermissions:{authenticate:true,emailSend:true}}} —
+        disabled permissions override roles; reversible via @type:"Inherit".
       tags: [provisioning]
       security:
         - bearerAuth: []
@@ -250,8 +256,8 @@ paths:
       operationId: unsuspend
       summary: Lift a suspension — restores sign-in and send
       x-stalwart: >-
-        PATCH /api/principal/{name} [{action:removeItem,
-        field:disabledPermissions, value:authenticate},{…, value:emailSend}].
+        POST /jmap/ x:Account/set update {permissions:{@type:"Inherit"}}
+        — restores role-inherited permissions (re-enables auth + send).
       tags: [provisioning]
       security:
         - bearerAuth: []
@@ -278,10 +284,11 @@ paths:
       operationId: reset_password
       summary: Replace the mailbox password
       x-stalwart: >-
-        PATCH /api/principal/{name} [{action:set, field:secrets,
-        value:<secret>}]. `secret` may be plaintext (server hashes with its
-        configured algorithm) or a pre-hashed value in a format Stalwart
-        stores verbatim (`$argon2id…`, `$2y…`/`$2b…` bcrypt, `$6$` sha512-crypt,
+        POST /jmap/ x:Account/set update {credentials:{"0":{@type:"Password",
+        secret:<secret>}}} — replaces the primary Password credential.
+        `secret` may be plaintext (server hashes with its configured
+        algorithm) or a pre-hashed value in a format Stalwart stores
+        verbatim (`$argon2id…`, `$2y…`/`$2b…` bcrypt, `$6$` sha512-crypt,
         `$pbkdf2…`, `$scrypt…`, `{SSHA*}` LDAP tags). The platform sends the
         argon2id hash it computed at signup, so plaintext never touches the
         queue or the DB.
@@ -324,8 +331,8 @@ paths:
       operationId: set_quota
       summary: Set the mailbox storage quota
       x-stalwart: >-
-        PATCH /api/principal/{name} [{action:set, field:quota,
-        value:<bytes>}]. 0 = unlimited on Stalwart; contract keeps quota_mb ≥1.
+        POST /jmap/ x:Account/set update {quotas:{maxDiskQuota:<bytes>}}.
+        0 = unlimited on Stalwart; contract keeps quota_mb ≥1.
       tags: [provisioning]
       security:
         - bearerAuth: []
