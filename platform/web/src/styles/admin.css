@@ -2929,3 +2929,326 @@ textarea.adm-input {
     top: 70px;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────
+   Mail Engine admin (TEC-189) — /admin/mail
+   All classes are adm-mail-* scoped; no ported selectors.
+   ────────────────────────────────────────────────────────────────── */
+
+/* tab strip */
+.adm-mail-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--blm-line);
+  margin-bottom: 18px;
+  overflow-x: auto;
+}
+.adm-mail-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--blm-ink-3);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.adm-mail-tab:hover {
+  color: var(--blm-ink-2);
+}
+.adm-mail-tab.on {
+  color: var(--leaf-800);
+  border-bottom-color: var(--leaf-600);
+}
+
+/* muted pill tone — in-flight/neutral states (extends .adm-pill) */
+.adm-pill.mut {
+  color: var(--blm-ink-3);
+  background: var(--blm-paper-2);
+}
+.adm-pill.mut i {
+  background: var(--blm-ink-4);
+}
+
+/* small toolbar row inside card bodies */
+.adm-mail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--blm-line);
+}
+.adm-mail-checked {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--blm-ink-4);
+}
+
+/* status card grid */
+.adm-mail-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (min-width: 720px) {
+  .adm-mail-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1100px) {
+  .adm-mail-cards {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.adm-mail-cards .adm-card-bd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.adm-mail-na {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blm-ink-4);
+}
+.adm-mail-sub {
+  font-size: 11px;
+  color: var(--blm-ink-4);
+}
+
+/* listener matrix */
+.adm-mail-listeners {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 14px;
+  width: 100%;
+}
+.adm-mail-lsnr {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+.adm-mail-lsnr-n {
+  font-weight: 700;
+  color: var(--blm-ink-2);
+}
+.adm-mail-lsnr-p {
+  color: var(--blm-ink-4);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+.adm-mail-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--adm-coral);
+}
+.adm-mail-dot.ok {
+  background: var(--adm-ok);
+}
+
+/* queue counts */
+.adm-mail-qcounts {
+  display: flex;
+  gap: 20px;
+}
+.adm-mail-qcounts > div {
+  display: flex;
+  flex-direction: column;
+}
+.adm-mail-qcounts b {
+  font-family: var(--adm-display);
+  font-size: 22px;
+  color: var(--blm-ink);
+  line-height: 1.1;
+}
+.adm-mail-qcounts b.warn {
+  color: #a0680f;
+}
+.adm-mail-qcounts span {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--blm-ink-4);
+}
+
+/* DNS records */
+.adm-mail-dns {
+  display: grid;
+}
+.adm-mail-dnsrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--blm-line);
+}
+.adm-mail-dnsrow:last-child {
+  border-bottom: none;
+}
+.adm-mail-mark {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border-radius: 50%;
+  margin-top: 1px;
+  color: var(--adm-coral);
+  background: var(--adm-coral-soft);
+}
+.adm-mail-mark.ok {
+  color: var(--adm-ok);
+  background: var(--adm-ok-soft);
+}
+.adm-mail-dns-tx {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.adm-mail-dns-tx b {
+  font-size: 12.5px;
+  color: var(--blm-ink);
+}
+.adm-mail-dns-tx span {
+  font-size: 11.5px;
+  color: var(--blm-ink-3);
+  word-break: break-word;
+}
+.adm-mail-dns-tx code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  background: var(--blm-paper-2);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+
+/* graceful-gap / empty state */
+.adm-mail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--blm-ink-4);
+}
+.adm-mail-empty svg {
+  color: var(--blm-ink-4);
+  margin-bottom: 4px;
+}
+.adm-mail-empty b {
+  font-size: 12.5px;
+  color: var(--blm-ink-2);
+}
+.adm-mail-empty p {
+  margin: 0;
+  font-size: 11.5px;
+}
+
+/* mailbox table helpers */
+.adm-mail-addr {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--blm-ink);
+}
+.adm-mail-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--blm-ink-3);
+}
+.adm-mail-rowerr {
+  display: block;
+  max-width: 240px;
+  font-size: 10.5px;
+  color: var(--adm-coral);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.adm-mail-subj {
+  display: inline-block;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+/* create form */
+.adm-mail-create {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: end;
+}
+@media (min-width: 760px) {
+  .adm-mail-create {
+    grid-template-columns: 1.2fr 1.2fr 0.8fr auto;
+  }
+}
+.adm-mail-create-act {
+  display: flex;
+}
+
+/* test-send row */
+.adm-mail-testsend {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.adm-mail-testsend .adm-fl {
+  flex: 1 1 260px;
+}
+
+/* password shown once — reset dialog */
+.adm-mail-pwshow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--blm-paper);
+  border: 1px dashed var(--blm-line-2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+.adm-mail-pwshow code {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blm-ink);
+  word-break: break-all;
+  user-select: all;
+}
+
+/* account probe result */
+.adm-mail-probe {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.adm-mail-probe > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--blm-ink-2);
+}
+.adm-mail-probe-err {
+  font-size: 11.5px;
+  color: var(--adm-coral);
+  margin: 0 0 12px;
+}

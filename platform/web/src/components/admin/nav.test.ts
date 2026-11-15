@@ -83,6 +83,7 @@ describe("ADMIN_NAV — approved Plan v7 menu structure", () => {
   it("marks every sub-item Soon except the live Settings leaves", () => {
     const live = new Set([
       "general-settings",
+      "email-engine",
       "seo-settings",
       "aio-settings",
       "sitemaps",
@@ -145,6 +146,15 @@ describe("ADMIN_NAV — approved Plan v7 menu structure", () => {
     expect(leaf).toBeDefined();
     expect(leaf?.soon).toBe(false);
     expect(leaf?.to).toBe("/admin/settings/storage");
+  });
+
+  it("Email Engine is a live destination under Settings", () => {
+    const leaf = ADMIN_NAV.find((i) => i.id === "settings")?.children.find(
+      (c) => c.id === "email-engine",
+    );
+    expect(leaf).toBeDefined();
+    expect(leaf?.soon).toBe(false);
+    expect(leaf?.to).toBe("/admin/mail");
   });
 
   it("CMS → Blogs is the only third-level group, with the approved leaves", () => {

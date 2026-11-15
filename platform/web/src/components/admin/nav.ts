@@ -205,7 +205,13 @@ export const ADMIN_NAV: AdminNavItem[] = [
         to: "/admin/settings/general",
       },
       soon("site-settings", "Site Settings", "layout"),
-      soon("email-engine", "Email Engine", "envelope"),
+      {
+        id: "email-engine",
+        label: "Email Engine",
+        icon: "envelope",
+        soon: false,
+        to: "/admin/mail",
+      },
       soon("whatsapp-api", "WhatsApp API", "whatsapp"),
       {
         id: "seo-settings",

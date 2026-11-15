@@ -22,6 +22,7 @@ import { CmsPostEditor } from "@/components/admin/CmsPostEditor";
 import { CmsAuthors } from "@/components/admin/CmsAuthors";
 import { CmsCategories } from "@/components/admin/CmsCategories";
 import { StorageSettings } from "@/components/admin/StorageSettings";
+import { MailEngine } from "@/components/admin/MailEngine";
 import { fetchMe, refreshSession } from "@/lib/auth";
 import type { AdminSession } from "@/lib/auth";
 
@@ -76,6 +77,7 @@ export function AdminPage() {
             path="settings/storage"
             element={<StorageSettings session={session} />}
           />
+          <Route path="mail/*" element={<MailEngine session={session} />} />
           <Route path="cms/posts" element={<CmsPosts session={session} />} />
           <Route
             path="cms/posts/new"
