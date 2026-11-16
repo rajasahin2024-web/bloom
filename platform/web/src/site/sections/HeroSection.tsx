@@ -37,9 +37,13 @@ export function HeroSection({ props }: { props: HeroProps }) {
           <div className="hero-note">
             {p.avatars?.length > 0 && (
               <span className="havs">
-                {p.avatars.slice(0, 4).map((a, i) => (
-                  <i key={i}>{a.initials}</i>
-                ))}
+                {p.avatars.slice(0, 4).map((a, i) =>
+                  a.media_url ? (
+                    <img key={i} src={a.media_url} alt="" />
+                  ) : (
+                    <i key={i}>{a.initials}</i>
+                  ),
+                )}
               </span>
             )}
             <span>

@@ -5,12 +5,13 @@ interface CtaStripProps {
   heading: string;
   body: string;
   cta: { label: string; href: string };
+  anchor_id?: string;
 }
 
 export function CtaStripSection({ props }: { props: CtaStripProps }) {
-  const { heading, body, cta } = props;
+  const { heading, body, cta, anchor_id } = props;
   return (
-    <Section id="contact">
+    <Section id={anchor_id}>
       <div className="band rv">
         <div className="eb" style={{ justifyContent: "center", color: "var(--leaf-300)" }}>
           Start here
