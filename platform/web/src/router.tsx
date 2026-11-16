@@ -4,6 +4,7 @@ import { SiteLayout } from "@/layouts/SiteLayout";
 import { SetupGate } from "@/components/SetupGate";
 import { SitePage } from "@/site/SitePage";
 import { BlogPostPage } from "@/site/BlogPostPage";
+import { CmsPostPreview } from "@/components/admin/CmsPostPreview";
 import { SetupPage } from "@/routes/SetupPage";
 import { AdminPage } from "@/routes/AdminPage";
 
@@ -16,6 +17,12 @@ export function AppRouter() {
         {/* Public site pages share the common Navbar + Footer chrome. */}
         <Route element={<SiteLayout />}>
           <Route path="/" element={<SitePage slug="home" />} />
+          {/* Admin post preview — its static segments outrank /admin/*, so
+              it wins over AdminPage and renders inside public chrome. */}
+          <Route
+            path="/admin/cms/posts/:id/preview"
+            element={<CmsPostPreview />}
+          />
           {/* /blog/:slug is the public article page — declared before the
               CMS catch-slug so /blog stays the CMS page. */}
           <Route path="/blog/:slug" element={<BlogPostPage />} />

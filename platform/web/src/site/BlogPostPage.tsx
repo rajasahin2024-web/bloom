@@ -14,15 +14,36 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch, ApiError } from "@/lib/api";
 import { fetchPostDetail, postToCard, type PublicPostDetail } from "./blog";
-import { fmtDate } from "./format";
+import { BlogPostArticle } from "./BlogPostArticle";
 import { Icon } from "./sections/Icon";
-import { Inline } from "./sections/shared";
-import { SafeHtml } from "./SafeHtml";
 import { initSiteRuntime } from "./siteRuntime";
 import { SitePreloader } from "./SitePreloader";
 import "@/styles/site.css";
 
 const SEO_FLAG = "data-bpost";
+
+/* TEC-203 view beacon — one POST per browser session per post. The module
+   set covers remounts (StrictMode double-effects, SPA nav back-and-forth);
+   the sessionStorage flag survives a full reload of the tab session and is
+   written synchronously before the fetch so a second effect run in the same
+   tick can't double-fire. */
+const viewBeaconSent = new Set<string>();
+
+function markPostViewed(slug: string) {
+  if (viewBeaconSent.has(slug)) return;
+  viewBeaconSent.add(slug);
+  try {
+    if (sessionStorage.getItem(`bloom.viewed.${slug}`)) return;
+    sessionStorage.setItem(`bloom.viewed.${slug}`, "1");
+  } catch {
+    /* storage unavailable — the module set still dedupes this session */
+  }
+  void Promise.resolve(
+    apiFetch(`/api/content/posts/${encodeURIComponent(slug)}/view`, {
+      method: "POST",
+    }),
+  ).catch(() => {});
+}
 
 function absolutize(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
@@ -322,15 +343,6 @@ function LeadCollector({ slug }: { slug: string }) {
   );
 }
 
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join("");
-}
-
 export function BlogPostPage() {
   const { slug = "" } = useParams();
   const [post, setPost] = useState<PublicPostDetail | null>(null);
@@ -372,6 +384,10 @@ export function BlogPostPage() {
     if (post) initSiteRuntime();
   }, [post]);
 
+  useEffect(() => {
+    if (post) markPostViewed(post.slug);
+  }, [post]);
+
   if (status === "loading") {
     return (
       <div className="bpost bpost-loading">
@@ -403,10 +419,7 @@ export function BlogPostPage() {
 
   if (!post) return null;
 
-  const authorName = post.author_obj?.name ?? post.author ?? "";
-  const avatar = post.author_avatar_url ?? null;
   const category = post.category_obj?.name ?? post.category;
-  const date = (post.published_at ?? post.created_at ?? "").slice(0, 10);
   const related = (post.related_posts ?? []).map(postToCard);
 
   return (
@@ -418,33 +431,9 @@ export function BlogPostPage() {
           {category && <span>{category}</span>}
         </nav>
         <div className="bpost-grid">
-          <article className="bpost-article rv">
-            <h1 className="bpost-title"><Inline text={post.title} /></h1>
-            <div className="bpost-meta">
-              {avatar ? (
-                <img className="bpost-av" src={avatar} alt={authorName} />
-              ) : (
-                authorName && <span className="bpost-av">{initials(authorName)}</span>
-              )}
-              {authorName && <b>{authorName}</b>}
-              {authorName && <span className="bpost-dot">·</span>}
-              {date && <span>{fmtDate(date)}</span>}
-              {post.read_minutes != null && (
-                <>
-                  <span className="bpost-dot">·</span>
-                  <span>{post.read_minutes} min read</span>
-                </>
-              )}
-              {category && <span className="tag leaf">{category}</span>}
-            </div>
-            {post.hero_url && (
-              <div className="bpost-hero">
-                <img src={post.hero_url} alt={post.title} />
-              </div>
-            )}
-            <SafeHtml className="bpost-body" html={post.body} />
+          <BlogPostArticle post={post}>
             <OpenWithAi url={url} />
-          </article>
+          </BlogPostArticle>
           {related.length > 0 && (
             <aside className="bpost-rail rv">
               <div className="eb">Keep reading</div>

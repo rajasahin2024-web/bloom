@@ -74,6 +74,10 @@ function renderPage(slug = "my-post") {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
+  // Default resolution keeps the fire-and-forget view beacon a promise in
+  // tests that only mock the GET once.
+  vi.mocked(apiFetch).mockResolvedValue({ status: 200, data: {} });
   document.head
     .querySelectorAll('script[type="application/ld+json"], link[rel="canonical"], meta[property^="og:"]')
     .forEach((el) => el.remove());
@@ -166,6 +170,55 @@ describe("BlogPostPage", () => {
         }),
       }),
     );
+  });
+
+  it("fires the view beacon once per session across a remount", async () => {
+    const beaconPost = { ...post, slug: "beacon-post", title: "Beacon Article" };
+    vi.mocked(apiFetch).mockImplementation((path: string) =>
+      Promise.resolve(
+        String(path).endsWith("/view")
+          ? { status: 200, data: { view_count: 8 } }
+          : { status: 200, data: beaconPost },
+      ),
+    );
+    const beaconCalls = () =>
+      vi
+        .mocked(apiFetch)
+        .mock.calls.filter(([p]) => String(p).endsWith("/view"));
+
+    const first = render(
+      <MemoryRouter initialEntries={["/blog/beacon-post"]}>
+        <Routes>
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() =>
+      expect(
+        first.container.querySelector(".bpost-title")?.textContent,
+      ).toContain("Beacon Article"),
+    );
+    await waitFor(() => expect(beaconCalls()).toHaveLength(1));
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/api/content/posts/beacon-post/view",
+      expect.objectContaining({ method: "POST" }),
+    );
+
+    // Remount — the sessionStorage flag suppresses a second beacon.
+    first.unmount();
+    const second = render(
+      <MemoryRouter initialEntries={["/blog/beacon-post"]}>
+        <Routes>
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() =>
+      expect(
+        second.container.querySelector(".bpost-title")?.textContent,
+      ).toContain("Beacon Article"),
+    );
+    expect(beaconCalls()).toHaveLength(1);
   });
 
   it("shows the not-found state when the post 404s", async () => {

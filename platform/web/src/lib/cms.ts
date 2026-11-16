@@ -77,6 +77,7 @@ export interface CmsPost {
   category_id: string | null;
   subcategory_id: string | null;
   author_avatar_url: string | null;
+  hero_url?: string | null;
   excerpt: string | null;
   body: string;
   tags: string[];
@@ -86,6 +87,8 @@ export interface CmsPost {
   meta_title: string | null;
   meta_description: string | null;
   status: CmsStatus;
+  /** TEC-203 — absent until the BE view-counter migration lands. */
+  view_count?: number;
   published_at: string | null;
   created_at: string;
   updated_at: string;
@@ -132,14 +135,30 @@ export function isSlugTaken(err: unknown): boolean {
 
 // ── Posts ─────────────────────────────────────────────────────────────────
 
+export type CmsPostSort =
+  | "view_count"
+  | "published_at"
+  | "updated_at"
+  | "created_at";
+
+export type CmsPostOrder = "asc" | "desc";
+
 export function listPosts(
   token: string,
-  opts: { status?: CmsStatus; page?: number; pageSize?: number } = {},
+  opts: {
+    status?: CmsStatus;
+    page?: number;
+    pageSize?: number;
+    sort?: CmsPostSort;
+    order?: CmsPostOrder;
+  } = {},
 ) {
   const params = new URLSearchParams();
   if (opts.status) params.set("status", opts.status);
   if (opts.page) params.set("page", String(opts.page));
   if (opts.pageSize) params.set("page_size", String(opts.pageSize));
+  if (opts.sort) params.set("sort", opts.sort);
+  if (opts.order) params.set("order", opts.order);
   const qs = params.toString();
   return apiFetch<Page<CmsPost>>(`/api/cms/posts${qs ? `?${qs}` : ""}`, {
     token,

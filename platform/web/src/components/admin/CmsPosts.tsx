@@ -11,9 +11,17 @@ import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "@/lib/api";
 import type { AdminSession } from "@/lib/auth";
 import { deletePost, listPosts } from "@/lib/cms";
-import type { CmsPost, CmsStatus, Page } from "@/lib/cms";
+import type {
+  CmsPost,
+  CmsPostOrder,
+  CmsPostSort,
+  CmsStatus,
+  Page,
+} from "@/lib/cms";
 import {
   CheckIcon,
+  ChevronIcon,
+  ExternalIcon,
   PenIcon,
   PlusIcon,
   SearchIcon,
@@ -42,6 +50,45 @@ export function StatusBadge({ status }: { status: CmsStatus }) {
   );
 }
 
+/** Clickable column header — button-in-th driving server-side sorting. */
+function SortableTh({
+  label,
+  col,
+  sort,
+  order,
+  onToggle,
+  className,
+}: {
+  label: string;
+  col: CmsPostSort;
+  sort: CmsPostSort | null;
+  order: CmsPostOrder;
+  onToggle: (col: CmsPostSort) => void;
+  className?: string;
+}) {
+  const active = sort === col;
+  return (
+    <th
+      className={className}
+      aria-sort={
+        active ? (order === "asc" ? "ascending" : "descending") : "none"
+      }
+    >
+      <button
+        type="button"
+        className={`adm-cms-sort${active ? " on" : ""}${
+          active && order === "asc" ? " asc" : ""
+        }`}
+        aria-label={`Sort by ${label.toLowerCase()}`}
+        onClick={() => onToggle(col)}
+      >
+        {label}
+        <ChevronIcon size={9} />
+      </button>
+    </th>
+  );
+}
+
 export function CmsPosts({ session }: { session: AdminSession }) {
   const token = session.tokens.access_token;
   const navigate = useNavigate();
@@ -49,6 +96,8 @@ export function CmsPosts({ session }: { session: AdminSession }) {
   const [status, setStatus] = useState<"" | CmsStatus>("");
   const [search, setSearch] = useState("");
   const [pageNo, setPageNo] = useState(1);
+  const [sort, setSort] = useState<CmsPostSort | null>(null);
+  const [order, setOrder] = useState<CmsPostOrder>("desc");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<CmsPost | null>(null);
@@ -64,6 +113,8 @@ export function CmsPosts({ session }: { session: AdminSession }) {
       status: status || undefined,
       page: pageNo,
       pageSize: PAGE_SIZE,
+      sort: sort ?? undefined,
+      order: sort ? order : undefined,
     })
       .then((p) => {
         if (live) setPage(p);
@@ -78,7 +129,7 @@ export function CmsPosts({ session }: { session: AdminSession }) {
     return () => {
       live = false;
     };
-  }, [token, status, pageNo]);
+  }, [token, status, pageNo, sort, order]);
 
   useEffect(() => {
     if (!notice) return;
@@ -100,6 +151,17 @@ export function CmsPosts({ session }: { session: AdminSession }) {
   }, [page, search]);
 
   const totalPages = page ? Math.max(1, Math.ceil(page.total / PAGE_SIZE)) : 1;
+
+  /** First click on a column sorts desc; clicking the active column flips. */
+  function toggleSort(col: CmsPostSort) {
+    setPageNo(1);
+    if (sort === col) {
+      setOrder((o) => (o === "desc" ? "asc" : "desc"));
+    } else {
+      setSort(col);
+      setOrder("desc");
+    }
+  }
 
   async function confirmDelete() {
     if (!deleting || busy) return;
@@ -199,8 +261,28 @@ export function CmsPosts({ session }: { session: AdminSession }) {
                   <th>Category</th>
                   <th>Author</th>
                   <th>Status</th>
-                  <th>Published</th>
-                  <th>Updated</th>
+                  <SortableTh
+                    label="Views"
+                    col="view_count"
+                    sort={sort}
+                    order={order}
+                    onToggle={toggleSort}
+                    className="ra"
+                  />
+                  <SortableTh
+                    label="Published"
+                    col="published_at"
+                    sort={sort}
+                    order={order}
+                    onToggle={toggleSort}
+                  />
+                  <SortableTh
+                    label="Updated"
+                    col="updated_at"
+                    sort={sort}
+                    order={order}
+                    onToggle={toggleSort}
+                  />
                   <th className="ra">Actions</th>
                 </tr>
               </thead>
@@ -208,14 +290,14 @@ export function CmsPosts({ session }: { session: AdminSession }) {
                 {loading &&
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="adm-cms-skel">
-                      <td colSpan={7}>
+                      <td colSpan={8}>
                         <i />
                       </td>
                     </tr>
                   ))}
                 {!loading && items.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="adm-cms-empty">
+                    <td colSpan={8} className="adm-cms-empty">
                       {search
                         ? "No posts match the search."
                         : "No posts yet — write the first one."}
@@ -244,10 +326,37 @@ export function CmsPosts({ session }: { session: AdminSession }) {
                       <td>
                         <StatusBadge status={p.status} />
                       </td>
+                      <td className="ra adm-cms-views">
+                        {p.view_count === undefined
+                          ? "—"
+                          : p.view_count.toLocaleString()}
+                      </td>
                       <td className="adm-cms-date">{fmtDate(p.published_at)}</td>
                       <td className="adm-cms-date">{fmtDate(p.updated_at)}</td>
                       <td className="ra">
                         <div className="adm-cms-rowact">
+                          {p.status === "published" ? (
+                            <a
+                              href={`/blog/${p.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="adm-icbtn sm"
+                              title="View public page"
+                              aria-label={`View public page for ${p.title}`}
+                            >
+                              <ExternalIcon size={12} />
+                            </a>
+                          ) : (
+                            <span
+                              role="link"
+                              aria-disabled="true"
+                              className="adm-icbtn sm is-disabled"
+                              title="Publish to get a public link"
+                              aria-label={`View public page for ${p.title}`}
+                            >
+                              <ExternalIcon size={12} />
+                            </span>
+                          )}
                           <button
                             type="button"
                             className="adm-icbtn sm"

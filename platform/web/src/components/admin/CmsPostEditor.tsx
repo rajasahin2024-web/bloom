@@ -37,6 +37,7 @@ import { AuthorModal } from "@/components/admin/CmsAuthors";
 import {
   ArrowLeftIcon,
   CheckIcon,
+  EyeIcon,
   PenIcon,
   PlusIcon,
   UploadIcon,
@@ -374,6 +375,57 @@ export function CmsPostEditor({ session }: { session: AdminSession }) {
     }
   }
 
+  /**
+   * Preview in a new tab (TEC-203): hand the current — possibly unsaved —
+   * form state to /admin/cms/posts/:id/preview via sessionStorage, which
+   * clones into target=_blank tabs. The preview page reads it first and
+   * falls back to the saved post when it's absent.
+   */
+  function openPreview() {
+    if (!post) return;
+    const authorName =
+      authors.find((a) => a.id === authorId)?.name ?? post.author;
+    const catName =
+      cats.find((c) => c.id === categoryId)?.name ?? post.category;
+    const hero = heroUrl
+      ? heroUrl.startsWith("http")
+        ? heroUrl
+        : `${env.apiBaseUrl}${heroUrl}`
+      : (post.hero_url ?? null);
+    const payload = {
+      id: post.id,
+      slug,
+      title,
+      body,
+      excerpt: excerpt || null,
+      tags,
+      status,
+      author: authorName ?? null,
+      author_avatar_url: post.author_avatar_url ?? null,
+      category: catName ?? null,
+      hero_url: hero,
+      published_at: post.published_at,
+      created_at: post.created_at,
+      read_minutes: post.read_minutes,
+      featured,
+      meta_title: metaTitle || null,
+      meta_description: metaDesc || null,
+    };
+    try {
+      sessionStorage.setItem(
+        `bloom.postPreview.${post.id}`,
+        JSON.stringify(payload),
+      );
+    } catch {
+      /* storage blocked — the preview page falls back to the saved post */
+    }
+    window.open(
+      `/admin/cms/posts/${post.id}/preview`,
+      "_blank",
+      "noopener",
+    );
+  }
+
   if (loadError) {
     return (
       <div className="adm-set">
@@ -420,6 +472,17 @@ export function CmsPostEditor({ session }: { session: AdminSession }) {
           </p>
         </div>
         <div className="adm-phead-actions">
+          {post && (
+            <button
+              type="button"
+              className="adm-icbtn sm"
+              title="Preview"
+              aria-label="Preview"
+              onClick={openPreview}
+            >
+              <EyeIcon size={13} />
+            </button>
+          )}
           <Link className="adm-btn adm-btn-g" to="/admin/cms/posts">
             <ArrowLeftIcon size={12} /> All Posts
           </Link>

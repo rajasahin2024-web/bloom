@@ -185,6 +185,98 @@ describe("CmsPosts", () => {
       ),
     );
   });
+
+  it("renders the Views column and public-link icon per status", async () => {
+    vi.mocked(listPosts).mockResolvedValue({
+      items: [
+        post({
+          id: "p1",
+          slug: "live-post",
+          title: "Live Post",
+          status: "published",
+          view_count: 1234,
+        }),
+        post({ id: "p2", slug: "draft-post", title: "Draft Post" }),
+      ],
+      total: 2,
+      page: 1,
+      page_size: 20,
+    });
+    render(
+      <MemoryRouter>
+        <CmsPosts session={session} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText("Live Post")).toBeTruthy());
+
+    const liveRow = screen.getByText("Live Post").closest("tr")!;
+    const draftRow = screen.getByText("Draft Post").closest("tr")!;
+    expect(liveRow.querySelector(".adm-cms-views")?.textContent).toBe("1,234");
+    // view_count absent pre-migration → em dash
+    expect(draftRow.querySelector(".adm-cms-views")?.textContent).toBe("—");
+
+    const link = liveRow.querySelector<HTMLAnchorElement>(
+      'a[href="/blog/live-post"]',
+    );
+    expect(link).toBeTruthy();
+    expect(link?.getAttribute("target")).toBe("_blank");
+    expect(link?.getAttribute("rel")).toContain("noopener");
+    expect(link?.getAttribute("aria-label")).toBe(
+      "View public page for Live Post",
+    );
+
+    // drafts get the disabled icon — not a link
+    expect(draftRow.querySelector('a[href="/blog/draft-post"]')).toBeNull();
+    const disabled = draftRow.querySelector(".adm-icbtn.is-disabled");
+    expect(disabled).toBeTruthy();
+    expect(disabled?.getAttribute("aria-disabled")).toBe("true");
+    expect(disabled?.getAttribute("title")).toBe(
+      "Publish to get a public link",
+    );
+  });
+
+  it("sort headers refetch with sort/order params, toggling desc→asc", async () => {
+    render(
+      <MemoryRouter>
+        <CmsPosts session={session} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText("Hello World")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Sort by views" }));
+    await waitFor(() =>
+      expect(vi.mocked(listPosts)).toHaveBeenLastCalledWith(
+        "tok",
+        expect.objectContaining({
+          sort: "view_count",
+          order: "desc",
+          page: 1,
+        }),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Sort by views" }));
+    await waitFor(() =>
+      expect(vi.mocked(listPosts)).toHaveBeenLastCalledWith(
+        "tok",
+        expect.objectContaining({ sort: "view_count", order: "asc", page: 1 }),
+      ),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Sort by published" }),
+    );
+    await waitFor(() =>
+      expect(vi.mocked(listPosts)).toHaveBeenLastCalledWith(
+        "tok",
+        expect.objectContaining({
+          sort: "published_at",
+          order: "desc",
+          page: 1,
+        }),
+      ),
+    );
+  });
 });
 
 describe("CmsCategories", () => {
