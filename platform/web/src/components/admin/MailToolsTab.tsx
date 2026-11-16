@@ -16,6 +16,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function MailToolsTab({ session }: { session: AdminSession }) {
   const token = session.tokens.access_token;
   const [to, setTo] = useState("");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -36,7 +38,10 @@ export function MailToolsTab({ session }: { session: AdminSession }) {
     setErr(null);
     setBusy(true);
     try {
-      const res = await sendMailTest(token, target);
+      const res = await sendMailTest(token, target, {
+        subject: subject.trim() || undefined,
+        body: body.trim() || undefined,
+      });
       setNotice(
         res.accepted
           ? {
@@ -83,8 +88,29 @@ export function MailToolsTab({ session }: { session: AdminSession }) {
                 }}
                 onKeyDown={(e) => e.key === "Enter" && void send()}
               />
-              {err && <span className="adm-set-err">{err}</span>}
             </label>
+            <label className="adm-fl">
+              <span>Subject (optional)</span>
+              <input
+                className="adm-input"
+                value={subject}
+                placeholder="Bloom mail engine test"
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(e) => setSubject(e.target.value)}
+              />
+            </label>
+            <label className="adm-fl">
+              <span>Body (optional)</span>
+              <textarea
+                className="adm-input adm-mail-body"
+                value={body}
+                rows={5}
+                placeholder="Default test message…"
+                onChange={(e) => setBody(e.target.value)}
+              />
+            </label>
+            {err && <span className="adm-set-err">{err}</span>}
             <button
               type="button"
               className="adm-btn"

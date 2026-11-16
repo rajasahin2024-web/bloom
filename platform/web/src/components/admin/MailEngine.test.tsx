@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 vi.mock("@/lib/mail", () => ({
@@ -16,10 +16,13 @@ vi.mock("@/lib/mail", () => ({
   retryMailbox: vi.fn(),
   resetMailboxPassword: vi.fn(),
   testMailbox: vi.fn(),
+  sendMailboxTest: vi.fn(),
+  deleteMailbox: vi.fn(),
 }));
 
 import {
   createMailbox,
+  deleteMailbox,
   fetchMailDelivery,
   fetchMailDns,
   fetchMailQueue,
@@ -27,6 +30,7 @@ import {
   fetchMailboxes,
   resetMailboxPassword,
   retryMailQueue,
+  sendMailboxTest,
   sendMailTest,
   suspendMailbox,
 } from "@/lib/mail";
@@ -118,7 +122,7 @@ beforeEach(() => {
     items: [mailboxFixture],
     total: 1,
     page: 1,
-    page_size: 20,
+    page_size: 10,
   });
 });
 
@@ -269,7 +273,7 @@ describe("MailEngine — Delivery tab", () => {
   it("renders the not-supported empty state", async () => {
     const { findByText } = renderAt("/admin/mail/delivery");
 
-    expect(await findByText("Not supported")).toBeTruthy();
+    expect(await findByText("Unavailable")).toBeTruthy();
   });
 
   it("shows metadata only — no body content", async () => {
@@ -285,6 +289,7 @@ describe("MailEngine — Delivery tab", () => {
           receivedAt: "2026-11-14T09:00:00Z",
           status: "seen",
           folder: "INBOX",
+          account: "rahim.uddin@bloomieltsacademy.com",
         },
       ],
     });
@@ -330,8 +335,120 @@ describe("MailEngine — Tools tab", () => {
       expect(sendMailTest).toHaveBeenCalledWith(
         "at-1",
         "ops@bloomieltsacademy.com",
+        { subject: undefined, body: undefined },
       ),
     );
     expect(await findByText(/msg-123/)).toBeTruthy();
+  });
+});
+
+
+describe("MailEngine — TEC-201 upgrades", () => {
+  it("requests mailboxes at 10 per page", async () => {
+    renderAt("/admin/mail/mailboxes");
+    await waitFor(() => expect(fetchMailboxes).toHaveBeenCalled());
+    expect(fetchMailboxes).toHaveBeenCalledWith(
+      "at-1",
+      expect.objectContaining({ pageSize: 10 }),
+    );
+  });
+
+  it("deletes a mailbox through the confirm dialog", async () => {
+    vi.mocked(deleteMailbox).mockResolvedValue(undefined);
+    const { findByText, getByText } = renderAt("/admin/mail/mailboxes");
+
+    fireEvent.click(await findByText("Delete"));
+    expect(await findByText(/Delete rahim\.uddin@/)).toBeTruthy();
+
+    fireEvent.click(getByText("Delete mailbox"));
+    await waitFor(() =>
+      expect(deleteMailbox).toHaveBeenCalledWith("at-1", "m-1"),
+    );
+    expect(await findByText(/rahim\.uddin@.* deleted/)).toBeTruthy();
+  });
+
+  it("send-test dialog asks for a mail id + body, not a password", async () => {
+    vi.mocked(sendMailboxTest).mockResolvedValue({
+      accepted: true,
+      messageId: "sub-9",
+      error: null,
+    });
+    const { findByText, findByRole, getByLabelText, getByText } =
+      renderAt("/admin/mail/mailboxes");
+
+    fireEvent.click(await findByText("Test"));
+    const dialog = await findByRole("dialog");
+    expect(within(dialog).queryByLabelText(/password/i)).toBeNull();
+
+    fireEvent.change(getByLabelText("To (mail id)"), {
+      target: { value: "dest@example.com" },
+    });
+    fireEvent.change(getByLabelText("Body"), {
+      target: { value: "hello from admin" },
+    });
+    fireEvent.click(getByText("Send test"));
+
+    await waitFor(() =>
+      expect(sendMailboxTest).toHaveBeenCalledWith("at-1", "m-1", {
+        to: "dest@example.com",
+        subject: undefined,
+        body: "hello from admin",
+      }),
+    );
+    expect(await findByText(/sub-9/)).toBeTruthy();
+  });
+
+  it("send-test dialog blocks empty body client-side", async () => {
+    const { findByText, getByLabelText, getByText } = renderAt(
+      "/admin/mail/mailboxes",
+    );
+    fireEvent.click(await findByText("Test"));
+    fireEvent.change(getByLabelText("To (mail id)"), {
+      target: { value: "dest@example.com" },
+    });
+    fireEvent.click(getByText("Send test"));
+    expect(await findByText("Write a message body first.")).toBeTruthy();
+    expect(sendMailboxTest).not.toHaveBeenCalled();
+  });
+
+  it("delivery aggregate feed shows the account column", async () => {
+    vi.mocked(fetchMailDelivery).mockResolvedValue({
+      available: true,
+      items: [
+        {
+          id: "d-1",
+          direction: "outbound",
+          from: "raja@bloomieltsacademy.com",
+          to: ["ext@x.y"],
+          subject: "Hello",
+          receivedAt: "2026-11-15T09:00:00Z",
+          status: "sent",
+          folder: "Sent",
+          account: "raja@bloomieltsacademy.com",
+        },
+      ],
+    });
+    const { findAllByText, findByText } = renderAt("/admin/mail/delivery");
+    // appears in both the From cell and the new Account column
+    expect(
+      (await findAllByText("raja@bloomieltsacademy.com")).length,
+    ).toBeGreaterThan(1);
+    expect(await findByText("Hello")).toBeTruthy();
+  });
+
+  it("status tab shows the live hero", async () => {
+    vi.mocked(fetchMailStatus).mockResolvedValue({
+      ...statusFixture,
+      listeners: statusFixture.listeners.map((l) => ({ ...l, ok: true })),
+    });
+    const { findByText } = renderAt("/admin/mail");
+    expect(await findByText("Engine live")).toBeTruthy();
+    expect(await findByText(/checked /)).toBeTruthy();
+  });
+
+  it("status tab flags degraded when a listener is down", async () => {
+    vi.mocked(fetchMailStatus).mockResolvedValue(statusFixture); // imaps down
+    const { findAllByText } = renderAt("/admin/mail/status");
+    expect((await findAllByText("Degraded")).length).toBeGreaterThan(0);
   });
 });

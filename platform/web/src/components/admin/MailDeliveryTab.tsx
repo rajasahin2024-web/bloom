@@ -1,11 +1,12 @@
 /**
- * Mail Engine → Delivery tab — per-account delivery inspector.
+ * Mail Engine → Delivery tab — delivery inspector.
  *
- * Metadata only (from/to/subject/date/status/folder) — message bodies are
- * intentionally not exposed, an approved privacy decision. Without an
- * account filter the backend falls back to engine-wide telemetry, which
- * is Enterprise-gated upstream → `available:false` on OSS; per-account
- * inspection still works, so the empty state says so explicitly.
+ * Metadata only (from/to/subject/date/status/folder + the owning `account`)
+ * — message bodies are intentionally not exposed, an approved privacy
+ * decision. Without an account filter the backend aggregates every
+ * mailbox's recent mail (TEC-201 — engine-wide tracing is Enterprise-gated
+ * upstream, so OSS fans out per account); the filter still narrows to one
+ * mailbox. Auto-polls so fresh deliveries surface on their own.
  */
 import { useCallback, useEffect, useState } from "react";
 import type { AdminSession } from "@/lib/auth";
@@ -16,6 +17,7 @@ import { errText, fmtDateTime } from "@/components/admin/mail-utils";
 import { SearchIcon } from "@/components/icons";
 
 const LIMIT = 50;
+const POLL_MS = 15_000;
 
 export function MailDeliveryTab({ session }: { session: AdminSession }) {
   const token = session.tokens.access_token;
@@ -26,9 +28,11 @@ export function MailDeliveryTab({ session }: { session: AdminSession }) {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(
-    async (acct: string) => {
-      setLoading(true);
-      setListErr(null);
+    async (acct: string, silent = false) => {
+      if (!silent) {
+        setLoading(true);
+        setListErr(null);
+      }
       try {
         setPage(
           await fetchMailDelivery(token, {
@@ -36,10 +40,11 @@ export function MailDeliveryTab({ session }: { session: AdminSession }) {
             limit: LIMIT,
           }),
         );
+        setListErr(null);
       } catch (err) {
-        setListErr(errText(err, "Could not load delivery records."));
+        if (!silent) setListErr(errText(err, "Could not load delivery records."));
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     },
     [token],
@@ -47,6 +52,11 @@ export function MailDeliveryTab({ session }: { session: AdminSession }) {
 
   useEffect(() => {
     void load(applied);
+  }, [load, applied]);
+
+  useEffect(() => {
+    const t = window.setInterval(() => void load(applied, true), POLL_MS);
+    return () => window.clearInterval(t);
   }, [load, applied]);
 
   function applyFilter() {
@@ -65,7 +75,8 @@ export function MailDeliveryTab({ session }: { session: AdminSession }) {
           )}
         </h3>
         <p>
-          Message metadata per mailbox — bodies are never shown, by design.
+          Recent message metadata across mailboxes — bodies are never shown,
+          by design. Refreshes automatically.
         </p>
       </div>
       <div className="adm-card-bd flush">
@@ -107,10 +118,10 @@ export function MailDeliveryTab({ session }: { session: AdminSession }) {
 
         {page && !page.available && (
           <div className="adm-mail-empty">
-            <b>Not supported</b>
+            <b>Unavailable</b>
             <p>
-              Engine-wide delivery traces are not available on this engine
-              version — filter by an account to inspect its mailbox.
+              The engine is not answering inspection calls right now — check
+              the Status tab.
             </p>
           </div>
         )}
@@ -132,6 +143,7 @@ export function MailDeliveryTab({ session }: { session: AdminSession }) {
               <thead>
                 <tr>
                   <th>Dir</th>
+                  <th>Account</th>
                   <th>From</th>
                   <th>To</th>
                   <th>Subject</th>
@@ -142,7 +154,7 @@ export function MailDeliveryTab({ session }: { session: AdminSession }) {
               </thead>
               <tbody>
                 {page.items.map((d) => (
-                  <tr key={d.id}>
+                  <tr key={`${d.account ?? ""}:${d.id}`}>
                     <td>
                       {d.direction ? (
                         <Pill tone={d.direction === "inbound" ? "ok" : "mut"}>
@@ -152,6 +164,7 @@ export function MailDeliveryTab({ session }: { session: AdminSession }) {
                         "—"
                       )}
                     </td>
+                    <td className="adm-mail-addr">{d.account ?? "—"}</td>
                     <td className="adm-mail-addr">{d.from ?? "—"}</td>
                     <td className="adm-mail-addr">{d.to.join(", ") || "—"}</td>
                     <td className="adm-mail-subj" title={d.subject ?? ""}>

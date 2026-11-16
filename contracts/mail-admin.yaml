@@ -78,7 +78,8 @@ info:
     ## Audit
 
     `POST /mailboxes`, `/{id}/suspend`, `/{id}/unsuspend`,
-    `/{id}/reset-password`, `/{id}/test`, `/test-send`, `/queue/retry`
+    `/{id}/reset-password`, `/{id}/test`, `/{id}/send-test`,
+    `DELETE /mailboxes/{id}`, `/test-send`, `/queue/retry`
     each append a `mail_admin_audit` row:
     `{admin_user_id, action, target, detail(jsonb), created_at}`.
     `detail` carries outcome metadata only — never passwords or tokens.
@@ -207,6 +208,30 @@ paths:
         '404': { description: unknown mailbox or not provisioned on engine }
         '502': { description: engine unreachable }
 
+  /api/admin/mailboxes/{id}:
+    delete:
+      operationId: deleteMailbox
+      summary: Delete a mailbox (TEC-201)
+      description: >-
+        Destroys the account on the engine (`x:Account/set` destroy) then
+        drops the mirror row. `not_found` engine-side is tolerated — rows
+        that never finished provisioning have nothing to destroy, so the
+        mirror cleanup still lands. Queued provisioning jobs for the row
+        are dropped by the worker (unknown-id no-op). Audit:
+        `mailbox.delete`.
+      x-stalwart: >-
+        `x:Account/query` (name+domainId) → `x:Account/set`
+        {destroy:{id:null}}; `notDestroyed` maps to the taxonomy.
+      tags: [mailboxes]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Deleted on engine + mirror }
+        '401': { description: missing/invalid admin JWT }
+        '403': { description: not an admin }
+        '404': { description: unknown mirror row }
+        '502': { description: engine unreachable / refused }
+
   /api/admin/mailboxes/{id}/test:
     post:
       operationId: testMailbox
@@ -237,6 +262,46 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/MailboxTestResult' }
         '404': { description: unknown mailbox }
+        '429': { description: probe rate limit exceeded }
+
+  /api/admin/mailboxes/{id}/send-test:
+    post:
+      operationId: sendMailboxTest
+      summary: Send a real message as the mailbox (TEC-201)
+      description: >-
+        The password-free replacement for the auth probe in the UI: the
+        admin supplies a recipient, optional subject, and body; the platform
+        submits through the engine on behalf of the mailbox using the admin
+        management token — `Email/set` drafts the message in the account's
+        Drafts folder and `EmailSubmission/set` sends it via the account's
+        own identity. No mailbox password is requested or stored.
+        Rate-limited: shared per-admin probe bucket. Audit:
+        `mailbox.send_test` (outcome + recipient only, never the body).
+      x-stalwart: >-
+        `Identity/get` + `Mailbox/query|get` (role: drafts) → `Email/set`
+        + `EmailSubmission/set` — one JMAP roundtrip to resolve, one to
+        send; `unknownMethod` → `accepted:false, error:"unavailable"`.
+      tags: [mailboxes]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to, body]
+              properties:
+                to: { type: string, format: email }
+                subject: { type: string, maxLength: 200 }
+                body: { type: string, minLength: 1, maxLength: 8192 }
+      responses:
+        '200':
+          description: Send outcome — always 200 once auth+rate-limit pass
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TestSendResult' }
+        '404': { description: unknown mirror row }
         '429': { description: probe rate limit exceeded }
 
   /api/admin/mail/status:
@@ -287,7 +352,8 @@ paths:
         SMTP-SSL :465 AUTH as `MAIL_TEST_ADDRESS`/`MAIL_TEST_SECRET`
         (DevOps-provisioned, TEC-190). Until those env vars land the route
         answers 503 with `accepted:false,error:"unavailable"`. Rate-limited:
-        shared 10/min bucket per admin with `/{id}/test`.
+        shared 10/min bucket per admin with `/{id}/test`. `subject`/`body`
+        optional since TEC-201 — the fixed test message is sent when omitted.
       tags: [engine]
       requestBody:
         required: true
@@ -298,6 +364,8 @@ paths:
               required: [to]
               properties:
                 to: { type: string, format: email }
+                subject: { type: string, maxLength: 200 }
+                body: { type: string, maxLength: 8192 }
       responses:
         '200':
           description: Send outcome
@@ -359,8 +427,13 @@ paths:
         `Email/query`+`Email/get`+`Mailbox/get` in one roundtrip against
         that mailbox (admin token; OSS-safe) — the inspector answers
         "what arrived/left and where it landed".
-        Without `account`: engine-wide tracing is Enterprise-only
-        (`available:false` on OSS).
+        Without `account` (TEC-201): engine-wide tracing is Enterprise-only,
+        so the response aggregates the OSS-safe per-account inspection —
+        one `x:Account` query + one JMAP mail roundtrip per mailbox,
+        bounded (first 50 accounts, ≤10 items each), merged by `receivedAt`
+        desc and capped at `limit`. Each item carries `account` naming the
+        mailbox it was read from. `available:false` still means the engine
+        surface is unreachable/unexposed.
         **Message bodies are never fetched or returned.**
       tags: [engine]
       parameters:
@@ -535,6 +608,10 @@ components:
               receivedAt: { type: string, format: date-time, nullable: true }
               status: { type: string, nullable: true, description: seen|unseen|trace status }
               folder: { type: string, nullable: true, description: mailbox/folder name }
+              account:
+                type: string
+                nullable: true
+                description: Mailbox address the row was read from (TEC-201)
 
   securitySchemes:
     bearerAuth:
