@@ -12,7 +12,7 @@ import json
 import socket
 import uuid
 from collections.abc import Generator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import psycopg
@@ -704,3 +704,101 @@ def test_patch_page_validates_sections(admin_token: str) -> None:
     assert len(detail["errors"]) >= 1
 
     client.delete(f"/api/cms/pages/{page_id}", headers=_auth(admin_token))
+
+
+# ── TEC-202: view_count field + admin list sorting ──────────────────────
+
+
+@pytest.fixture
+def sort_posts() -> Generator[None, None, None]:
+    """Posts with distinct view_count / published_at in an isolated category."""
+    if not _infra_up():
+        yield
+        return
+    conn = _pg()
+    now = datetime.now(UTC)
+    # (slug, view_count, published days ago; None = NULL published_at)
+    rows = [("sort-a", 5, 1), ("sort-b", 30, None), ("sort-c", 12, 3)]
+    for slug, view_count, days in rows:
+        conn.execute(
+            "INSERT INTO cms_posts (id, slug, title, body, tags, featured,"
+            " status, category, published_at, view_count, created_at,"
+            " updated_at) VALUES (%s,%s,%s,'<p>x</p>','{}',false,"
+            " 'published'::cms_status,'tec202-sort',%s,%s,%s,%s)",
+            (
+                str(uuid.uuid4()),
+                slug,
+                slug.upper(),
+                None if days is None else now - timedelta(days=days),
+                view_count,
+                now,
+                now,
+            ),
+        )
+    yield
+    conn = _pg()
+    conn.execute(
+        "DELETE FROM cms_posts WHERE slug IN ('sort-a','sort-b','sort-c')"
+    )
+    conn.close()
+
+
+def _sorted_slugs(resp_json: dict[str, list[dict[str, str]]]) -> list[str]:
+    return [p["slug"] for p in resp_json["items"]]
+
+
+@requires_infra
+def test_posts_list_includes_view_count(
+    admin_token: str, sort_posts: None
+) -> None:
+    resp = client.get(
+        "/api/cms/posts?category=tec202-sort", headers=_auth(admin_token)
+    )
+    assert resp.status_code == 200, resp.text
+    counts = {p["slug"]: p["view_count"] for p in resp.json()["items"]}
+    assert counts == {"sort-a": 5, "sort-b": 30, "sort-c": 12}
+
+
+@requires_infra
+def test_posts_sort_by_view_count(admin_token: str, sort_posts: None) -> None:
+    resp = client.get(
+        "/api/cms/posts?category=tec202-sort&sort=view_count&order=desc",
+        headers=_auth(admin_token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert _sorted_slugs(resp.json()) == ["sort-b", "sort-c", "sort-a"]
+    resp = client.get(
+        "/api/cms/posts?category=tec202-sort&sort=view_count&order=asc",
+        headers=_auth(admin_token),
+    )
+    assert _sorted_slugs(resp.json()) == ["sort-a", "sort-c", "sort-b"]
+
+
+@requires_infra
+def test_posts_sort_published_at_nulls_last(
+    admin_token: str, sort_posts: None
+) -> None:
+    # sort-b has NULL published_at — NULLS LAST in both directions.
+    resp = client.get(
+        "/api/cms/posts?category=tec202-sort&sort=published_at&order=asc",
+        headers=_auth(admin_token),
+    )
+    assert _sorted_slugs(resp.json()) == ["sort-c", "sort-a", "sort-b"]
+    resp = client.get(
+        "/api/cms/posts?category=tec202-sort&sort=published_at&order=desc",
+        headers=_auth(admin_token),
+    )
+    assert _sorted_slugs(resp.json()) == ["sort-a", "sort-c", "sort-b"]
+
+
+@requires_infra
+def test_posts_sort_invalid_params_422(admin_token: str) -> None:
+    resp = client.get(
+        "/api/cms/posts?sort=bogus", headers=_auth(admin_token)
+    )
+    assert resp.status_code == 422
+    resp = client.get(
+        "/api/cms/posts?sort=view_count&order=sideways",
+        headers=_auth(admin_token),
+    )
+    assert resp.status_code == 422

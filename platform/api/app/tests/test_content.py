@@ -387,3 +387,47 @@ def test_all_seed_slugs_have_files() -> None:
     seed_dir = Path(__file__).resolve().parents[1] / "seed"
     for slug, name in _PAGE_SEEDS.items():
         assert (seed_dir / name).exists(), f"missing seed {name} for {slug}"
+
+
+# ── TEC-202: view beacon + view_count in public payloads ────────────────
+
+
+@requires_infra
+def test_post_view_beacon_increments_atomically(
+    blog_rows: dict[str, str],
+) -> None:
+    resp = client.post("/api/content/posts/pub-a1/view")
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {"view_count": 1}
+    resp = client.post("/api/content/posts/pub-a1/view")
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {"view_count": 2}
+    conn = _pg()
+    row = conn.execute(
+        "SELECT view_count FROM cms_posts WHERE slug = 'pub-a1'"
+    ).fetchone()
+    conn.close()
+    assert row == (2,)
+
+
+@requires_infra
+def test_post_view_beacon_404_on_draft_and_unknown(
+    blog_rows: dict[str, str],
+) -> None:
+    resp = client.post("/api/content/posts/draft-a/view")
+    assert resp.status_code == 404
+    assert resp.json() == {"detail": "Post not found"}
+    resp = client.post("/api/content/posts/no-such-post/view")
+    assert resp.status_code == 404
+
+
+@requires_infra
+def test_view_count_in_public_payloads(blog_rows: dict[str, str]) -> None:
+    client.post("/api/content/posts/pub-a1/view")
+    detail = client.get("/api/content/posts/pub-a1").json()
+    assert detail["view_count"] == 1
+    assert all("view_count" in r for r in detail["related_posts"])
+    page = client.get("/api/content/posts?category=Visa%20Guide").json()
+    counts = {p["slug"]: p["view_count"] for p in page["items"]}
+    assert counts["pub-a1"] == 1
+    assert counts["pub-a2"] == 0

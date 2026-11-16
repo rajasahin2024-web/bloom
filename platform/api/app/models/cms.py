@@ -166,6 +166,7 @@ class CmsPost(Base):
         ),
         Index("ix_cms_posts_author_id", "author_id"),
         Index("ix_cms_posts_subcategory_id", "subcategory_id"),
+        Index("ix_cms_posts_view_count", "view_count"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -194,6 +195,9 @@ class CmsPost(Base):
         index=True,
     )
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    view_count: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
     # Taxonomy FKs — names are denormalized into the text columns above on
     # write so public reads keep working without a join. SET NULL on entity
     # delete leaves the denormalized display text behind (intentional).

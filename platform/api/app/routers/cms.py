@@ -9,10 +9,10 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
-from typing import TypeVar
+from typing import Any, Literal, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.sql.base import ExecutableOption
@@ -289,11 +289,27 @@ def delete_page(page_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
 
 # ── Posts ─────────────────────────────────────────────────────────────────
 
+PostSort = Literal["view_count", "published_at", "updated_at", "created_at"]
+SortOrder = Literal["asc", "desc"]
+
+# Whitelisted sort columns for GET /api/cms/posts — never map raw input to
+# column names. published_at is the only nullable column (NULLS LAST both
+# directions); created_at + id tiebreakers keep pagination deterministic.
+_POST_SORT_COLUMNS = {
+    "view_count": CmsPost.view_count,
+    "published_at": CmsPost.published_at,
+    "updated_at": CmsPost.updated_at,
+    "created_at": CmsPost.created_at,
+}
+
+
 @router.get("/posts", response_model=Page[CmsPostOut])
 def list_posts(
     pagination: Pagination = Depends(),
     status_filter: CmsStatus | None = Query(default=None, alias="status"),
     category: str | None = Query(default=None),
+    sort: PostSort | None = Query(default=None),
+    order: SortOrder = Query(default="desc"),
     db: Session = Depends(get_db),
 ) -> Page[CmsPostOut]:
     query = select(CmsPost).options(*_post_load_options())
@@ -302,8 +318,21 @@ def list_posts(
     if category is not None:
         query = query.where(CmsPost.category == category)
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    order_by: list[ColumnElement[Any]]
+    if sort is None:
+        order_by = [
+            CmsPost.published_at.desc().nullslast(),
+            CmsPost.created_at.desc(),
+            CmsPost.id.desc(),
+        ]
+    else:
+        column = _POST_SORT_COLUMNS[sort]
+        primary = column.asc() if order == "asc" else column.desc()
+        if column is CmsPost.published_at:
+            primary = primary.nullslast()
+        order_by = [primary, CmsPost.created_at.desc(), CmsPost.id.desc()]
     items = db.scalars(
-        query.order_by(CmsPost.published_at.desc().nullslast(), CmsPost.created_at.desc())
+        query.order_by(*order_by)
         .offset(pagination.offset)
         .limit(pagination.page_size)
     ).all()

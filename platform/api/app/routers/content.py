@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
@@ -22,6 +22,7 @@ from app.schemas.cms import (
     CmsPageOut,
     CmsPostDetailOut,
     CmsPostOut,
+    CmsPostViewOut,
 )
 from app.schemas.common import Page, Pagination
 from app.services import section_schemas
@@ -206,6 +207,25 @@ def get_post_by_slug(slug: str, db: Session = Depends(get_db)) -> CmsPostDetailO
         CmsPostOut.model_validate(r) for r in _related_posts(db, post)
     ]
     return out
+
+
+@router.post("/posts/{slug}/view", response_model=CmsPostViewOut)
+def record_post_view(slug: str, db: Session = Depends(get_db)) -> CmsPostViewOut:
+    """Public view beacon — one atomic increment per call on a published post.
+
+    A single UPDATE…RETURNING keeps the counter correct under concurrency;
+    no rate limiting (inflation tradeoff documented in TEC-200).
+    """
+    new_count = db.scalar(
+        update(CmsPost)
+        .where(CmsPost.slug == slug, CmsPost.status == CmsStatus.published)
+        .values(view_count=CmsPost.view_count + 1)
+        .returning(CmsPost.view_count)
+    )
+    if new_count is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    db.commit()
+    return CmsPostViewOut(view_count=new_count)
 
 
 @router.get("/blog/categories", response_model=list[BlogCategoryOut])

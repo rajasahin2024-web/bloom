@@ -193,6 +193,7 @@ class CmsPostOut(BaseModel):
     featured: bool
     status: CmsStatus
     published_at: datetime | None
+    view_count: int
     created_at: datetime
     updated_at: datetime
 
@@ -203,6 +204,12 @@ class CmsPostDetailOut(CmsPostOut):
     author_obj: CmsAuthorOut | None
     category_obj: CmsCategoryOut | None
     related_posts: list[CmsPostOut] = Field(default_factory=list)
+
+
+class CmsPostViewOut(BaseModel):
+    """Result of the public view beacon — the post's new view count."""
+
+    view_count: int
 
 
 class BlogCategoryOut(BaseModel):
