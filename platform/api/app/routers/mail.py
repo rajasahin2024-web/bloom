@@ -44,7 +44,7 @@ from app.integrations.mail_api import (
 from app.models.enums import MailboxStatus
 from app.models.mailbox import Mailbox
 from app.models.user import User
-from app.schemas.common import Page, Pagination
+from app.schemas.common import MAX_PAGE_SIZE, Page
 from app.schemas.mail import (
     AvailabilityOut,
     DeliveryReportOut,
@@ -54,6 +54,7 @@ from app.schemas.mail import (
     MailboxCreateIn,
     MailboxOut,
     MailboxRetryIn,
+    MailboxSendTestIn,
     MailboxStatusOut,
     MailboxTestIn,
     MailboxTestOut,
@@ -168,26 +169,30 @@ def _mailbox_out(row: Mailbox) -> MailboxOut:
 
 @admin_router.get("", response_model=Page[MailboxOut])
 def list_mailboxes(
-    pagination: Pagination = Depends(),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=MAX_PAGE_SIZE),
     status_filter: MailboxStatus | None = Query(default=None, alias="status"),
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ) -> Page[MailboxOut]:
-    """Paginated mirror-table listing — the admin provisioning-status view."""
+    """Paginated mirror-table listing — the admin provisioning-status view.
+
+    Page size defaults to 10 (TEC-201) — this route carries its own params
+    rather than the shared `Pagination` default (20) used elsewhere."""
     query = select(Mailbox)
     if status_filter is not None:
         query = query.where(Mailbox.status == status_filter)
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     items = db.scalars(
         query.order_by(Mailbox.created_at.desc())
-        .offset(pagination.offset)
-        .limit(pagination.page_size)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
     ).all()
     return Page(
         items=[_mailbox_out(m) for m in items],
         total=total,
-        page=pagination.page,
-        page_size=pagination.page_size,
+        page=page,
+        page_size=page_size,
     )
 
 
@@ -420,6 +425,82 @@ def test_mailbox(
     return MailboxTestOut(smtp_auth=smtp_ok, imap=imap_ok, error=error)
 
 
+@admin_router.delete("/{mailbox_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_mailbox(
+    mailbox_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+    provisioner: MailProvisioner = Depends(get_mail_provisioner),
+) -> None:
+    """Destroy the mailbox on the engine and drop the mirror row (TEC-201).
+
+    `not_found` from the engine is tolerated — rows that never finished
+    provisioning have nothing to destroy, but the mirror cleanup still
+    lands. The queued worker drops jobs for missing rows, so deleting a
+    `pending`/`queued`/`provisioning` row is safe."""
+    row = _get_mailbox_or_404(db, mailbox_id)
+    try:
+        provisioner.delete_mailbox(row.localpart)
+    except mail_api.MailNotFoundError:
+        logger.info("mailbox %s not on the engine — mirror delete only", row.localpart)
+    except mail_api.MailError as exc:
+        raise _mail_http_error(exc) from exc
+    mail_admin.write_audit(
+        db,
+        admin,
+        "mailbox.delete",
+        str(row.id),
+        {"localpart": row.localpart, "userLinked": row.user_id is not None},
+    )
+    db.delete(row)
+    db.commit()
+
+
+@admin_router.post("/{mailbox_id}/send-test", response_model=TestSendOut)
+def send_mailbox_test(
+    mailbox_id: uuid.UUID,
+    payload: MailboxSendTestIn,
+    db: Session = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    admin: User = Depends(require_admin),
+    inspector: MailEngineInspector = Depends(get_mail_inspector),
+) -> TestSendOut:
+    """Send a real message *as* the mailbox — admin-token JMAP submission.
+
+    TEC-201 replaces the password probe in the UI: the admin supplies a
+    recipient + body, the engine submits on behalf of the account, and no
+    mailbox password is asked for or needed. Rate-limited with the other
+    probes; the audit row carries outcome only, never the body."""
+    row = _get_mailbox_or_404(db, mailbox_id)
+    _enforce_probe_rate_limit(redis, admin.id)
+    subject = payload.subject or "Test mail from Bloom admin"
+    try:
+        submission_id = inspector.send_mail_message(
+            row.localpart, str(payload.to), subject, payload.body
+        )
+    except mail_api.MailError as exc:
+        logger.info("mailbox send-test failed (%s): %s", exc.code, exc)
+        result = TestSendOut(accepted=False, message_id=None, error=exc.code)
+    except Exception as exc:  # noqa: BLE001 — probe failures are the payload
+        logger.info("mailbox send-test crashed: %s", exc)
+        result = TestSendOut(accepted=False, message_id=None, error="unavailable")
+    else:
+        result = (
+            TestSendOut(accepted=True, message_id=submission_id, error=None)
+            if submission_id is not None
+            else TestSendOut(accepted=False, message_id=None, error="unavailable")
+        )
+    mail_admin.write_audit(
+        db,
+        admin,
+        "mailbox.send_test",
+        str(row.id),
+        {"localpart": row.localpart, "to": str(payload.to), "accepted": result.accepted},
+    )
+    db.commit()
+    return result
+
+
 # ── Engine surface /api/admin/mail/* (TEC-188) ─────────────────────────────────
 
 
@@ -493,8 +574,10 @@ def mail_test_send(
             settings.mail_service_host,
             settings.mail_test_address,
             settings.mail_test_secret,
-            payload.to,
+            str(payload.to),
             settings.mail_probe_timeout_seconds,
+            subject=payload.subject,
+            body=payload.body,
         )
         result = TestSendOut(accepted=True, message_id=message_id, error=None)
     except Exception as exc:  # noqa: BLE001 — probe failures are the payload

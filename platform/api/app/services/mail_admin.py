@@ -190,20 +190,25 @@ def send_test_message(
     password: str,
     to: str,
     timeout: float,
+    subject: str | None = None,
+    body: str | None = None,
 ) -> str:
     """Submit a test mail on :465 — returns the Message-ID on acceptance.
 
     Raises smtplib/ssl/OSError on any failure; the route maps it into the
-    contract's `error` field.
+    contract's `error` field. `subject`/`body` optional since TEC-201.
     """
     domain = from_address.rsplit("@", 1)[-1]
     message_id = f"<{uuid.uuid4().hex}@{domain}>"
     msg = EmailMessage()
     msg["From"] = from_address
     msg["To"] = to
-    msg["Subject"] = "Bloom mail engine test"
+    msg["Subject"] = subject or "Bloom mail engine test"
     msg["Message-ID"] = message_id
-    msg.set_content("This is an automated test message from the Bloom admin Mail Engine panel.\n")
+    msg.set_content(
+        body
+        or "This is an automated test message from the Bloom admin Mail Engine panel.\n"
+    )
     ctx = ssl.create_default_context()
     with smtplib.SMTP_SSL(host, SMTPS_PORT, timeout=timeout, context=ctx) as smtp:
         smtp.login(from_address, password)

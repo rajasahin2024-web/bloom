@@ -86,6 +86,22 @@ class MailboxTestIn(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class MailboxSendTestIn(BaseModel):
+    """POST /api/admin/mailboxes/{id}/send-test (TEC-201) — a real message
+    sent as the mailbox via admin-token JMAP submission; no mailbox
+    password involved."""
+
+    to: EmailStr
+    subject: str | None = Field(default=None, max_length=200)
+    body: str = Field(min_length=1, max_length=8192)
+
+    @model_validator(mode="after")
+    def _body_not_blank(self) -> MailboxSendTestIn:
+        if not self.body.strip():
+            raise ValueError("body must not be empty")
+        return self
+
+
 class _CamelModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -136,6 +152,15 @@ class DnsReportOut(_CamelModel):
 
 class TestSendIn(BaseModel):
     to: EmailStr
+    # Optional since TEC-201 — fixed subject/body when omitted.
+    subject: str | None = Field(default=None, max_length=200)
+    body: str | None = Field(default=None, max_length=8192)
+
+    @model_validator(mode="after")
+    def _body_not_blank(self) -> TestSendIn:
+        if self.body is not None and not self.body.strip():
+            raise ValueError("body must not be empty")
+        return self
 
 
 class TestSendOut(_CamelModel):
@@ -188,6 +213,9 @@ class DeliveryItemOut(_CamelModel):
     received_at: str | None = Field(serialization_alias="receivedAt")
     status: str | None
     folder: str | None
+    # Mailbox the row was read from — populated on every item since
+    # TEC-201's engine-wide aggregation.
+    account: str | None
 
 
 class DeliveryReportOut(BaseModel):
@@ -206,4 +234,5 @@ def delivery_item_from_adapter(item: Any) -> DeliveryItemOut:
         received_at=item.received_at,
         status=item.status,
         folder=item.folder,
+        account=item.account,
     )

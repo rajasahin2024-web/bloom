@@ -206,6 +206,9 @@ class DeliveryItem:
     received_at: str | None = None
     status: str | None = None
     folder: str | None = None
+    # Mailbox this row was read from — set on every item since TEC-201's
+    # engine-wide view aggregates per-account inspections.
+    account: str | None = None
 
 
 # ── Protocol ──────────────────────────────────────────────────────────────────
@@ -238,6 +241,12 @@ class MailProvisioner(Protocol):
 
     def list_mailboxes(self, page: int, limit: int) -> MailboxPage: ...
 
+    def delete_mailbox(self, localpart: str) -> None:
+        """Destroy the engine account. `MailNotFoundError` when the localpart
+        was never provisioned — the router tolerates it so mirror cleanup
+        still proceeds (TEC-201)."""
+        ...
+
 
 class MailEngineInspector(Protocol):
     """Read-mostly engine surface behind `/api/admin/mail/*` (TEC-188).
@@ -261,6 +270,14 @@ class MailEngineInspector(Protocol):
     def dns_records(self, domain: str) -> list[DnsRecord] | None: ...
 
     def delivery_items(self, account: str | None, limit: int) -> list[DeliveryItem] | None: ...
+
+    def send_mail_message(
+        self, localpart: str, to: str, subject: str, body: str
+    ) -> str | None:
+        """Submit a message on behalf of a mailbox — admin token, no
+        mailbox password (TEC-201 send-test). Returns the EmailSubmission
+        id; `None` when the surface isn't exposed."""
+        ...
 
 
 Transport = Callable[[str, str, dict[str, str], Any], tuple[int, Any, dict[str, str]]]
@@ -644,6 +661,22 @@ class StalwartProvisioner:
         ]
         return MailboxPage(items=items, total=int(res.get("aq", {}).get("total") or 0))
 
+    def delete_mailbox(self, localpart: str) -> None:
+        """Destroy the engine account via `x:Account/set` destroy (TEC-201).
+
+        `MailNotFoundError` propagates — the router tolerates it so mirror
+        rows for never-provisioned mailboxes can still be cleaned up."""
+        acct = self._account_lookup(normalize_localpart(localpart))
+        if acct is None:
+            raise MailNotFoundError(
+                f"mailbox {self._address(localpart)} not found on the engine"
+            )
+        res = self._jmap(
+            [["x:Account/set", {"destroy": {str(acct["id"]): None}}, "s"]]
+        )
+        args = res.get("s") or {}
+        _raise_set_errors(args, "notDestroyed")
+
     # ── engine-admin operations (contracts/mail-admin.yaml, TEC-188) ──────
 
     def ping(self) -> bool:
@@ -804,9 +837,9 @@ class StalwartProvisioner:
 
     def delivery_items(self, account: str | None, limit: int) -> list[DeliveryItem] | None:
         if not account:
-            # Engine-wide tracing is Enterprise-only in v0.16+ — same OSS
-            # `available:false` degradation as the removed REST surface.
-            return None
+            # Engine-wide tracing is Enterprise-only in v0.16+, so TEC-201
+            # aggregates the OSS-safe per-account inspections instead.
+            return self._delivery_recent(limit)
         localpart = normalize_localpart(account.split("@", 1)[0])
         acct = self._account_lookup(localpart)
         if acct is None:
@@ -814,6 +847,183 @@ class StalwartProvisioner:
         account_id = str(acct.get("id") or "")
         address = str(acct.get("emailAddress") or self._address(localpart))
         return self._jmap_delivery(account_id, address, limit)
+
+    def _domain_accounts(self, cap: int) -> list[dict[str, Any]]:
+        """Raw `User` account dicts for the domain — one query+get roundtrip
+        (the `_account_lookup` shape, fanned out)."""
+        res = self._jmap(
+            [
+                [
+                    "x:Account/query",
+                    {
+                        "filter": {"domainId": self._domain_id()},
+                        "sort": [{"property": "name"}],
+                        "limit": cap,
+                    },
+                    "aq",
+                ],
+                [
+                    "x:Account/get",
+                    {
+                        "#ids": {
+                            "resultOf": "aq",
+                            "name": "x:Account/query",
+                            "path": "/ids",
+                        }
+                    },
+                    "ag",
+                ],
+            ]
+        )
+        return [
+            item
+            for item in res.get("ag", {}).get("list") or []
+            if isinstance(item, dict) and item.get("@type") == "User"
+        ]
+
+    def _delivery_recent(self, limit: int) -> list[DeliveryItem]:
+        """Engine-wide inspector on OSS: merge each mailbox's recent mail.
+
+        One account roundtrip + one `_jmap_delivery` call per mailbox,
+        bounded by `_DELIVERY_ACCOUNTS_CAP` — N+1 by design (Enterprise
+        traces are the alternative), so the caps keep the fan-out cheap."""
+        accounts = self._domain_accounts(_DELIVERY_ACCOUNTS_CAP)
+        per_account = max(1, min(limit, _DELIVERY_PER_ACCOUNT))
+        merged: list[DeliveryItem] = []
+        for acct in accounts:
+            name = str(acct.get("name") or "")
+            address = str(acct.get("emailAddress") or self._address(name))
+            part = self._jmap_delivery(str(acct.get("id") or ""), address, per_account)
+            if part:
+                merged.extend(part)
+        merged.sort(key=lambda i: i.received_at or "", reverse=True)
+        return merged[:limit]
+
+    def send_mail_message(
+        self, localpart: str, to: str, subject: str, body: str
+    ) -> str | None:
+        """Send a message as the mailbox — admin-token JMAP submission.
+
+        TEC-201's password-free send-test: `Email/set` drafts the message in
+        the account's Drafts folder and `EmailSubmission/set` sends it via
+        the account's own identity — no mailbox password crosses the wire.
+        Returns the EmailSubmission id; `None` if the mail surface isn't
+        exposed (unknownMethod)."""
+        localpart = normalize_localpart(localpart)
+        acct = self._account_lookup(localpart)
+        if acct is None:
+            raise MailNotFoundError(
+                f"mailbox {self._address(localpart)} not found on the engine"
+            )
+        account_id = str(acct.get("id") or "")
+        address = str(acct.get("emailAddress") or self._address(localpart))
+        res = self._jmap_lenient(
+            [
+                [
+                    "Identity/get",
+                    {"accountId": account_id, "properties": ["id", "email"]},
+                    "i",
+                ],
+                ["Mailbox/query", {"accountId": account_id}, "mq"],
+                [
+                    "Mailbox/get",
+                    {
+                        "accountId": account_id,
+                        "#ids": {
+                            "resultOf": "mq",
+                            "name": "Mailbox/query",
+                            "path": "/ids",
+                        },
+                        "properties": ["id", "role", "name"],
+                    },
+                    "m",
+                ],
+            ],
+            using=_USING_MAIL,
+        )
+        if res is None:
+            return None
+        identities = res.get("i", {}).get("list") or []
+        if not identities:
+            raise MailUnavailableError(f"mailbox {address} has no send identity")
+        identity_id = str(
+            next(
+                (
+                    i.get("id")
+                    for i in identities
+                    if isinstance(i, dict)
+                    and str(i.get("email") or "").lower() == address.lower()
+                ),
+                identities[0].get("id"),
+            )
+        )
+        mailboxes = {
+            str(mb.get("role")): str(mb.get("id"))
+            for mb in res.get("m", {}).get("list") or []
+            if isinstance(mb, dict) and mb.get("id") and mb.get("role")
+        }
+        drafts_id = (
+            mailboxes.get("drafts") or mailboxes.get("sent") or mailboxes.get("inbox")
+        )
+        if drafts_id is None:
+            raise MailUnavailableError(f"mailbox {address} has no folder to draft in")
+        send_res = self._jmap_send(
+            [
+                [
+                    "Email/set",
+                    {
+                        "accountId": account_id,
+                        "create": {
+                            "m1": {
+                                "mailboxIds": {drafts_id: True},
+                                "from": [{"email": address}],
+                                "to": [{"email": to}],
+                                "subject": subject,
+                                "keywords": {"$draft": True},
+                                "textBody": [{"partId": "t1", "type": "text/plain"}],
+                                "bodyValues": {"t1": {"value": body}},
+                            }
+                        },
+                    },
+                    "e",
+                ],
+                [
+                    "EmailSubmission/set",
+                    {
+                        "accountId": account_id,
+                        "create": {
+                            "s1": {
+                                "identityId": identity_id,
+                                "#emailId": {
+                                    "resultOf": "e",
+                                    "name": "Email/set",
+                                    "path": "/created/m1/id",
+                                },
+                            }
+                        },
+                    },
+                    "s",
+                ],
+            ],
+            _USING_MAIL,
+        )
+        for resp in send_res:
+            if (
+                isinstance(resp, list)
+                and len(resp) >= 2
+                and resp[0] == "error"
+                and isinstance(resp[1], dict)
+                and resp[1].get("type") == "unknownMethod"
+            ):
+                return None  # submission surface not exposed
+        by_call = self._collect(send_res)
+        email_args = by_call.get("e") or {}
+        _raise_set_errors(email_args, "notCreated")
+        sub_args = by_call.get("s") or {}
+        _raise_set_errors(sub_args, "notCreated")
+        created = sub_args.get("created") or {}
+        submission = created.get("s1") or {}
+        return str(submission.get("id") or "")
 
     # ── per-account delivery inspector (mail JMAP) ────────────────────────
 
@@ -913,6 +1123,7 @@ class StalwartProvisioner:
                     received_at=em.get("receivedAt"),
                     status=("seen" if "$seen" in (em.get("keywords") or {}) else "unseen"),
                     folder=folder,
+                    account=address,
                 )
             )
         return items
@@ -922,6 +1133,10 @@ class StalwartProvisioner:
 # (maxObjectsInGet/Set=500, maxCallsInRequest=16).
 _QUEUE_PAGE = 500
 _QUEUE_RETRY_MAX = 4_000
+
+# Engine-wide delivery aggregation (TEC-201): N+1 fan-out caps.
+_DELIVERY_ACCOUNTS_CAP = 50
+_DELIVERY_PER_ACCOUNT = 10
 
 # Recipient @type → representative status precedence (worst wins).
 _RECIPIENT_STATUS_PRECEDENCE = (
@@ -1102,6 +1317,9 @@ class NullProvisioner:
     def list_mailboxes(self, page: int, limit: int) -> MailboxPage:
         self._unconfigured()
 
+    def delete_mailbox(self, localpart: str) -> None:
+        self._unconfigured()
+
     # ── engine-admin operations (TEC-188) — all report unavailable ────────
 
     def ping(self) -> bool:
@@ -1120,6 +1338,11 @@ class NullProvisioner:
         self._unconfigured()
 
     def delivery_items(self, account: str | None, limit: int) -> list[DeliveryItem] | None:
+        self._unconfigured()
+
+    def send_mail_message(
+        self, localpart: str, to: str, subject: str, body: str
+    ) -> str | None:
         self._unconfigured()
 
 
