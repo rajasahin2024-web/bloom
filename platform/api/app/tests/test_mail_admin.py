@@ -532,11 +532,14 @@ class StubInspector:
         self.delivery: list[mail_api.DeliveryItem] | None = []
         self.retry_all_result = True
         self.retry_results: dict[str, bool] = {}
+        self.unavailable = False
 
     def ping(self) -> bool:
         return self.reachable
 
     def queue_snapshot(self, limit: int = 100) -> mail_api.QueueSnapshot | None:
+        if self.unavailable:
+            raise mail_api.MailUnavailableError("mail API unreachable")
         return self.snapshot
 
     def queue_retry_all(self) -> bool:
@@ -549,6 +552,8 @@ class StubInspector:
         return self.dns
 
     def delivery_items(self, account: str | None, limit: int) -> list[mail_api.DeliveryItem] | None:
+        if self.unavailable:
+            raise mail_api.MailUnavailableError("mail API unreachable")
         return self.delivery
 
 
@@ -990,6 +995,27 @@ def test_engine_delivery(db: Session, redis_db1: Redis) -> None:
 
             inspector.delivery = None
             r = c.get("/api/admin/mail/delivery", headers=headers)
+            assert r.json() == {"available": False, "items": []}
+    finally:
+        _delete_user(db.scalar(select(User.email).where(User.id == uuid.UUID(admin_id))))
+
+
+@requires_infra
+def test_engine_queue_delivery_degrade_when_api_unreachable(
+    db: Session, redis_db1: Redis
+) -> None:
+    """Contract: unreachable engine → 200 + available:false, never a 502."""
+    inspector = StubInspector()
+    inspector.unavailable = True
+    headers = _admin_headers(db)
+    admin_id = headers.pop("x-admin-id")
+    try:
+        with _admin_client(StubProvisioner(), inspector, redis_db1) as c:
+            r = c.get("/api/admin/mail/queue", headers=headers)
+            assert r.status_code == 200
+            assert r.json() == {"available": False, "items": [], "total": 0}
+            r = c.get("/api/admin/mail/delivery", headers=headers)
+            assert r.status_code == 200
             assert r.json() == {"available": False, "items": []}
     finally:
         _delete_user(db.scalar(select(User.email).where(User.id == uuid.UUID(admin_id))))

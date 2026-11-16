@@ -518,6 +518,8 @@ def mail_queue_list(
 ) -> QueueReportOut:
     try:
         snap = inspector.queue_snapshot()
+    except mail_api.MailUnavailableError:
+        return QueueReportOut(available=False, items=[], total=0)
     except mail_api.MailError as exc:
         raise _mail_http_error(exc) from exc
     if snap is None:
@@ -597,6 +599,8 @@ def mail_delivery_inspector(
     via traces (Enterprise-gated → `available:false` on OSS)."""
     try:
         items = inspector.delivery_items(account.strip().lower() if account else None, limit)
+    except mail_api.MailUnavailableError:
+        return DeliveryReportOut(available=False, items=[])
     except mail_api.MailError as exc:
         raise _mail_http_error(exc) from exc
     if items is None:

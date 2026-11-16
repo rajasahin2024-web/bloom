@@ -9,12 +9,24 @@
 # `.env` stays on the server — secrets never enter the repo or the images.
 name: bloom
 
+networks:
+  # The mail engine's compose project (Stalwart on this host, /opt/stalwart).
+  # Attaching api+worker lets them reach the management API at
+  # http://stalwart:8080 — it binds host loopback only, so bridge IPs and
+  # host.docker.internal can never reach it. MAIL_API_URL uses this alias.
+  stalwart-mail:
+    name: stalwart_default
+    external: true
+
 services:
   api:
     build: !reset null
     image: ghcr.io/rajasahin2024-web/bloom-api:main
     environment:
       API_ENV: ${API_ENV:-production}
+    networks:
+      - bloom
+      - stalwart-mail
 
   worker:
     build: !reset null
@@ -22,6 +34,9 @@ services:
     image: ghcr.io/rajasahin2024-web/bloom-api:main
     environment:
       API_ENV: ${API_ENV:-production}
+    networks:
+      - bloom
+      - stalwart-mail
 
   web:
     build: !reset null

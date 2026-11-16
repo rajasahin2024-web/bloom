@@ -21,6 +21,7 @@ import { RotateLeftIcon } from "@/components/icons";
 /** TLS expiry reads warn under two weeks, bad once expired. */
 function tlsTone(daysRemaining: number): "ok" | "warn" | "bad" {
   if (daysRemaining <= 0) return "bad";
+  if (daysRemaining > 3650) return "warn"; // far-future ⇒ self-signed, not CA-issued
   return daysRemaining < 14 ? "warn" : "ok";
 }
 
@@ -149,9 +150,11 @@ export function MailStatusTab({ session }: { session: AdminSession }) {
               {status.tls ? (
                 <>
                   <Pill tone={tlsTone(status.tls.daysRemaining)}>
-                    {status.tls.daysRemaining > 0
-                      ? `${status.tls.daysRemaining} days left`
-                      : "Expired"}
+                    {status.tls.daysRemaining <= 0
+                      ? "Expired"
+                      : status.tls.daysRemaining > 3650
+                        ? "Long-lived / self-signed"
+                        : `${status.tls.daysRemaining} days left`}
                   </Pill>
                   <div className="adm-mail-sub">
                     Expires {fmtDateTime(status.tls.expiresAt)}
