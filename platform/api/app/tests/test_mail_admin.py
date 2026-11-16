@@ -473,20 +473,24 @@ def test_send_mail_message_submits_on_behalf() -> None:
     t.push(
         200,
         _jmap_resp(
-            ["Email/set", {"accountId": "c", "created": {"m1": {"id": "e1"}}}, "e"],
+            ["Email/set", {"accountId": "c", "created": {"m1": {"id": "e1"}}}, "e"]
+        ),
+    )
+    t.push(
+        200,
+        _jmap_resp(
             [
                 "EmailSubmission/set",
                 {"created": {"s1": {"id": "sub-1"}}},
                 "s",
-            ],
+            ]
         ),
     )
     out = _provisioner(t).send_mail_message(
         "s", "dest@x.y", "Hi there", "body text"
     )
     assert out == "sub-1"
-    send_call = t.calls[3][2]
-    email_set = send_call["methodCalls"][0][1]
+    email_set = t.calls[3][2]["methodCalls"][0][1]
     draft = email_set["create"]["m1"]
     assert draft["from"] == [{"email": "s@bloomieltsacademy.com"}]
     assert draft["to"] == [{"email": "dest@x.y"}]
@@ -494,8 +498,9 @@ def test_send_mail_message_submits_on_behalf() -> None:
     assert draft["mailboxIds"] == {"mb-d": True}  # drafts folder
     assert draft["bodyValues"]["t1"]["value"] == "body text"
     assert draft["keywords"]["$draft"] is True
-    sub = send_call["methodCalls"][1][1]["create"]["s1"]
+    sub = t.calls[4][2]["methodCalls"][0][1]["create"]["s1"]
     assert sub["identityId"] == "id1"
+    assert sub["emailId"] == "e1"  # literal id — engine rejects #emailId refs
 
 
 def test_send_mail_message_unknown_mailbox() -> None:

@@ -311,6 +311,9 @@ def _urllib_transport(timeout: float) -> Transport:
 
 _USING_MGMT = ["urn:ietf:params:jmap:core", "urn:stalwart:jmap"]
 _USING_MAIL = ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"]
+# Identity/get + EmailSubmission/set live under the submission capability —
+# _USING_MAIL alone gets unknownMethod on this engine build (verified live).
+_USING_SUBMISSION = [*_USING_MAIL, "urn:ietf:params:jmap:submission"]
 
 # Method-level ["error",{type},callId] responses inside HTTP 200 → taxonomy.
 _METHOD_ERROR_MAP: dict[str, type[MailError]] = {
@@ -939,7 +942,7 @@ class StalwartProvisioner:
                     "m",
                 ],
             ],
-            using=_USING_MAIL,
+            using=_USING_SUBMISSION,
         )
         if res is None:
             return None
@@ -967,7 +970,10 @@ class StalwartProvisioner:
         )
         if drafts_id is None:
             raise MailUnavailableError(f"mailbox {address} has no folder to draft in")
-        send_res = self._jmap_send(
+        # Stalwart rejects the spec's `#emailId` result-reference on
+        # EmailSubmission/set (invalidProperties, verified live), so the
+        # draft and the submission go in two calls with a literal emailId.
+        draft_res = self._jmap_lenient(
             [
                 [
                     "Email/set",
@@ -986,7 +992,19 @@ class StalwartProvisioner:
                         },
                     },
                     "e",
-                ],
+                ]
+            ],
+            using=_USING_SUBMISSION,
+        )
+        if draft_res is None:
+            return None
+        email_args = draft_res.get("e") or {}
+        _raise_set_errors(email_args, "notCreated")
+        email_id = str(
+            (email_args.get("created") or {}).get("m1", {}).get("id") or ""
+        )
+        sub_res = self._jmap_lenient(
+            [
                 [
                     "EmailSubmission/set",
                     {
@@ -994,32 +1012,18 @@ class StalwartProvisioner:
                         "create": {
                             "s1": {
                                 "identityId": identity_id,
-                                "#emailId": {
-                                    "resultOf": "e",
-                                    "name": "Email/set",
-                                    "path": "/created/m1/id",
-                                },
+                                "emailId": email_id,
                             }
                         },
                     },
                     "s",
-                ],
+                ]
             ],
-            _USING_MAIL,
+            using=_USING_SUBMISSION,
         )
-        for resp in send_res:
-            if (
-                isinstance(resp, list)
-                and len(resp) >= 2
-                and resp[0] == "error"
-                and isinstance(resp[1], dict)
-                and resp[1].get("type") == "unknownMethod"
-            ):
-                return None  # submission surface not exposed
-        by_call = self._collect(send_res)
-        email_args = by_call.get("e") or {}
-        _raise_set_errors(email_args, "notCreated")
-        sub_args = by_call.get("s") or {}
+        if sub_res is None:
+            return None  # submission surface not exposed
+        sub_args = sub_res.get("s") or {}
         _raise_set_errors(sub_args, "notCreated")
         created = sub_args.get("created") or {}
         submission = created.get("s1") or {}
