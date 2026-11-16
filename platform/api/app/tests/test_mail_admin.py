@@ -395,20 +395,21 @@ def test_delivery_engine_wide_empty_engine() -> None:
 
 
 def test_delete_mailbox_destroys_engine_account() -> None:
-    """TEC-201: delete_mailbox → x:Account/set destroy {id: None}."""
+    """TEC-201: delete_mailbox → x:Account/set destroy [id] — a sequence,
+    not a map (engine rejects the map form, verified live)."""
     t = FakeTransport()
     _push_domain(t)
     _push_lookup(t, _account("s"))
     t.push(
         200,
         _jmap_resp(
-            ["x:Account/set", {"accountId": "b", "destroyed": {"c": None}}, "s"]
+            ["x:Account/set", {"accountId": "b", "destroyed": ["c"]}, "s"]
         ),
     )
     _provisioner(t).delete_mailbox("s")
     set_call = t.calls[2][2]["methodCalls"][0]
     assert set_call[0] == "x:Account/set"
-    assert set_call[1] == {"destroy": {"c": None}}
+    assert set_call[1] == {"destroy": ["c"]}
 
 
 def test_delete_mailbox_unknown_localpart() -> None:

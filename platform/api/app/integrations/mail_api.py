@@ -675,7 +675,7 @@ class StalwartProvisioner:
                 f"mailbox {self._address(localpart)} not found on the engine"
             )
         res = self._jmap(
-            [["x:Account/set", {"destroy": {str(acct["id"]): None}}, "s"]]
+            [["x:Account/set", {"destroy": [str(acct["id"])]}, "s"]]
         )
         args = res.get("s") or {}
         _raise_set_errors(args, "notDestroyed")
