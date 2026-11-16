@@ -4,6 +4,9 @@
  * Status and DNS are independent panels with their own error states: a DNS
  * lookup failure must not blank engine health (and vice-versa). Null fields
  * (`tls`, `queue`) are contract answers for engine gaps → "N/A".
+ *
+ * TEC-201: the tab polls silently every ~10s and leads with a LIVE hero —
+ * the admin should see at a glance that the engine is alive.
  */
 import { useCallback, useEffect, useState } from "react";
 import type { AdminSession } from "@/lib/auth";
@@ -18,11 +21,44 @@ import {
 import { errText, fmtDateTime } from "@/components/admin/mail-utils";
 import { RotateLeftIcon } from "@/components/icons";
 
+const POLL_MS = 10_000;
+
 /** TLS expiry reads warn under two weeks, bad once expired. */
 function tlsTone(daysRemaining: number): "ok" | "warn" | "bad" {
   if (daysRemaining <= 0) return "bad";
   if (daysRemaining > 3650) return "warn"; // far-future ⇒ self-signed, not CA-issued
   return daysRemaining < 14 ? "warn" : "ok";
+}
+
+type LiveTone = "on" | "warn" | "off";
+
+function liveState(status: MailEngineStatus): {
+  tone: LiveTone;
+  label: string;
+  sub: string;
+} {
+  if (!status.apiReachable) {
+    return {
+      tone: "off",
+      label: "Engine offline",
+      sub: "The management API is not answering — check the engine host.",
+    };
+  }
+  const down = status.listeners.filter((l) => !l.ok);
+  if (down.length > 0) {
+    return {
+      tone: "warn",
+      label: "Degraded",
+      sub: `API reachable, but ${down.length} listener${down.length === 1 ? "" : "s"} down (${down
+        .map((l) => `${l.name}:${l.port}`)
+        .join(", ")}).`,
+    };
+  }
+  return {
+    tone: "on",
+    label: "Engine live",
+    sub: "API reachable and all listeners accepting connections.",
+  };
 }
 
 export function MailStatusTab({ session }: { session: AdminSession }) {
@@ -32,29 +68,46 @@ export function MailStatusTab({ session }: { session: AdminSession }) {
   const [dns, setDns] = useState<MailDnsReport | null>(null);
   const [dnsErr, setDnsErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
-  const load = useCallback(async () => {
-    const [s, d] = await Promise.allSettled([
-      fetchMailStatus(token),
-      fetchMailDns(token),
-    ]);
-    if (s.status === "fulfilled") {
-      setStatus(s.value);
-      setStatusErr(null);
-    } else {
-      setStatusErr(errText(s.reason, "Could not read engine status."));
-    }
-    if (d.status === "fulfilled") {
-      setDns(d.value);
-      setDnsErr(null);
-    } else {
-      setDnsErr(errText(d.reason, "Could not check DNS records."));
-    }
-  }, [token]);
+  const load = useCallback(
+    async (silent = false) => {
+      const [s, d] = await Promise.allSettled([
+        fetchMailStatus(token),
+        fetchMailDns(token),
+      ]);
+      if (s.status === "fulfilled") {
+        setStatus(s.value);
+        setStatusErr(null);
+      } else if (!silent) {
+        setStatusErr(errText(s.reason, "Could not read engine status."));
+      }
+      if (d.status === "fulfilled") {
+        setDns(d.value);
+        setDnsErr(null);
+      } else if (!silent) {
+        setDnsErr(errText(d.reason, "Could not check DNS records."));
+      }
+    },
+    [token],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const t = window.setInterval(() => void load(true), POLL_MS);
+    return () => window.clearInterval(t);
+  }, [load]);
+
+  /* "checked Xs ago" ticker — re-render once a second while a snapshot
+     exists so the hero age stays truthful. */
+  useEffect(() => {
+    if (!status) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [status]);
 
   async function refresh() {
     if (refreshing) return;
@@ -64,9 +117,28 @@ export function MailStatusTab({ session }: { session: AdminSession }) {
   }
 
   const checkedAt = status?.checkedAt ?? dns?.checkedAt ?? null;
+  const live = status ? liveState(status) : null;
+  const ageSec = checkedAt
+    ? Math.max(0, Math.floor((now - Date.parse(checkedAt)) / 1000))
+    : null;
 
   return (
     <>
+      {status && live && (
+        <div className={`adm-mail-live ${live.tone}`} role="status">
+          <span className="adm-mail-live-dot" aria-hidden="true" />
+          <div className="adm-mail-live-tx">
+            <b>{live.label}</b>
+            <span>{live.sub}</span>
+          </div>
+          {ageSec !== null && (
+            <span className="adm-mail-live-age">
+              checked {ageSec < 2 ? "just now" : `${ageSec}s ago`}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="adm-mail-toolbar">
         <span className="adm-mail-checked">
           {checkedAt ? `Checked ${fmtDateTime(checkedAt)}` : "Checking…"}

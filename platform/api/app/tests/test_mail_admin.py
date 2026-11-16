@@ -296,12 +296,241 @@ def test_dns_records_parse() -> None:
     assert _provisioner(t).dns_records("bloomieltsacademy.com") is None
 
 
-def test_delivery_engine_wide_unavailable() -> None:
-    """delivery_items(None) → available:false without an engine call —
-    engine-wide tracing is Enterprise-only on v0.16+."""
+def _push_delivery_batch(
+    t: FakeTransport,
+    *,
+    ids: list[str],
+    emails: list[dict[str, Any]],
+    mailboxes: list[dict[str, Any]],
+) -> None:
+    """One `_jmap_delivery` roundtrip: Email/query + Email/get +
+    Mailbox/query + Mailbox/get in a single JMAP call."""
+    t.push(
+        200,
+        _jmap_resp(
+            ["Email/query", {"ids": ids}, "q"],
+            ["Email/get", {"list": emails}, "e"],
+            ["Mailbox/query", {"ids": [m["id"] for m in mailboxes]}, "mq"],
+            ["Mailbox/get", {"list": mailboxes}, "m"],
+        ),
+    )
+
+
+def _push_account_list(t: FakeTransport, accounts: list[dict[str, Any]]) -> None:
+    """`_domain_accounts` roundtrip: x:Account/query + x:Account/get."""
+    t.push(
+        200,
+        _jmap_resp(
+            [
+                "x:Account/query",
+                {"accountId": "b", "ids": [a["id"] for a in accounts]},
+                "aq",
+            ],
+            ["x:Account/get", {"list": accounts}, "ag"],
+        ),
+    )
+
+
+def test_delivery_engine_wide_aggregates_accounts() -> None:
+    """TEC-201: delivery_items(None) fans out over the domain's User
+    accounts (OSS-safe alternative to Enterprise tracing), merges by
+    receivedAt desc, and stamps each item's `account`."""
     t = FakeTransport()
-    assert _provisioner(t).delivery_items(None, 10) is None
-    assert t.calls == []
+    _push_domain(t)
+    _push_account_list(
+        t, [_account("amir", id="c1"), _account("raja", id="c2")]
+    )
+    _push_delivery_batch(
+        t,
+        ids=["m1"],
+        emails=[
+            {
+                "id": "m1",
+                "subject": "older",
+                "receivedAt": "2026-11-15T08:00:00Z",
+                "from": [{"email": "x@y.z"}],
+                "to": [{"email": "amir@bloomieltsacademy.com"}],
+                "mailboxIds": {"in1": True},
+                "keywords": {"$seen": True},
+            }
+        ],
+        mailboxes=[{"id": "in1", "name": "Inbox"}],
+    )
+    _push_delivery_batch(
+        t,
+        ids=["m2"],
+        emails=[
+            {
+                "id": "m2",
+                "subject": "newer",
+                "receivedAt": "2026-11-15T09:00:00Z",
+                "from": [{"email": "raja@bloomieltsacademy.com"}],
+                "to": [{"email": "ext@y.z"}],
+                "mailboxIds": {"sn1": True},
+                "keywords": {},
+            }
+        ],
+        mailboxes=[{"id": "sn1", "name": "Sent"}],
+    )
+    items = _provisioner(t).delivery_items(None, 10)
+    # domain + account-list + one mail roundtrip per account
+    assert len(t.calls) == 4
+    assert items is not None and len(items) == 2
+    assert items[0].subject == "newer"  # receivedAt desc
+    assert items[0].account == "raja@bloomieltsacademy.com"
+    assert items[0].direction == "outbound" and items[0].folder == "Sent"
+    assert items[1].subject == "older"
+    assert items[1].account == "amir@bloomieltsacademy.com"
+    assert items[1].direction == "inbound" and items[1].status == "seen"
+
+
+def test_delivery_engine_wide_empty_engine() -> None:
+    """No accounts on the domain → empty list (still available)."""
+    t = FakeTransport()
+    _push_domain(t)
+    _push_account_list(t, [])
+    items = _provisioner(t).delivery_items(None, 10)
+    assert items == []
+    assert len(t.calls) == 2
+
+
+def test_delete_mailbox_destroys_engine_account() -> None:
+    """TEC-201: delete_mailbox → x:Account/set destroy {id: None}."""
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, _account("s"))
+    t.push(
+        200,
+        _jmap_resp(
+            ["x:Account/set", {"accountId": "b", "destroyed": {"c": None}}, "s"]
+        ),
+    )
+    _provisioner(t).delete_mailbox("s")
+    set_call = t.calls[2][2]["methodCalls"][0]
+    assert set_call[0] == "x:Account/set"
+    assert set_call[1] == {"destroy": {"c": None}}
+
+
+def test_delete_mailbox_unknown_localpart() -> None:
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, None)
+    p = _provisioner(t)
+    with pytest.raises(mail_api.MailNotFoundError):
+        p.delete_mailbox("ghost")
+    assert len(t.calls) == 2  # no destroy call was made
+
+
+def test_delete_mailbox_not_destroyed_raises() -> None:
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, _account("s"))
+    t.push(
+        200,
+        _jmap_resp(
+            [
+                "x:Account/set",
+                {
+                    "accountId": "b",
+                    "notDestroyed": {"c": {"type": "forbidden", "description": "no"}},
+                },
+                "s",
+            ]
+        ),
+    )
+    with pytest.raises(mail_api.MailUnauthorizedError):
+        _provisioner(t).delete_mailbox("s")
+
+
+def _push_send_prepare(t: FakeTransport, address: str) -> None:
+    """`send_mail_message`'s lenient Identity+Mailbox batch."""
+    t.push(
+        200,
+        _jmap_resp(
+            ["Identity/get", {"list": [{"id": "id1", "email": address}]}, "i"],
+            ["Mailbox/query", {"ids": ["mb-d", "mb-s"]}, "mq"],
+            [
+                "Mailbox/get",
+                {
+                    "list": [
+                        {"id": "mb-d", "role": "drafts"},
+                        {"id": "mb-s", "role": "sent"},
+                    ]
+                },
+                "m",
+            ],
+        ),
+    )
+
+
+def test_send_mail_message_submits_on_behalf() -> None:
+    """TEC-201: Email/set draft + EmailSubmission/set via the mailbox's own
+    identity — admin token, no mailbox password."""
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, _account("s"))
+    _push_send_prepare(t, "s@bloomieltsacademy.com")
+    t.push(
+        200,
+        _jmap_resp(
+            ["Email/set", {"accountId": "c", "created": {"m1": {"id": "e1"}}}, "e"],
+            [
+                "EmailSubmission/set",
+                {"created": {"s1": {"id": "sub-1"}}},
+                "s",
+            ],
+        ),
+    )
+    out = _provisioner(t).send_mail_message(
+        "s", "dest@x.y", "Hi there", "body text"
+    )
+    assert out == "sub-1"
+    send_call = t.calls[3][2]
+    email_set = send_call["methodCalls"][0][1]
+    draft = email_set["create"]["m1"]
+    assert draft["from"] == [{"email": "s@bloomieltsacademy.com"}]
+    assert draft["to"] == [{"email": "dest@x.y"}]
+    assert draft["subject"] == "Hi there"
+    assert draft["mailboxIds"] == {"mb-d": True}  # drafts folder
+    assert draft["bodyValues"]["t1"]["value"] == "body text"
+    assert draft["keywords"]["$draft"] is True
+    sub = send_call["methodCalls"][1][1]["create"]["s1"]
+    assert sub["identityId"] == "id1"
+
+
+def test_send_mail_message_unknown_mailbox() -> None:
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, None)
+    with pytest.raises(mail_api.MailNotFoundError):
+        _provisioner(t).send_mail_message("ghost", "d@x.y", "s", "b")
+    assert len(t.calls) == 2
+
+
+def test_send_mail_message_surface_missing_returns_none() -> None:
+    """`unknownMethod` on the prepare batch → None (contract's
+    unavailable surface)."""
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, _account("s"))
+    t.push(200, _jmap_resp(["error", {"type": "unknownMethod"}, "i"]))
+    assert _provisioner(t).send_mail_message("s", "d@x.y", "s", "b") is None
+
+
+def test_send_mail_message_no_identity_raises() -> None:
+    t = FakeTransport()
+    _push_domain(t)
+    _push_lookup(t, _account("s"))
+    t.push(
+        200,
+        _jmap_resp(
+            ["Identity/get", {"list": []}, "i"],
+            ["Mailbox/query", {"ids": ["mb-d"]}, "mq"],
+            ["Mailbox/get", {"list": [{"id": "mb-d", "role": "drafts"}]}, "m"],
+        ),
+    )
+    with pytest.raises(mail_api.MailUnavailableError):
+        _provisioner(t).send_mail_message("s", "d@x.y", "s", "b")
 
 
 def test_jmap_delivery_resolves_account_then_one_roundtrip() -> None:
@@ -484,6 +713,7 @@ class StubProvisioner:
         self.suspended: list[str] = []
         self.unsuspended: list[str] = []
         self.reset: list[tuple[str, str]] = []
+        self.deleted: list[str] = []
         self.errors: dict[str, Exception] = {}
 
     def _raise(self, op: str) -> None:
@@ -523,6 +753,10 @@ class StubProvisioner:
         self.reset.append((localpart, secret))
         return mail_api.MailboxInfo(localpart, f"{localpart}@bloomieltsacademy.com", "active", 1024)
 
+    def delete_mailbox(self, localpart: str) -> None:
+        self._raise("delete")
+        self.deleted.append(localpart)
+
 
 class StubInspector:
     def __init__(self) -> None:
@@ -533,6 +767,18 @@ class StubInspector:
         self.retry_all_result = True
         self.retry_results: dict[str, bool] = {}
         self.unavailable = False
+        self.submission_id: str | None = "sub-1"
+        self.sent: list[dict[str, str]] = []
+
+    def send_mail_message(
+        self, localpart: str, to: str, subject: str, body: str
+    ) -> str | None:
+        if self.unavailable:
+            raise mail_api.MailUnavailableError("mail API unreachable")
+        self.sent.append(
+            {"localpart": localpart, "to": to, "subject": subject, "body": body}
+        )
+        return self.submission_id
 
     def ping(self) -> bool:
         return self.reachable
@@ -1049,5 +1295,179 @@ def test_engine_routes_require_admin(db: Session, redis_db1: Redis) -> None:
                 ).status_code
                 == 403
             )
+            rid = str(uuid.uuid4())
+            assert (
+                c.delete(f"/api/admin/mailboxes/{rid}", headers=h).status_code == 403
+            )
+            assert c.delete(f"/api/admin/mailboxes/{rid}").status_code == 401
+            assert (
+                c.post(
+                    f"/api/admin/mailboxes/{rid}/send-test",
+                    headers=h,
+                    json={"to": "a@b.co", "body": "b"},
+                ).status_code
+                == 403
+            )
     finally:
         _delete_user(student.email)
+
+
+# ── TEC-201: pagination default, delete, send-test (infra) ─────────────────────
+
+
+def _mail_row(db: Session, mailbox_id: uuid.UUID) -> Mailbox | None:
+    """Fresh row lookup — bypasses the session identity map (TestClient
+    deletes land outside this session's cache)."""
+    return db.scalar(select(Mailbox).where(Mailbox.id == mailbox_id))
+
+
+@requires_infra
+def test_admin_mailboxes_default_page_size_10(db: Session, redis_db1: Redis) -> None:
+    """TEC-201: GET /api/admin/mailboxes defaults to 10/page; explicit
+    page_size still honoured within bounds."""
+    headers = _admin_headers(db)
+    admin_id = headers.pop("x-admin-id")
+    try:
+        with _admin_client(StubProvisioner(), StubInspector(), redis_db1) as c:
+            r = c.get("/api/admin/mailboxes", headers=headers)
+            assert r.status_code == 200
+            body = r.json()
+            assert body["page_size"] == 10
+            assert len(body["items"]) <= 10
+
+            r = c.get("/api/admin/mailboxes?page_size=5", headers=headers)
+            assert r.json()["page_size"] == 5
+            assert len(r.json()["items"]) <= 5
+    finally:
+        _delete_user(db.scalar(select(User.email).where(User.id == uuid.UUID(admin_id))))
+
+
+@requires_infra
+def test_admin_delete_mailbox(db: Session, redis_db1: Redis) -> None:
+    """TEC-201: DELETE destroys the engine account, drops the mirror row,
+    audits — and tolerates engine not_found for never-provisioned rows."""
+    prov = StubProvisioner()
+    box = _make_mailbox(db, status=MailboxStatus.active)
+    headers = _admin_headers(db)
+    admin_id = headers.pop("x-admin-id")
+    try:
+        with _admin_client(prov, StubInspector(), redis_db1) as c:
+            r = c.delete(f"/api/admin/mailboxes/{box.id}", headers=headers)
+            assert r.status_code == 204
+            assert prov.deleted == [box.localpart]
+            assert _mail_row(db, box.id) is None
+            audit = _audit_rows(db, "mailbox.delete", admin_id)[0]
+            assert audit.detail["localpart"] == box.localpart
+
+            # engine never saw this row → not_found tolerated, mirror removed
+            box2 = _make_mailbox(db, status=MailboxStatus.pending)
+            prov.errors["delete"] = mail_api.MailNotFoundError("gone")
+            r = c.delete(f"/api/admin/mailboxes/{box2.id}", headers=headers)
+            assert r.status_code == 204
+            assert _mail_row(db, box2.id) is None
+
+            # unknown id → 404
+            r = c.delete(f"/api/admin/mailboxes/{uuid.uuid4()}", headers=headers)
+            assert r.status_code == 404
+
+            # engine failure → 502 and the mirror row is kept
+            box3 = _make_mailbox(db)
+            prov.errors["delete"] = mail_api.MailUnavailableError("down")
+            r = c.delete(f"/api/admin/mailboxes/{box3.id}", headers=headers)
+            assert r.status_code == 502
+            assert _mail_row(db, box3.id) is not None
+            db.delete(box3)
+            db.commit()
+    finally:
+        _delete_user(db.scalar(select(User.email).where(User.id == uuid.UUID(admin_id))))
+
+
+@requires_infra
+def test_admin_send_test_mailbox(db: Session, redis_db1: Redis) -> None:
+    """TEC-201: POST /{id}/send-test submits on behalf of the mailbox and
+    audits the outcome — never the body."""
+    inspector = StubInspector()
+    box = _make_mailbox(db, status=MailboxStatus.active)
+    headers = _admin_headers(db)
+    admin_id = headers.pop("x-admin-id")
+    try:
+        with _admin_client(StubProvisioner(), inspector, redis_db1) as c:
+            r = c.post(
+                f"/api/admin/mailboxes/{box.id}/send-test",
+                headers=headers,
+                json={
+                    "to": "dest@example.dev",
+                    "subject": "Probe",
+                    "body": "hello body",
+                },
+            )
+            assert r.status_code == 200, r.text
+            assert r.json() == {
+                "accepted": True,
+                "messageId": "sub-1",
+                "error": None,
+            }
+            assert inspector.sent[0]["localpart"] == box.localpart
+            assert inspector.sent[0]["to"] == "dest@example.dev"
+            assert inspector.sent[0]["body"] == "hello body"
+            audit = _audit_rows(db, "mailbox.send_test", admin_id)[0]
+            assert audit.detail["accepted"] is True
+            assert "body" not in audit.detail  # content never audited
+
+            # submission surface not exposed → honest unavailable
+            inspector.submission_id = None
+            r = c.post(
+                f"/api/admin/mailboxes/{box.id}/send-test",
+                headers=headers,
+                json={"to": "dest@example.dev", "body": "b"},
+            )
+            assert r.json() == {
+                "accepted": False,
+                "messageId": None,
+                "error": "unavailable",
+            }
+
+            # engine error → taxonomy code, still 200 (probe-style result)
+            inspector.unavailable = True
+            r = c.post(
+                f"/api/admin/mailboxes/{box.id}/send-test",
+                headers=headers,
+                json={"to": "dest@example.dev", "body": "b"},
+            )
+            assert r.status_code == 200
+            assert r.json()["accepted"] is False
+            assert r.json()["error"] == "unavailable"
+            inspector.unavailable = False
+
+            # validation: bad recipient / blank body → 422
+            assert (
+                c.post(
+                    f"/api/admin/mailboxes/{box.id}/send-test",
+                    headers=headers,
+                    json={"to": "not-an-email", "body": "b"},
+                ).status_code
+                == 422
+            )
+            assert (
+                c.post(
+                    f"/api/admin/mailboxes/{box.id}/send-test",
+                    headers=headers,
+                    json={"to": "dest@example.dev", "body": "   "},
+                ).status_code
+                == 422
+            )
+            # unknown mailbox → 404
+            assert (
+                c.post(
+                    f"/api/admin/mailboxes/{uuid.uuid4()}/send-test",
+                    headers=headers,
+                    json={"to": "dest@example.dev", "body": "b"},
+                ).status_code
+                == 404
+            )
+        row = _mail_row(db, box.id)
+        if row is not None:
+            db.delete(row)
+            db.commit()
+    finally:
+        _delete_user(db.scalar(select(User.email).where(User.id == uuid.UUID(admin_id))))

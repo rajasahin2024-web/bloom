@@ -19,6 +19,8 @@ import {
 } from "@/components/admin/mail-utils";
 import { RotateLeftIcon } from "@/components/icons";
 
+const POLL_MS = 15_000;
+
 export function MailQueueTab({ session }: { session: AdminSession }) {
   const token = session.tokens.access_token;
   const [queue, setQueue] = useState<MailQueuePage | null>(null);
@@ -27,20 +29,31 @@ export function MailQueueTab({ session }: { session: AdminSession }) {
   const [busyId, setBusyId] = useState<string | "all" | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setListErr(null);
-    try {
-      setQueue(await fetchMailQueue(token));
-    } catch (err) {
-      setListErr(errText(err, "Could not load the queue."));
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+  const load = useCallback(
+    async (silent = false) => {
+      if (!silent) {
+        setLoading(true);
+        setListErr(null);
+      }
+      try {
+        setQueue(await fetchMailQueue(token));
+        setListErr(null);
+      } catch (err) {
+        if (!silent) setListErr(errText(err, "Could not load the queue."));
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [token],
+  );
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const t = window.setInterval(() => void load(true), POLL_MS);
+    return () => window.clearInterval(t);
   }, [load]);
 
   useEffect(() => {

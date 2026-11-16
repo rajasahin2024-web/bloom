@@ -97,6 +97,8 @@ export interface MailDeliveryItem {
   receivedAt: string | null;
   status: string | null;
   folder: string | null;
+  /** Mailbox the row was read from (TEC-201 engine-wide aggregation). */
+  account: string | null;
 }
 
 export interface MailDeliveryPage {
@@ -199,16 +201,21 @@ export async function fetchMailDelivery(
 /**
  * Test-send: a 503 means the test account isn't provisioned yet — the body
  * is still a TestSendResult (`accepted:false`), so map it to a result rather
- * than letting it throw.
+ * than letting it throw. `subject`/`body` optional since TEC-201.
  */
 export async function sendMailTest(
   token: string,
   to: string,
+  opts: { subject?: string; body?: string } = {},
 ): Promise<MailTestSendResult> {
   try {
     const { data } = await apiFetch<MailTestSendResult>(
       "/api/admin/mail/test-send",
-      { method: "POST", body: { to }, token },
+      {
+        method: "POST",
+        body: { to, subject: opts.subject, body: opts.body },
+        token,
+      },
     );
     return data;
   } catch (err) {
@@ -234,7 +241,7 @@ export async function fetchMailboxes(
 ): Promise<Page<Mailbox>> {
   const params = new URLSearchParams();
   params.set("page", String(args.page ?? 1));
-  params.set("page_size", String(args.pageSize ?? 20));
+  params.set("page_size", String(args.pageSize ?? 10));
   if (args.status) params.set("status", args.status);
   const { data } = await apiFetch<Page<Mailbox>>(
     `/api/admin/mailboxes?${params.toString()}`,
@@ -317,6 +324,8 @@ export async function resetMailboxPassword(
 /**
  * Probe a mailbox's SMTP auth + IMAP login. `password` is a transient input —
  * passed through for the probe, never stored in component state or cache.
+ * Kept for contract completeness; the UI's Test button sends a real message
+ * instead (TEC-201).
  */
 export async function testMailbox(
   token: string,
@@ -328,4 +337,28 @@ export async function testMailbox(
     { method: "POST", body: { password }, token },
   );
   return data;
+}
+
+/**
+ * Send-test (TEC-201): a real message sent *as* the mailbox via admin-token
+ * JMAP submission — the UI's Test action, no mailbox password.
+ */
+export async function sendMailboxTest(
+  token: string,
+  id: string,
+  args: { to: string; subject?: string; body: string },
+): Promise<MailTestSendResult> {
+  const { data } = await apiFetch<MailTestSendResult>(
+    `/api/admin/mailboxes/${id}/send-test`,
+    { method: "POST", body: args, token },
+  );
+  return data;
+}
+
+/** Delete a mailbox — engine account + mirror row (TEC-201, admin-only). */
+export async function deleteMailbox(token: string, id: string): Promise<void> {
+  await apiFetch<null>(`/api/admin/mailboxes/${id}`, {
+    method: "DELETE",
+    token,
+  });
 }
